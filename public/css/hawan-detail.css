@@ -1,0 +1,1253 @@
+/* ============================================
+   HAWAN DETAIL PAGE CSS - BhaktiDeep Theme
+   Matches blade classes with 'hawan-' prefix
+   ============================================ */
+
+:root {
+    --brown: #fbf4df;
+    --cream: #372016;
+    --saffron: #e85b21;
+    --gold: #c78d22;
+    --muted: #7b604f;
+    --saffron-dark: #b83b16;
+    --white: #ffffff;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(232, 91, 33, 0.18);
+    --shadow: 0 8px 32px rgba(55, 32, 22, 0.12);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --transition: all 0.3s ease;
+}
+
+/* ---- Page Background ---- */
+.hawan-page {
+    background: var(--brown);
+    color: var(--cream);
+    font-family: 'Poppins', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+}
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+.hawan-hero-section {
+    background: linear-gradient(135deg, var(--saffron) 0%, var(--saffron-dark) 100%);
+    color: var(--white);
+    padding: 60px 20px 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hawan-hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    animation: hawan-pulse 4s ease-in-out infinite;
+}
+
+@keyframes hawan-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.hawan-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    padding: 8px 20px;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.3);
+    margin-bottom: 20px;
+}
+
+.hawan-hero-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.2;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.hawan-hero-title .hawan-highlight {
+    color: #ffd700;
+}
+
+.hawan-hero-desc {
+    font-size: 1.1rem;
+    opacity: 0.95;
+    margin-bottom: 24px;
+    max-width: 500px;
+}
+
+.hawan-hero-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+/* ---- Hero Image Card ---- */
+.hawan-hero-image-card {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.hawan-hero-image-card img {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+}
+
+.hawan-live-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: var(--white);
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: hawan-pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes hawan-pulse-badge {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.hawan-live-badge i {
+    font-size: 0.6rem;
+}
+
+.hawan-hero-image-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 30px 20px 20px;
+    color: var(--white);
+}
+
+.hawan-hero-image-overlay h5 {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.hawan-hero-image-overlay h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+/* ============================================
+   INFO CARDS (Hero ke neeche wale)
+   ============================================ */
+.hawan-info-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius-sm);
+    padding: 20px 16px;
+    text-align: center;
+    color: var(--white);
+    transition: var(--transition);
+}
+
+.hawan-info-card:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-3px);
+}
+
+.hawan-info-card .hawan-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 1.2rem;
+}
+
+.hawan-info-card h6 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.hawan-info-card p {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+/* ============================================
+   SECTION TITLES
+   ============================================ */
+.hawan-section-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--cream);
+    margin-bottom: 8px;
+}
+
+.hawan-section-title .hawan-highlight {
+    color: var(--saffron);
+}
+
+.hawan-section-subtitle {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   GLASS CARD (Universal container)
+   ============================================ */
+.hawan-glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    margin-bottom: 24px;
+    transition: var(--transition);
+}
+
+.hawan-glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(55, 32, 22, 0.18);
+}
+
+/* ============================================
+   ABOUT BOX
+   ============================================ */
+.hawan-about-box {
+    background: linear-gradient(135deg, rgba(232, 91, 33, 0.06), rgba(199, 141, 34, 0.06));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    color: var(--muted);
+    line-height: 1.8;
+    font-size: 0.95rem;
+}
+
+/* ============================================
+   BENEFIT CARDS
+   ============================================ */
+.hawan-benefit-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 24px 16px;
+    text-align: center;
+    transition: var(--transition);
+    height: 100%;
+}
+
+.hawan-benefit-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+    border-color: var(--saffron);
+}
+
+.hawan-benefit-card i {
+    font-size: 2rem;
+    color: var(--saffron);
+    margin-bottom: 12px;
+    display: block;
+}
+
+.hawan-benefit-card h6 {
+    color: var(--cream);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* ============================================
+   INCLUDED ITEMS
+   ============================================ */
+.hawan-included-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--saffron);
+    transition: var(--transition);
+}
+
+.hawan-included-item:hover {
+    background: rgba(255, 255, 255, 0.8);
+    padding-left: 22px;
+}
+
+.hawan-included-item i {
+    color: var(--saffron);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.hawan-included-item span {
+    color: var(--cream);
+    font-size: 0.95rem;
+}
+
+/* ============================================
+   PREVIEW SECTION
+   ============================================ */
+.hawan-preview-section {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+}
+
+.hawan-preview-image {
+    position: relative;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.hawan-preview-image img {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+}
+
+.hawan-play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 1.8rem;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(232, 91, 33, 0.4);
+    transition: var(--transition);
+}
+
+.hawan-play-btn:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.hawan-preview-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.hawan-preview-title {
+    color: var(--cream);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* ---- Ahuti Counter ---- */
+.hawan-ahuti-counter {
+    background: linear-gradient(135deg, rgba(232, 91, 33, 0.08), rgba(199, 141, 34, 0.08));
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.hawan-ahuti-counter h6 {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+
+.hawan-ahuti-counter .hawan-count {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--saffron);
+    margin-bottom: 8px;
+}
+
+.hawan-ahuti-counter .hawan-count span {
+    font-size: 1rem;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.hawan-progress-bar-custom {
+    height: 8px;
+    background: rgba(232, 91, 33, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.hawan-progress-bar-custom .hawan-fill {
+    height: 100%;
+    width: 43%;
+    background: linear-gradient(90deg, var(--saffron), var(--gold));
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.hawan-preview-meta {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.hawan-preview-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ---- Timeline ---- */
+.hawan-timeline-title {
+    color: var(--cream);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.hawan-timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(232, 91, 33, 0.1);
+}
+
+.hawan-timeline-item:last-child {
+    border-bottom: none;
+}
+
+.hawan-timeline-item .hawan-num {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.hawan-timeline-item .hawan-text {
+    flex: 1;
+    color: var(--cream);
+    font-size: 0.9rem;
+}
+
+.hawan-timeline-item .hawan-time {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* ============================================
+   ORDER SUMMARY (Sticky Sidebar)
+   ============================================ */
+.hawan-order-summary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    position: sticky;
+    top: 100px;
+}
+
+.hawan-order-summary h5 {
+    color: var(--cream);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(232, 91, 33, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hawan-order-summary h5 i {
+    color: var(--saffron);
+}
+
+.hawan-order-summary .hawan-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(232, 91, 33, 0.08);
+}
+
+.hawan-order-summary .hawan-summary-row .hawan-label {
+    color: var(--muted);
+}
+
+.hawan-order-summary .hawan-summary-row .hawan-value {
+    color: var(--cream);
+    font-weight: 500;
+}
+
+.hawan-order-summary .hawan-summary-row.hawan-total {
+    border-top: 2px dashed rgba(232, 91, 33, 0.2);
+    border-bottom: none;
+    margin-top: 8px;
+    padding-top: 14px;
+}
+
+.hawan-order-summary .hawan-summary-row.hawan-total .hawan-label,
+.hawan-order-summary .hawan-summary-row.hawan-total .hawan-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--saffron);
+}
+
+.hawan-trust-strip {
+    /* margin-top: 20px;
+    padding-top: 16px; */
+    border-top: 1px solid rgba(232, 91, 33, 0.1);
+}
+
+.hawan-trust-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.hawan-trust-item i {
+    color: var(--gold);
+    font-size: 1rem;
+}
+
+/* ============================================
+   STEPPER
+   ============================================ */
+.hawan-stepper-wrapper {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+}
+
+.hawan-stepper-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    position: relative;
+    padding: 0 10px;
+}
+
+.hawan-stepper-header::before {
+   content: '';
+    position: absolute;
+    top: 20px;
+    left: 50px;
+    right: 50px;
+    height: 3px;
+    background: rgba(232, 91, 33, 0.05);
+    z-index: 0;
+}
+
+.hawan-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.hawan-step-item .hawan-step-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 3px solid transparent;
+    transition: var(--transition);
+    background: rgba(232, 91, 33, 0.5);
+    color: #49362a;
+    border-color: rgba(232, 91, 33, 0.3);
+}
+
+.hawan-step-item.hawan-active .hawan-step-circle {
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.4);
+}
+
+.hawan-step-item.hawan-completed .hawan-step-circle {
+    background: var(--gold);
+    color: var(--white);
+    border-color: transparent;
+}
+
+.hawan-step-item .hawan-step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-align: center;
+}
+
+.hawan-step-item.hawan-active .hawan-step-label {
+    color: var(--saffron);
+    font-weight: 600;
+}
+
+/* ---- Step Content ---- */
+.hawan-step-content {
+    display: none;
+}
+
+.hawan-step-content.hawan-active {
+    display: block;
+    animation: hawan-fadeIn 0.3s ease;
+}
+
+@keyframes hawan-fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hawan-step-title {
+    color: var(--cream);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.hawan-step-desc {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   HAWAN CONFIRM BOX (Step 1)
+   ============================================ */
+.hawan-hawan-confirm-box {
+    background: linear-gradient(135deg, rgba(232, 91, 33, 0.06), rgba(199, 141, 34, 0.06));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.hawan-hawan-confirm-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.hawan-hawan-confirm-title {
+    color: var(--cream);
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.hawan-hawan-confirm-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+}
+
+/* ---- Badges ---- */
+.hawan-badge-saffron {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: var(--white);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.hawan-badge-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    background: linear-gradient(135deg, var(--gold), #a07018);
+    color: var(--white);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ============================================
+   FORM STYLES
+   ============================================ */
+.hawan-form-label {
+    display: block;
+    color: var(--cream);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.hawan-form-control {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 2px solid rgba(232, 91, 33, 0.15);
+    border-radius: var(--radius-sm);
+    color: var(--cream);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: var(--transition);
+    outline: none;
+}
+
+.hawan-form-control:focus {
+    border-color: var(--saffron);
+    background: var(--white);
+    box-shadow: 0 0 0 4px rgba(232, 91, 33, 0.1);
+}
+
+.hawan-form-control::placeholder {
+    color: var(--muted);
+    opacity: 0.6;
+}
+
+/* ============================================
+   PURPOSE TAGS
+   ============================================ */
+.hawan-purpose-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.6);
+    border: 2px solid rgba(232, 91, 33, 0.15);
+    border-radius: 50px;
+    color: var(--cream);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    margin: 4px;
+}
+
+.hawan-purpose-tag:hover {
+    border-color: var(--saffron);
+    background: rgba(232, 91, 33, 0.08);
+}
+
+.hawan-purpose-tag.hawan-selected {
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-color: var(--saffron);
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.3);
+}
+
+.hawan-purpose-tag i {
+    font-size: 1rem;
+}
+
+/* ============================================
+   DONATION OPTIONS
+   ============================================ */
+.hawan-donation-option {
+    background: rgba(255, 255, 255, 0.6);
+    border: 2px solid rgba(232, 91, 33, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    height: 100%;
+}
+
+.hawan-donation-option:hover {
+    border-color: var(--saffron);
+    background: rgba(232, 91, 33, 0.08);
+    transform: translateY(-3px);
+}
+
+.hawan-donation-option.hawan-selected {
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-color: var(--saffron);
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.3);
+}
+
+.hawan-donation-option .hawan-amount {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.hawan-donation-option .hawan-label {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.hawan-donation-option.hawan-selected .hawan-label {
+    color: rgba(255,255,255,0.9);
+}
+
+/* ---- Info Alert ---- */
+.hawan-info-alert {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(52, 152, 219, 0.05));
+    border: 1px solid rgba(52, 152, 219, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.hawan-info-alert i {
+    color: #3498db;
+}
+
+/* ============================================
+   SLOT CARDS
+   ============================================ */
+.hawan-slot-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 2px solid rgba(232, 91, 33, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.hawan-slot-card:hover {
+    border-color: var(--saffron);
+    background: rgba(232, 91, 33, 0.08);
+}
+
+.hawan-slot-card.hawan-selected {
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-color: var(--saffron);
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.3);
+}
+
+.hawan-slot-card .hawan-time {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.hawan-slot-card .hawan-period {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.hawan-slot-card .hawan-availability {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.hawan-slot-card.hawan-selected .hawan-period,
+.hawan-slot-card.hawan-selected .hawan-availability {
+    color: rgba(255,255,255,0.9);
+}
+
+/* ============================================
+   MODE CARDS
+   ============================================ */
+.hawan-mode-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 2px solid rgba(232, 91, 33, 0.15);
+    border-radius: var(--radius-sm);
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    height: 100%;
+}
+
+.hawan-mode-card:hover {
+    border-color: var(--saffron);
+    background: rgba(232, 91, 33, 0.08);
+    transform: translateY(-3px);
+}
+
+.hawan-mode-card.hawan-selected {
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border-color: var(--saffron);
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.3);
+}
+
+.hawan-mode-card i {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    display: block;
+    color: var(--saffron);
+}
+
+.hawan-mode-card.hawan-selected i {
+    color: var(--white);
+}
+
+.hawan-mode-card h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.hawan-mode-card p {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    margin: 0;
+    color: var(--muted);
+}
+
+.hawan-mode-card.hawan-selected p {
+    color: rgba(255,255,255,0.9);
+}
+
+/* ============================================
+   REVIEW BOX
+   ============================================ */
+.hawan-review-box {
+    background: linear-gradient(135deg, rgba(232, 91, 33, 0.06), rgba(199, 141, 34, 0.06));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.hawan-review-box-title {
+    color: var(--cream);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(232, 91, 33, 0.15);
+}
+
+/* ============================================
+   LOGIN BOX
+   ============================================ */
+.hawan-login-box {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.hawan-login-box-title {
+    color: var(--cream);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hawan-login-box-title i {
+    color: var(--saffron);
+}
+
+.hawan-login-box-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+/* ============================================
+   OTP SECTION
+   ============================================ */
+.hawan-otp-section {
+    display: none;
+}
+
+.hawan-otp-section.hawan-show {
+    display: block;
+    animation: hawan-fadeIn 0.3s ease;
+}
+
+.hawan-otp-success-icon {
+    font-size: 3rem;
+    color: #27ae60;
+}
+
+.hawan-otp-sent-text {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.hawan-otp-boxes {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.hawan-otp-box {
+    width: 52px;
+    height: 58px;
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--cream);
+    background: rgba(255, 255, 255, 0.7);
+    border: 2px solid rgba(232, 91, 33, 0.2);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: var(--transition);
+}
+
+.hawan-otp-box:focus {
+    border-color: var(--saffron);
+    background: var(--white);
+    box-shadow: 0 0 0 4px rgba(232, 91, 33, 0.15);
+    transform: scale(1.05);
+}
+
+.hawan-otp-link {
+    color: var(--saffron);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.hawan-otp-link:hover {
+    text-decoration: underline;
+}
+
+.hawan-otp-link-muted {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.hawan-otp-link-muted:hover {
+    color: var(--saffron);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.hawan-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.hawan-btn-saffron {
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: var(--white);
+    box-shadow: 0 4px 20px rgba(232, 91, 33, 0.35);
+}
+
+.hawan-btn-saffron:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(232, 91, 33, 0.45);
+    color: var(--white);
+}
+
+.hawan-btn-gold {
+    background: linear-gradient(135deg, var(--gold), #a07018);
+    color: var(--white);
+    box-shadow: 0 4px 20px rgba(199, 141, 34, 0.35);
+}
+
+.hawan-btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(199, 141, 34, 0.45);
+    color: var(--white);
+}
+
+.hawan-btn-outline-saffron {
+    background: transparent;
+    color: var(--saffron);
+    border: 2px solid var(--saffron);
+}
+
+.hawan-btn-outline-saffron:hover {
+    background: var(--saffron);
+    color: var(--white);
+}
+
+.hawan-btn-ghost-gold {
+    background: transparent;
+    color: var(--gold);
+    border: 2px solid var(--gold);
+}
+
+.hawan-btn-ghost-gold:hover {
+    background: var(--gold);
+    color: var(--white);
+}
+
+.hawan-btn-verify {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--saffron), var(--gold));
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 16px;
+}
+
+.hawan-btn-verify:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(232, 91, 33, 0.4);
+}
+
+/* ============================================
+   GLASS EFFECT (for ld-hero reuse)
+   ============================================ */
+.hawan-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+}
+
+.hawan-gold-text {
+    background: linear-gradient(135deg, var(--gold), #f0c040);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ---- Eyebrow ---- */
+.hawan-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(232, 91, 33, 0.12);
+    color: var(--saffron);
+    padding: 6px 16px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .hawan-hero-title {
+        font-size: 2rem;
+    }
+
+    .hawan-hero-section {
+        padding: 40px 16px 60px;
+    }
+
+    .hawan-stepper-header::before {
+        left: 30px;
+        right: 30px;
+    }
+
+    .hawan-step-item .hawan-step-label {
+        font-size: 0.65rem;
+    }
+
+    .hawan-step-item .hawan-step-circle {
+        width: 36px;
+        height: 36px;
+        font-size: 0.85rem;
+    }
+
+    .hawan-otp-box {
+        width: 44px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+
+    .hawan-order-summary {
+        position: relative;
+        top: 0;
+        margin-top: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .hawan-hero-title {
+        font-size: 1.6rem;
+    }
+
+    .hawan-stepper-header::before {
+        display: none;
+    }
+
+    .hawan-step-item {
+        flex: 0 0 auto;
+    }
+
+    .hawan-step-item .hawan-step-label {
+        display: none;
+    }
+}
+

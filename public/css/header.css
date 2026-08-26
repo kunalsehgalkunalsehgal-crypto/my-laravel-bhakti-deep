@@ -79,8 +79,7 @@ a {
 }
 
 .site-nav {
-    padding-top: 12px;
-    padding-bottom: 12px;
+    padding: 12px 3%;
 }
 
 .brand-wrap {
@@ -118,7 +117,7 @@ a {
 }
 
 .main-links {
-    gap: 20px;
+    gap: 15px;
 }
 
 .main-links .nav-link {

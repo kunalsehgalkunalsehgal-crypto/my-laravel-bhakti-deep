@@ -1,0 +1,1093 @@
+.hiw-page {
+    --hiw-cream: #fff7e6;
+    --hiw-paper: rgba(255, 252, 243, 0.92);
+    --hiw-gold: #c78d22;
+    --hiw-saffron: #e85b21;
+    --hiw-brown: #3b2112;
+    --hiw-muted: #6d4b32;
+    --hiw-green: #477a24;
+    --hiw-purple: #694071;
+    min-height: 100vh;
+    overflow: hidden;
+    color: var(--hiw-brown);
+    background: transparent;
+}
+
+.hiw-page h1,
+.hiw-page h2,
+.hiw-page h3 {
+    font-family: "Cinzel", serif;
+    color: var(--hiw-brown);
+}
+
+.hiw-hero-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 520px;
+    pointer-events: none;
+}
+
+.hiw-hero {
+    position: relative;
+    z-index: 1;
+}
+
+.hiw-hero::before {
+    content: "";
+    position: absolute;
+    left: -170px;
+    top: 10px;
+    width: 340px;
+    height: 340px;
+    opacity: 0.11;
+    background:
+        radial-gradient(circle, transparent 58%, rgba(199, 141, 34, 0.46) 59%, transparent 61%),
+        repeating-conic-gradient(from 15deg, transparent 0 10deg, rgba(199, 141, 34, 0.24) 10deg 12deg);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.hiw-hero h1 {
+    max-width: 680px;
+    color: var(--hiw-cream);
+}
+
+.hiw-hero p {
+    max-width: 640px;
+    color: var(--hiw-muted);
+}
+
+.hiw-hero .breadcrumb-line,
+.hiw-hero .breadcrumb-line a {
+    color: var(--hiw-muted);
+}
+
+.hiw-divider {
+    width: min(240px, 52vw);
+    height: 18px;
+    display: block;
+    margin: 8px auto 10px;
+    position: relative;
+}
+
+.hiw-divider::before,
+.hiw-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 18px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--hiw-saffron));
+}
+
+.hiw-divider::before {
+    left: 0;
+}
+
+.hiw-divider::after {
+    right: 0;
+    background: linear-gradient(90deg, var(--hiw-saffron), transparent);
+}
+
+.hiw-divider::after,
+.hiw-divider::before {
+    transform: translateY(-50%);
+}
+
+.hiw-divider {
+    background: radial-gradient(circle at center, var(--hiw-saffron) 0 3px, transparent 4px);
+}
+
+.hiw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.hiw-btn {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.54);
+    border-radius: 7px;
+    color: #fff;
+    padding: 10px 20px;
+    font-weight: 800;
+    box-shadow: 0 12px 24px rgba(87, 39, 7, 0.2);
+}
+
+.hiw-btn:hover {
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.hiw-btn-diya {
+    background: linear-gradient(135deg, #f3a00a, #e85b21);
+}
+
+.hiw-btn-aarti {
+    background: linear-gradient(135deg, #e8a21c, #c78d22);
+}
+
+.hiw-btn-pooja {
+    background: linear-gradient(135deg, #d9992a, #b8761a);
+}
+
+.hiw-btn-hawan {
+    background: linear-gradient(135deg, #f26b1d, #cf3307);
+}
+
+.hiw-badges {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.hiw-badge {
+    min-width: 0;
+    min-height: 116px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    padding: 12px 8px;
+    text-align: center;
+}
+
+.hiw-badge img,
+.hiw-badge i {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 6px;
+    object-fit: contain;
+    color: var(--hiw-saffron);
+    font-size: 36px;
+}
+
+.hiw-badge strong,
+.hiw-badge span {
+    display: block;
+}
+
+.hiw-badge strong {
+    font-family: "Cinzel", serif;
+    color: var(--hiw-cream);
+    font-size: 13px;
+}
+
+.hiw-badge span {
+    color: var(--hiw-muted);
+    font-size: 10px;
+    line-height: 1.25;
+}
+
+.hiw-hero-img-wrap {
+    position: relative;
+    min-height: 500px;
+}
+
+.hiw-img-glow {
+    position: absolute;
+    inset: 7% 10%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(199, 141, 34, 0.35), transparent 66%);
+    filter: blur(18px);
+}
+
+.hiw-img-card {
+    min-height: 500px;
+    overflow: hidden;
+    position: relative;
+    border-radius: 28px;
+    box-shadow: 0 32px 84px -44px #000;
+}
+
+.hiw-img-card img {
+    width: 100%;
+    min-height: inherit;
+    display: block;
+    object-fit: cover;
+}
+
+.hiw-img-overlay {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--hiw-brown), rgba(251, 244, 223, 0.1), transparent 62%);
+}
+
+.hiw-section {
+    padding: 18px 0;
+}
+
+.hiw-video-section {
+    margin-top: 0;
+    position: relative;
+    z-index: 2;
+}
+
+.hiw-video-section .container {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.hiw-section-title {
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.hiw-section-title h2 {
+    margin: 0;
+    font-size: clamp(26px, 3vw, 36px);
+    font-weight: 700;
+}
+
+.hiw-section-title .hiw-divider {
+    margin-top: 2px;
+    margin-bottom: 0;
+}
+
+.hiw-lined {
+ display: flex;
+     align-items: center;
+    gap: 16px;
+    row-gap: 16px;
+    column-gap: 16px;
+    flex-direction: column;
+}
+
+
+
+.hiw-lined .hiw-divider {
+    grid-column: 2;
+}
+
+.hiw-video-grid,
+.hiw-service-grid,
+.hiw-booking-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 22px;
+}
+
+.hiw-video-card {
+    aspect-ratio: 16 / 8.7;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(199, 141, 34, 0.2);
+    border-radius: 9px;
+    padding: 0;
+    background: #2a1609;
+    box-shadow: 0 14px 24px rgba(74, 35, 8, 0.16);
+}
+
+.hiw-video-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+
+.hiw-video-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 28%, rgba(24, 10, 2, 0.82) 100%);
+}
+
+.hiw-video-card:hover img {
+    transform: scale(1.04);
+}
+
+.hiw-play {
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset: 50% auto auto 50%;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 26px;
+    background: rgba(55, 24, 8, 0.2);
+}
+
+.hiw-video-card strong {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 9px;
+    z-index: 2;
+    color: #fff;
+    font-family: "Cinzel", serif;
+    font-size: 17px;
+    text-shadow: 0 2px 7px rgba(0, 0, 0, 0.45);
+}
+
+.hiw-card {
+    min-width: 0;
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 10px;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 244, 218, 0.5)),
+        var(--hiw-paper);
+    box-shadow: 0 12px 26px rgba(104, 58, 15, 0.08);
+}
+
+.hiw-flow-card {
+    padding: 18px 16px;
+}
+
+.hiw-flow-card h3,
+.hiw-booking-card h3 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.hiw-flow-card h3 img,
+.hiw-booking-card h3 img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.hiw-flow-card h3 i,
+.hiw-booking-card h3 i {
+    font-size: 34px;
+}
+
+.hiw-step-flow,
+.hiw-mini-flow {
+    display: grid;
+    grid-template-columns: repeat(var(--step-count, 6), minmax(0, 1fr));
+    align-items: start;
+    gap: 12px;
+}
+
+.hiw-step-flow {
+    --step-count: 6;
+}
+
+.hiw-flow-card.diya .hiw-step-flow,
+.hiw-flow-card.aarti .hiw-step-flow {
+    --step-count: 5;
+}
+
+.hiw-step-item,
+.hiw-mini-flow div {
+    min-width: 0;
+    position: relative;
+    text-align: center;
+}
+
+.hiw-step-item:not(:last-child)::after,
+.hiw-mini-flow div:not(:last-child)::after {
+    content: "\F285";
+    position: absolute;
+    top: 14px;
+    right: -12px;
+    color: #af7e2d;
+    font-family: bootstrap-icons;
+    font-size: 13px;
+}
+
+.hiw-step-item span,
+.hiw-mini-flow span {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 7px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.72);
+    font-size: 19px;
+}
+
+.hiw-step-item small,
+.hiw-mini-flow small {
+    display: block;
+    color: #442817;
+    font-family: "Cinzel", serif;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.diya {
+    color: #d87800;
+}
+
+.hawan {
+    color: #df4a12;
+}
+
+.pooja {
+    color: var(--hiw-gold);
+}
+
+.aarti {
+    color: var(--hiw-saffron);
+}
+
+.hiw-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.hiw-session-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.hiw-session-card {
+    min-height: 150px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 18px;
+    padding: 22px 24px;
+    overflow: hidden;
+    position: relative;
+}
+
+.hiw-session-card::after {
+    content: "";
+    position: absolute;
+    right: 18px;
+    bottom: -14px;
+    width: 118px;
+    height: 118px;
+    opacity: 0.12;
+    background: url("../assets/temple-hero.jpg") center / cover;
+    -webkit-mask: radial-gradient(circle, #000 0 52%, transparent 70%);
+    mask: radial-gradient(circle, #000 0 52%, transparent 70%);
+}
+
+.hiw-session-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: #fff;
+    background: linear-gradient(135deg, #f3a00a, #e85b21);
+    box-shadow: 0 10px 20px rgba(232, 91, 33, 0.22);
+    font-size: 28px;
+}
+
+.hiw-session-card h3 {
+    margin: 7px 0 12px;
+    font-size: 21px;
+}
+
+.hiw-session-card ul {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hiw-session-card li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #442817;
+    font-family: "Cinzel", serif;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.hiw-session-card li i {
+    color: var(--hiw-saffron);
+}
+
+.hiw-booking-grid {
+    gap: 20px;
+}
+
+.hiw-booking-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+}
+
+.hiw-booking-card h3 {
+    margin-bottom: 12px;
+}
+
+.hiw-booking-card h3 img {
+    width: 36px;
+    height: 36px;
+}
+
+.hiw-booking-card h3 i {
+    font-size: 30px;
+}
+
+.hiw-mini-flow {
+    --step-count: 6;
+    margin-bottom: 14px;
+}
+
+.hiw-booking-card.diya .hiw-mini-flow,
+.hiw-booking-card.aarti .hiw-mini-flow,
+.hiw-booking-card.pooja .hiw-mini-flow {
+    --step-count: 5;
+}
+
+.hiw-mini-flow span {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+}
+
+.hiw-mini-flow div:not(:last-child)::after {
+    top: 10px;
+}
+
+.hiw-mini-flow small {
+    font-size: 8px;
+}
+
+.hiw-flow-btn {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: auto;
+    border-radius: 8px;
+    color: #fff;
+    font-family: "Cinzel", serif;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow: 0 12px 20px rgba(64, 30, 9, 0.18);
+}
+
+.hiw-flow-btn:hover {
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.hiw-flow-btn img {
+    width: 25px;
+    height: 25px;
+    object-fit: contain;
+}
+
+.hiw-booking-card.diya .hiw-flow-btn {
+    background: linear-gradient(135deg, #f5a20a, #e77800);
+}
+
+.hiw-booking-card.aarti .hiw-flow-btn {
+    background: linear-gradient(135deg, #e8a21c, #c78d22);
+}
+
+.hiw-booking-card.pooja .hiw-flow-btn {
+    background: linear-gradient(135deg, #d9992a, #b8761a);
+}
+
+.hiw-booking-card.hawan .hiw-flow-btn {
+    background: linear-gradient(135deg, #ee641b, #ce3306);
+}
+
+.hiw-final-cta {
+    margin: 10px 0 0;
+    padding: clamp(40px, 5vw, 72px) clamp(22px, 4vw, 56px);
+    overflow: hidden;
+    position: relative;
+    text-align: center;
+    border-radius: 24px;
+    color: #fff;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(76, 27, 0, 0.58),
+            rgba(224, 92, 20, 0.46),
+            rgba(78, 30, 0, 0.58)
+        ),
+        radial-gradient(
+            circle at center,
+            rgba(255, 214, 124, 0.38),
+            rgba(255, 137, 28, 0.12) 42%,
+            transparent 68%
+        ),
+        url("../assets/temple-background-image.jpeg") center / cover no-repeat;
+    box-shadow: 0 24px 54px rgba(89, 35, 4, 0.22);
+    isolation: isolate;
+}
+
+.hiw-final-cta::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border: 1px solid rgba(255, 225, 168, 0.55);
+    border-radius: 23px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.hiw-final-cta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 35%),
+        radial-gradient(circle at 50% 50%, rgba(255, 248, 220, 0.18), transparent 38%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.hiw-final-cta .cta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 9px 22px;
+    border-radius: 999px;
+    color: #8a3906;
+    background: rgba(255, 248, 229, 0.94);
+    border: 1px solid rgba(255, 214, 137, 0.85);
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 10px 22px rgba(66, 22, 0, 0.12);
+}
+
+.hiw-final-cta h2 {
+    max-width: 980px;
+    margin: 0 auto;
+    color: #fff8ea;
+    font-size: clamp(32px, 4.4vw, 58px);
+    line-height: 1.08;
+    text-shadow: 0 4px 18px rgba(48, 18, 0, 0.55);
+}
+
+.hiw-final-cta .gold-text {
+    display: inline-block;
+    color: #ffd36f;
+    text-shadow: 0 3px 14px rgba(80, 28, 0, 0.35);
+}
+
+.cta-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 18px auto 16px;
+    color: #ffd36f;
+}
+
+.cta-divider span {
+    width: 86px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 211, 111, 0.9), transparent);
+}
+
+.hiw-final-cta p {
+    max-width: 680px;
+    margin: 0 auto;
+    color: #fff3dc;
+    font-size: clamp(15px, 1.4vw, 18px);
+    line-height: 1.6;
+}
+
+.hiw-final-cta .cta-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.hiw-final-cta .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 54px;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-weight: 700;
+    border-width: 2px;
+    box-shadow: 0 14px 26px rgba(66, 22, 0, 0.20);
+}
+
+.hiw-final-cta .btn-light {
+    color: #e6531b;
+    background: #fff;
+    border-color: #fff;
+}
+
+.hiw-final-cta .btn-light:hover {
+    color: #fff;
+    background: #e6531b;
+    border-color: #e6531b;
+}
+
+.hiw-final-cta .btn-outline-light {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hiw-final-cta .btn-outline-light:hover {
+    color: #e6531b;
+    background: #fff;
+    border-color: #fff;
+}
+
+.hiw-final-cta .hiw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 30px;
+}
+
+.hiw-final-cta .hiw-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 54px;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+    transition: all 0.28s ease;
+}
+
+/* Primary button */
+.hiw-final-cta .hiw-actions .btn-light {
+    color: #e6531b;
+    background: #fffaf2;
+    border: 2px solid #fffaf2;
+    box-shadow: 0 14px 28px rgba(75, 26, 0, 0.22);
+}
+
+/* Primary hover */
+.hiw-final-cta .hiw-actions .btn-light:hover {
+    color: #fff;
+    background: linear-gradient(135deg, #ff8a1f, #e6531b);
+    border-color: rgba(255, 255, 255, 0.75);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 34px rgba(75, 26, 0, 0.30);
+}
+
+/* Second button */
+.hiw-final-cta .hiw-actions .btn-outline-light {
+    color: #fffaf2;
+    background: rgba(255, 255, 255, 0.10);
+    border: 2px solid rgba(255, 250, 242, 0.70);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 14px 28px rgba(75, 26, 0, 0.14);
+}
+
+/* Second hover */
+.hiw-final-cta .hiw-actions .btn-outline-light:hover {
+    color: #e6531b;
+    background: #fffaf2;
+    border-color: #fffaf2;
+    transform: translateY(-3px);
+    box-shadow: 0 18px 34px rgba(75, 26, 0, 0.25);
+}
+
+/* Icon smooth */
+.hiw-final-cta .hiw-actions .btn i {
+    font-size: 15px;
+    transition: transform 0.28s ease;
+}
+
+.hiw-final-cta .hiw-actions .btn:hover i {
+    transform: scale(1.12);
+}
+
+/* Click feel */
+.hiw-final-cta .hiw-actions .btn:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+@media (max-width: 575px) {
+    .hiw-final-cta {
+        padding: 34px 18px;
+        border-radius: 18px;
+    }
+
+    .hiw-final-cta h2 {
+        font-size: 30px;
+    }
+
+    .cta-divider span {
+        width: 52px;
+    }
+
+    .hiw-final-cta .cta-buttons,
+    .hiw-final-cta .hiw-actions {
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .hiw-final-cta .btn {
+        width: 100%;
+        padding: 13px 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .hiw-final-cta .cta-buttons,
+    .hiw-final-cta .hiw-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .hiw-final-cta .cta-buttons .btn,
+    .hiw-final-cta .hiw-actions .btn {
+        width: 100%;
+        padding: 14px 22px;
+    }
+}
+
+.hiw-benefits-section {
+    background: linear-gradient(135deg, #fef9f0, #fff7e6);
+}
+
+.hiw-benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 28px;
+}
+
+.hiw-benefit-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 32px 24px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(104, 58, 15, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hiw-benefit-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(104, 58, 15, 0.12);
+}
+
+.benefit-icon-wrapper {
+    margin-bottom: 20px;
+}
+
+.benefit-icon {
+width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(199, 141, 34, 0.12), rgba(232, 91, 33, 0.1));
+    border: 1px solid rgba(199, 141, 34, 0.2);
+    color: var(--saffron);
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+.hiw-benefit-card h3 {
+    margin: 0 0 14px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--hiw-brown);
+}
+
+.hiw-benefit-card p {
+    margin: 0;
+    color: #6d4b32;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+@media (max-width: 1199px) {
+    .hiw-benefits-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+    }
+}
+    .hiw-video-grid,
+    .hiw-booking-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 991px) {
+    .hiw-badges {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hiw-hero-img-wrap,
+    .hiw-img-card {
+        min-height: 420px;
+    }
+
+    .hiw-session-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hiw-session-grid .hiw-session-card:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .hiw-benefits-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    .hiw-actions {
+        gap: 10px;
+    }
+
+    .hiw-btn {
+        flex: 1 1 calc(50% - 10px);
+        padding-inline: 12px;
+    }
+
+    .hiw-video-grid,
+    .hiw-service-grid,
+    .hiw-session-grid,
+    .hiw-benefits-grid,
+    .hiw-booking-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hiw-session-grid .hiw-session-card:last-child {
+        grid-column: auto;
+    }
+
+    .hiw-flow-card {
+        padding: 16px 10px;
+    }
+
+    .hiw-step-flow,
+    .hiw-mini-flow {
+        gap: 8px;
+    }
+
+    .hiw-step-item span {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .hiw-step-item small {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 575px) {
+    .hiw-actions {
+        flex-direction: column;
+    }
+
+    .hiw-btn {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .hiw-badges {
+        gap: 10px;
+    }
+
+    .hiw-badge strong {
+        font-size: 12px;
+    }
+
+    .hiw-hero-img-wrap,
+    .hiw-img-card {
+        min-height: 300px;
+    }
+
+    .hiw-section {
+        padding: 14px 0;
+    }
+
+    .hiw-video-section .container {
+        border-radius: 18px 18px 0 0;
+    }
+
+    .hiw-step-flow,
+    .hiw-mini-flow {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        row-gap: 16px;
+    }
+
+    .hiw-step-item:not(:last-child)::after,
+    .hiw-mini-flow div:not(:last-child)::after {
+        display: none;
+    }
+
+    .hiw-session-card {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 20px;
+    }
+
+    .hiw-session-icon {
+        margin: 0;
+    }
+
+    .hiw-session-card h3,
+    .hiw-session-card ul {
+        text-align: left;
+    }
+
+    .hiw-session-card li {
+        justify-content: left;
+    }
+
+    .hiw-flow-btn {
+        font-size: 16px;
+    }
+
+    .hiw-benefit-card {
+        padding: 24px 18px;
+    }
+
+    .benefit-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 32px;
+    }
+
+    .hiw-benefit-card h3 {
+        font-size: 18px;
+    }
+
+    .hiw-benefit-card p {
+        font-size: 14px;
+    }
+}

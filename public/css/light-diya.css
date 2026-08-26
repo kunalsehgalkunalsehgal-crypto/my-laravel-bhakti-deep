@@ -1,0 +1,736 @@
+/* =====================================================
+   LIGHT DIYA PAGE — light-diya.css
+   ===================================================== */
+
+.ld-page {
+    overflow-x: hidden;
+}
+
+/* Hero radial glow background */
+.ld-hero-glow {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 520px;
+    /* background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 220, 100, 0.45), transparent 65%); */
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Hero Section */
+.ld-hero {
+    padding: 56px 12px 60px;
+    position: relative;
+    z-index: 1;
+}
+
+.ld-hero h1 {
+    color: var(--cream);
+    font-family: 'Cinzel', serif;
+    font-size: 58px;
+    line-height: 1.06;
+    margin-top: 20px;
+}
+
+.ld-hero p {
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.7;
+    max-width: 560px;
+}
+
+/* Stats */
+.ld-stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+/* Hero Image */
+.ld-hero-img-wrap {
+    position: relative;
+}
+
+.ld-img-glow {
+    position: absolute;
+    inset: -24px;
+    border-radius: 2rem;
+    background: rgba(199, 141, 34, 0.18);
+    filter: blur(40px);
+    z-index: 0;
+}
+
+.ld-img-card {
+    position: relative;
+    border-radius: 28px;
+    border: 1px solid rgba(199, 141, 34, 0.28);
+    overflow: hidden;
+    z-index: 1;
+}
+
+.ld-img-card img,
+.ld-img-card video {
+    width: 100%;
+    height: 460px;
+    object-fit: cover;
+    display: block;
+}
+
+.ld-img-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(55, 32, 22, 0.6), transparent 55%);
+    pointer-events: none;
+}
+
+.ld-img-badge {
+    position: absolute;
+    bottom: 16px; left: 16px; right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(251, 244, 223, 0.82);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 18px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--cream);
+    z-index: 2;
+}
+
+.ld-pulse-dot {
+    width: 8px; height: 8px;
+    background: var(--saffron);
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px rgba(232, 91, 33, 0.15);
+    animation: pulseGlow 2s ease-in-out infinite;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.ld-akhand-tag {
+    background: rgba(232, 91, 33, 0.2);
+    color: var(--saffron);
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 5px 12px;
+    letter-spacing: 0.08em;
+}
+
+/* Step Label */
+.ld-step-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+/* Diya Cards */
+.ld-diya-card {
+    width: 100%;
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 20px;
+    background: rgba(251, 244, 223, 0.35);
+    padding: 20px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ld-diya-card:hover {
+    border-color: rgba(199, 141, 34, 0.45);
+}
+
+.ld-diya-card.active {
+    border-color: var(--gold);
+    background: rgba(199, 141, 34, 0.12);
+    box-shadow: 0 0 28px rgba(199, 141, 34, 0.22);
+}
+
+.ld-flame-icon {
+    width: 44px; height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.ld-check-icon {
+    color: var(--saffron);
+    font-size: 16px;
+}
+
+.ld-diya-name {
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    color: var(--cream);
+    line-height: 1.3;
+}
+
+.ld-diya-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.ld-dur {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+}
+
+.ld-price-tag {
+    background: rgba(232, 91, 33, 0.14);
+    color: var(--saffron);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 5px 12px;
+}
+
+.ld-diya-thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(251, 244, 223, 0.42);
+}
+
+.ld-diya-thumb img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.ld-diya-thumb .ld-check-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(251, 244, 223, 0.88);
+    color: var(--saffron);
+}
+
+.ld-fixed-deity-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 18px;
+    background: rgba(251, 244, 223, 0.58);
+    padding: 16px;
+}
+
+.ld-fixed-deity-box i {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+}
+
+.ld-fixed-deity-box span,
+.ld-consent span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ld-fixed-deity-box strong {
+    display: block;
+    color: var(--cream);
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.ld-summary-sticky {
+    position: sticky;
+    top: 92px;
+}
+
+.ld-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.42);
+    padding: 12px 14px;
+}
+
+.ld-consent input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+/* Form */
+.ld-form-title {
+    font-family: 'Cinzel', serif;
+    font-size: 24px;
+    color: var(--cream);
+    margin: 0;
+}
+
+.ld-form-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Purpose buttons */
+.ld-purpose-btn {
+    border: 1px solid rgba(199, 141, 34, 0.25);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.ld-purpose-btn:hover {
+    border-color: rgba(199, 141, 34, 0.5);
+}
+
+.ld-purpose-btn.active {
+    border-color: var(--saffron);
+    background: rgba(232, 91, 33, 0.16);
+    color: var(--cream);
+}
+
+/* Donation buttons */
+.ld-donation-btn {
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 6px;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+
+.ld-donation-btn:hover {
+    border-color: rgba(199, 141, 34, 0.45);
+}
+
+.ld-donation-btn.active {
+    border-color: var(--gold);
+    background: rgba(199, 141, 34, 0.14);
+    color: var(--cream);
+}
+
+/* Order Summary */
+.ld-order-summary {
+    /* border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 18px;
+    background: rgba(55, 32, 22, 0.2);
+    padding: 18px; */
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 18px;
+    background: rgb(255 255 255 / 20%);
+    padding: 18px;
+    background: rgba(251, 244, 223, .58);
+    color: var(--cream);
+    border: 1px solid rgba(199, 141, 34, .24);
+}
+
+
+
+
+
+.ld-festival-feature {
+       display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+.ld-festival-feature span {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(199, 141, 34, 0.12), rgba(232, 91, 33, 0.1));
+    border: 1px solid rgba(199, 141, 34, 0.2);
+    color: var(--saffron);
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+.ld-festival-feature:hover span {
+    background: linear-gradient(135deg, rgba(199, 141, 34, 0.2), rgba(232, 91, 33, 0.15));
+    box-shadow: 0 4px 12px rgba(232, 91, 33, 0.15);
+}
+
+.ld-festival-feature strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cream);
+    line-height: 1.4;
+}
+
+
+
+
+
+
+.ld-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.ld-summary-row:last-child {
+    margin-bottom: 0;
+}
+
+.ld-summary-row span {
+    color: var(--muted);
+}
+
+.ld-summary-row strong {
+    color: var(--cream);
+}
+
+.ld-total {
+    font-family: 'Cinzel', serif;
+    font-size: 20px !important;
+}
+
+.ld-divider {
+    border-color: rgba(199, 141, 34, 0.18);
+    margin: 10px 0;
+}
+
+.ld-secure-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.diya-session-page h1 {
+    color: var(--cream);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(34px, 6vw, 64px);
+    line-height: 1.05;
+}
+
+.diya-session-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.diya-session-meta span,
+.diya-detail-list div {
+    border: 1px solid rgba(199, 141, 34, 0.2);
+    border-radius: 16px;
+    background: rgba(251, 244, 223, 0.48);
+    color: var(--cream);
+    padding: 14px;
+}
+
+.diya-session-meta small,
+.diya-detail-list span {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.diya-live-card {
+    padding: clamp(22px, 4vw, 42px);
+    text-align: center;
+}
+
+.diya-lamp-stage {
+    width: min(100%, 320px);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    position: relative;
+    margin: 0 auto;
+}
+
+.diya-glow-ring {
+    position: absolute;
+    width: 82%;
+    height: 82%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 188, 76, 0.32), rgba(232, 91, 33, 0.12) 38%, transparent 68%);
+    animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
+.diya-bowl {
+    position: absolute;
+    bottom: 72px;
+    width: 172px;
+    height: 70px;
+    border-radius: 0 0 90px 90px;
+    background: linear-gradient(135deg, #a34420, #e85d04 48%, #f4b24c);
+    box-shadow: 0 22px 42px rgba(63, 36, 23, 0.28);
+}
+
+.diya-flame {
+    position: absolute;
+    top: 66px;
+    width: 76px;
+    height: 112px;
+    border-radius: 70% 30% 70% 30%;
+    background: radial-gradient(circle at 50% 70%, #fff7bc 0 18%, #ffcc47 34%, #ff7a1a 62%, rgba(255, 122, 0, 0) 72%);
+    transform: rotate(45deg);
+    filter: drop-shadow(0 0 18px rgba(255, 185, 54, 0.9));
+    animation: flicker 1.2s ease-in-out infinite alternate;
+    z-index: 2;
+}
+
+.diya-flame span {
+    position: absolute;
+    inset: 22px;
+    border-radius: inherit;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.diya-flame.dimmed {
+    opacity: 0.28;
+    filter: grayscale(0.8);
+    animation: none;
+}
+
+.diya-countdown {
+    border-top: 1px solid rgba(199, 141, 34, 0.18);
+    margin-top: 8px;
+    padding-top: 22px;
+}
+
+.diya-countdown span {
+    color: var(--muted);
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.diya-countdown strong {
+    color: var(--gold);
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(30px, 5vw, 46px);
+    margin-top: 8px;
+}
+
+.diya-detail-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.diya-detail-list strong {
+    color: var(--cream);
+    overflow-wrap: anywhere;
+}
+
+.diya-audio-bars {
+    height: 44px;
+    display: flex;
+    align-items: end;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.diya-audio-player {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.diya-audio-note {
+    border: 1px solid rgba(232, 91, 33, 0.24);
+    border-radius: 12px;
+    background: rgba(232, 91, 33, 0.1);
+    color: var(--saffron);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 12px;
+}
+
+.diya-audio-bars span {
+    width: 5px;
+    flex: 1;
+    max-width: 10px;
+    border-radius: 999px 999px 0 0;
+    background: linear-gradient(180deg, var(--gold), var(--saffron));
+    animation: pulseGlow 1.4s ease-in-out infinite alternate;
+}
+
+.diya-audio-bars.is-paused span {
+    animation-play-state: paused;
+    opacity: 0.38;
+}
+
+/* Share buttons */
+.ld-share-btn {
+    border: 1px solid rgba(199, 141, 34, 0.22);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.45);
+    color: var(--cream);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.18s;
+}
+
+.ld-share-btn:hover {
+    border-color: rgba(199, 141, 34, 0.5);
+}
+
+.ld-share-icon {
+    display: block;
+    color: var(--saffron);
+    font-size: 18px;
+    margin: 0 auto 4px;
+}
+
+/* How it works */
+.ld-how-card {
+    border-radius: 20px;
+    padding: 20px;
+    height: 100%;
+}
+
+.ld-step-num {
+    position: absolute;
+    top: 25px; right: 18px;
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    color: var(--gold);
+    opacity: 0.7;
+    line-height: 1;
+}
+
+.ld-how-icon {
+    font-size: 20px;
+    color: var(--saffron);
+}
+
+/* After lighting */
+.ld-after-card {
+    /* border: 1px solid rgba(199, 141, 34, 0.18);
+    background: rgba(55, 32, 22, 0.2);
+    height: 100%; */
+border: 1px solid rgba(199, 141, 34, 0.18); 
+    /* background: rgba(55, 32, 22, 0.2); */
+    height : 100%;
+    /* border: 1px solid rgba(199, 141, 34, 0.18); */
+    /* border-radius: 18px; */
+    /* background: rgb(255 255 255 / 20%); */
+    /* padding: 18px; */
+    background: rgba(251, 244, 223, .58);
+    color: var(--cream);
+    border: 1px solid rgba(199, 141, 34, .24);
+}
+
+.ld-after-icon {
+    font-size: 20px;
+    color: var(--gold);
+}
+
+.ld-after-tag {
+    background: rgba(232, 91, 33, 0.12);
+    color: var(--saffron);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+}
+
+/* CTA Glow */
+.ld-cta-glow {
+    position: absolute;
+    top: -40px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(232, 91, 33, 0.28);
+    filter: blur(50px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.final-cta > *:not(.ld-cta-glow) {
+    position: relative;
+    z-index: 1;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+    .ld-hero h1 { font-size: 44px; }
+    .ld-img-card img { height: 380px; }
+    .ld-summary-sticky { position: static; }
+    .diya-session-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+    .ld-hero { padding: 36px 12px 56px; }
+    .ld-hero h1 { font-size: 36px; }
+    .ld-hero p { font-size: 15px; }
+}
+
+@media (max-width: 575px) {
+    .p-4{
+        padding: 20px !important;
+    }
+    .ld-hero h1 { font-size: 30px; }
+    .ld-img-card img { height: 300px; }
+    .ld-diya-card { padding: 14px; }
+    .diya-session-meta,
+    .diya-detail-list {
+        grid-template-columns: 1fr;
+    }
+
+    .diya-audio-player .btn {
+        width: 100%;
+    }
+
+    .diya-bowl {
+        bottom: 58px;
+        width: 144px;
+        height: 58px;
+    }
+
+    .diya-flame {
+        top: 58px;
+        width: 62px;
+        height: 92px;
+    }
+}

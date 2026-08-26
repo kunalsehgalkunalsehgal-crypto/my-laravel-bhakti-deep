@@ -34,5 +34,15 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'zoom' => [
+        'client_id' => env('ZOOM_CLIENT_ID'),
+        'client_secret' => env('ZOOM_CLIENT_SECRET'),
+        'redirect_uri' => env('ZOOM_REDIRECT_URI'),
+        'meeting_sdk_client_id' => env('ZOOM_MEETING_SDK_CLIENT_ID', env('ZOOM_CLIENT_ID')),
+        'meeting_sdk_client_secret' => env('ZOOM_MEETING_SDK_CLIENT_SECRET', env('ZOOM_CLIENT_SECRET')),
+        'scopes' => env('ZOOM_SCOPES'),
+
+        'webhook_secret_token' => env('ZOOM_WEBHOOK_SECRET_TOKEN'),
+    ],
 
 ];

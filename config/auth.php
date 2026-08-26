@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Admin\Admin;
+use App\Models\Pandit\Pandit;
 use App\Models\User;
 
 return [
@@ -42,6 +44,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+        'pandit' => [
+        'driver' => 'session',
+        'provider' => 'pandits',
+    ],
     ],
 
     /*
@@ -66,6 +76,15 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
+
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => Admin::class,
+        ],  
+         'pandits' => [
+        'driver' => 'eloquent',
+        'model' => Pandit::class,
+    ],
 
         // 'users' => [
         //     'driver' => 'database',

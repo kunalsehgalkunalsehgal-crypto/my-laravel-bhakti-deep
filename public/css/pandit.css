@@ -1,0 +1,1684 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.pandit-login-page,
+.pandit-page {
+    background:
+        radial-gradient(circle at top left, rgba(255, 231, 161, 0.44), transparent 34%),
+        linear-gradient(180deg, #fff9e9 0%, var(--brown) 52%, #f8ead0 100%);
+    color: var(--cream);
+    overflow-x: hidden;
+}
+
+.pandit-login-page {
+    min-height: 78vh;
+    display: grid;
+    place-items: center;
+    padding: 64px 16px;
+}
+
+.pandit-login-panel {
+    width: min(100%, 680px);
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.66);
+    box-shadow: 0 30px 80px -54px rgba(63, 36, 23, 0.7);
+    padding: 46px;
+    text-align: center;
+}
+
+.pandit-login-panel h1,
+.pandit-hero h1,
+.pandit-form-card h2,
+.pandit-dashboard-heading h1,
+.pandit-session-card h2 {
+    font-family: "Cinzel", serif;
+    letter-spacing: 0;
+}
+
+.pandit-login-panel h1 {
+    max-width: 560px;
+    margin: 16px auto 12px;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1.08;
+}
+
+.pandit-login-panel p,
+.pandit-hero p {
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.pandit-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.56);
+    color: #9b4c14;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 9px 14px;
+    text-transform: uppercase;
+}
+
+.pandit-primary-btn,
+.pandit-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: #fff;
+    font-weight: 800;
+    box-shadow: 0 16px 34px -18px rgba(232, 91, 33, 0.8);
+}
+
+.pandit-primary-btn {
+    margin-top: 18px;
+    min-height: 52px;
+    padding: 0 24px;
+}
+
+.pandit-primary-btn:hover {
+    color: #fff;
+    background: linear-gradient(135deg, #f06a30, #c84218);
+}
+
+.pandit-hero {
+    padding: 62px 12px 30px;
+}
+
+.pandit-hero h1 {
+    max-width: 860px;
+    margin-top: 18px;
+    font-size: clamp(34px, 5vw, 58px);
+    line-height: 1.1;
+}
+
+.pandit-hero p {
+    max-width: 720px;
+}
+
+.pandit-form-section {
+    padding: 22px 12px 70px;
+}
+
+.pandit-form {
+    display: grid;
+    gap: 22px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.pandit-form-card {
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 22px 70px -58px rgba(63, 36, 23, 0.65);
+    overflow: hidden;
+    padding: 28px;
+}
+
+.pandit-form-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cream);
+    font-size: 25px;
+    margin-bottom: 20px;
+}
+
+.pandit-form-card h2 i,
+.pandit-note {
+    color: var(--gold);
+}
+
+.pandit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    min-width: 0;
+}
+
+.pandit-span-2 {
+    grid-column: span 2;
+}
+
+.pandit-form label,
+.pandit-dashboard-form label {
+    display: block;
+    min-width: 0;
+    color: rgba(55, 32, 22, 0.9);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.pandit-form input,
+.pandit-form select,
+.pandit-form textarea {
+    width: 100%;
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.72);
+    color: var(--cream);
+    font: inherit;
+    font-weight: 500;
+    margin-top: 8px;
+    min-height: 48px;
+    padding: 11px 14px;
+}
+
+.pandit-form textarea {
+    resize: vertical;
+}
+
+.pandit-form input:focus,
+.pandit-form select:focus,
+.pandit-form textarea:focus {
+    border-color: rgba(232, 91, 33, 0.58);
+    box-shadow: 0 0 0 4px rgba(232, 91, 33, 0.1);
+    outline: none;
+}
+
+.pandit-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pandit-chip {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.pandit-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pandit-chip span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    border: 1px solid rgba(199, 141, 34, 0.28);
+    border-radius: 999px;
+    background: rgba(251, 244, 223, 0.68);
+    color: rgba(55, 32, 22, 0.86);
+    padding: 9px 15px;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.pandit-chip input:checked + span {
+    border-color: transparent;
+    background: linear-gradient(135deg, rgba(199, 141, 34, 0.96), rgba(232, 91, 33, 0.96));
+    color: #fff;
+    box-shadow: 0 12px 24px -18px rgba(232, 91, 33, 0.9);
+}
+
+.pandit-note {
+    border: 1px solid rgba(199, 141, 34, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.52);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+}
+
+.pandit-declarations {
+    display: grid;
+    gap: 12px;
+}
+
+.pandit-declarations label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid rgba(199, 141, 34, 0.2);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.5);
+    padding: 12px 14px;
+}
+
+.pandit-declarations input {
+    width: 18px;
+    min-height: 18px;
+    margin-top: 1px;
+}
+
+.pandit-submit-btn {
+    width: 100%;
+    min-height: 56px;
+    margin-top: 22px;
+    padding: 0 22px;
+}
+
+.pandit-dashboard-body {
+    margin: 0;
+    background: #fff7e4;
+    color: var(--cream);
+    font-family: "Inter", sans-serif;
+    overflow-x: hidden;
+}
+
+.pandit-dashboard-shell {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 100vh;
+    width: 100%;
+    align-items: start;
+}
+
+.pandit-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid rgba(199, 141, 34, 0.2);
+    background: linear-gradient(180deg, #fff3d0, #fbf4df);
+    padding: 24px 18px;
+    z-index: 12;
+}
+
+.pandit-dashboard-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 26px;
+}
+
+.pandit-sidebar nav {
+    display: grid;
+    gap: 6px;
+}
+
+.pandit-sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 14px;
+    color: rgba(55, 32, 22, 0.78);
+    font-size: 14px;
+    font-weight: 800;
+    padding: 12px 13px;
+}
+
+.pandit-sidebar nav a.active,
+.pandit-sidebar nav a:hover {
+    background: rgba(232, 91, 33, 0.1);
+    color: var(--saffron-dark);
+}
+
+.pandit-dashboard-main {
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+.pandit-topbar {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    border-bottom: 1px solid rgba(199, 141, 34, 0.18);
+    background: rgba(255, 249, 233, 0.86);
+    backdrop-filter: blur(16px);
+    padding: 14px 28px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.pandit-menu-toggle {
+    display: none;
+}
+
+.pandit-menu-button,
+.pandit-mobile-brand {
+    display: none;
+}
+
+.pandit-topbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.pandit-icon-button {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--saffron-dark);
+}
+
+.pandit-topbar-profile img {
+    width: 46px;
+    height: 46px;
+    border: 2px solid rgba(199, 141, 34, 0.42);
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.pandit-topbar-profile strong,
+.pandit-topbar-profile span {
+    display: block;
+}
+
+.pandit-topbar-profile strong {
+    font-size: 14px;
+}
+
+.pandit-topbar-profile span {
+    color: var(--saffron-dark);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pandit-dashboard-content {
+    padding: 28px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.pandit-dashboard-heading,
+.pandit-page-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.pandit-dashboard-heading p {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+}
+
+.pandit-dashboard-heading h1 {
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.12;
+    margin: 0;
+}
+
+.pandit-dashboard-heading > span {
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: #9b4c14;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 10px 14px;
+}
+
+.pandit-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.pandit-dashboard-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.pandit-stat-card,
+.pandit-session-card,
+.pandit-mini-card {
+    border: 1px solid rgba(199, 141, 34, 0.22);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 20px 60px -54px rgba(63, 36, 23, 0.7);
+}
+
+.pandit-stat-card {
+    padding: 20px;
+}
+
+.pandit-mini-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    color: var(--cream);
+    padding: 16px;
+}
+
+.pandit-mini-card:hover {
+    color: var(--cream);
+    transform: translateY(-1px);
+}
+
+.pandit-stat-card i,
+.pandit-session-icon,
+.pandit-mini-card i {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+}
+
+.pandit-stat-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+    margin-top: 16px;
+}
+
+.pandit-stat-card strong {
+    display: block;
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 30px;
+    margin-top: 4px;
+}
+
+.pandit-mini-card span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.pandit-mini-card strong {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 26px;
+}
+
+.pandit-session-card {
+    margin-top: 20px;
+    max-width: 760px;
+    padding: 24px;
+}
+
+.pandit-session-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.pandit-session-label {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.pandit-session-card h2 {
+    font-size: 30px;
+    margin: 7px 0 8px;
+}
+
+.pandit-session-card p {
+    color: var(--muted);
+    margin: 0;
+}
+
+.pandit-session-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 22px 0;
+}
+
+.pandit-session-details div {
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.58);
+    padding: 14px;
+}
+
+.pandit-session-details span,
+.pandit-session-details strong {
+    display: block;
+}
+
+.pandit-session-details span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pandit-session-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pandit-session-actions button,
+.pandit-session-actions a,
+.pandit-muted-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid rgba(232, 91, 33, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+    font-weight: 800;
+    min-height: 44px;
+    padding: 0 18px;
+}
+
+.pandit-session-actions button.primary,
+.pandit-session-actions a.primary {
+    border: 0;
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: #fff;
+}
+
+.pandit-muted-action {
+    color: var(--muted);
+}
+
+.pandit-booking-panel {
+    max-width: 100%;
+}
+
+.pandit-booking-list {
+    display: grid;
+    gap: 12px;
+}
+
+.pandit-booking-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(110px, 1fr));
+    align-items: center;
+    gap: 14px;
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 16px;
+    background: rgba(251, 244, 223, 0.5);
+    padding: 14px;
+}
+
+.pandit-booking-row h3 {
+    color: var(--cream);
+    font-size: 16px;
+    margin: 9px 0 5px;
+}
+
+.pandit-booking-row p,
+.pandit-booking-row span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    margin: 0;
+}
+
+.pandit-booking-row strong {
+    color: var(--cream);
+    display: block;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.pandit-booking-row form {
+    margin: 0;
+}
+
+.pandit-booking-row button.primary,
+.pandit-booking-row a.primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pandit-page-heading p {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+}
+
+.pandit-page-heading h1,
+.pandit-panel-heading h2,
+.pandit-service-card h2,
+.pandit-advance-box h2 {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    letter-spacing: 0;
+}
+
+.pandit-page-heading h1 {
+    font-size: clamp(32px, 4vw, 48px);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.pandit-add-btn {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+    color: #fff;
+    flex: 0 0 auto;
+    font-weight: 900;
+    padding: 0 18px;
+    box-shadow: 0 16px 34px -20px rgba(232, 91, 33, 0.8);
+}
+
+.pandit-service-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.pandit-service-card,
+.pandit-panel {
+    border: 1px solid rgba(199, 141, 34, 0.22);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 20px 60px -54px rgba(63, 36, 23, 0.7);
+}
+
+.pandit-service-card {
+    padding: 20px;
+}
+
+.pandit-service-top,
+.pandit-session-top,
+.pandit-panel-heading,
+.pandit-availability-day-head,
+.pandit-profile-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.pandit-service-top > i {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    flex: 0 0 auto;
+}
+
+.pandit-status {
+    display: inline-flex;
+    border-radius: 999px;
+    background: rgba(199, 141, 34, 0.16);
+    color: #9b4c14;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 6px 10px;
+    text-transform: uppercase;
+}
+
+.pandit-status.verified {
+    background: rgba(47, 182, 109, 0.12);
+    color: #237a48;
+}
+
+.pandit-service-card h2 {
+    font-size: 22px;
+    line-height: 1.2;
+    margin: 12px 0 0;
+}
+
+.pandit-service-card dl {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.pandit-service-card dl div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid rgba(199, 141, 34, 0.16);
+    border-radius: 13px;
+    background: rgba(251, 244, 223, 0.55);
+    padding: 10px 12px;
+}
+
+.pandit-service-card dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pandit-service-card dd {
+    color: var(--cream);
+    font-size: 13px;
+    font-weight: 900;
+    margin: 0;
+    text-align: right;
+}
+
+.pandit-card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.pandit-card-actions button {
+    min-height: 42px;
+    border: 1px solid rgba(232, 91, 33, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+    font-weight: 900;
+}
+
+.pandit-panel {
+    margin-top: 20px;
+    padding: 24px;
+}
+
+.pandit-panel-heading {
+    margin-bottom: 20px;
+}
+
+.pandit-panel-heading > span {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    flex: 0 0 auto;
+}
+
+.pandit-panel-heading h2,
+.pandit-advance-box h2 {
+    font-size: 25px;
+    margin: 0;
+}
+
+.pandit-panel-heading p {
+    color: var(--muted);
+    margin: 6px 0 0;
+}
+
+.pandit-dashboard-form {
+    display: grid;
+    gap: 18px;
+}
+
+.pandit-form-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.pandit-dashboard-form label {
+    color: rgba(55, 32, 22, 0.9);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.pandit-dashboard-form input,
+.pandit-dashboard-form select {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.72);
+    color: var(--cream);
+    font: inherit;
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 11px 14px;
+}
+
+.pandit-submit-btn.compact {
+    width: fit-content;
+    min-height: 48px;
+    margin-top: 0;
+}
+
+.pandit-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: #9b4c14;
+    flex: 0 0 auto;
+    font-size: 13px;
+    padding: 8px 12px;
+}
+
+.pandit-switch input {
+    position: absolute;
+    opacity: 0;
+}
+
+.pandit-switch span {
+    width: 46px;
+    height: 26px;
+    border-radius: 999px;
+    background: rgba(123, 96, 79, 0.22);
+    position: relative;
+}
+
+.pandit-switch span::after {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    left: 3px;
+    top: 3px;
+    position: absolute;
+    transition: transform 0.18s ease;
+    box-shadow: 0 3px 10px rgba(63, 36, 23, 0.22);
+}
+
+.pandit-switch input:checked + span {
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+}
+
+.pandit-switch input:checked + span::after {
+    transform: translateX(20px);
+}
+
+.pandit-availability-list {
+    display: grid;
+    gap: 12px;
+}
+
+.pandit-availability-day {
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 18px;
+    background: rgba(251, 244, 223, 0.5);
+    padding: 16px;
+}
+
+.pandit-availability-day-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.pandit-availability-day-head > strong {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 20px;
+    padding-bottom: 12px;
+}
+
+.pandit-muhurat-slots {
+    display: grid;
+    gap: 10px;
+}
+
+.pandit-muhurat-slot {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(150px, 1fr)) auto;
+    align-items: end;
+    gap: 12px;
+    border: 1px solid rgba(199, 141, 34, 0.16);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.58);
+    padding: 12px;
+}
+
+.pandit-remove-slot,
+.pandit-add-slot-btn {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 999px;
+    font-weight: 900;
+    padding: 0 16px;
+}
+
+.pandit-remove-slot {
+    border: 1px solid rgba(232, 91, 33, 0.28);
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+}
+
+.pandit-add-slot-btn {
+    border: 0;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    margin-top: 12px;
+}
+
+.pandit-empty-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px dashed rgba(199, 141, 34, 0.34);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.42);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 800;
+    padding: 16px;
+}
+
+.pandit-empty-slot i {
+    color: var(--gold);
+    font-size: 18px;
+}
+
+.pandit-availability-row {
+    display: grid;
+    grid-template-columns: 140px 180px repeat(2, minmax(150px, 1fr));
+    align-items: end;
+    gap: 14px;
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 16px;
+    background: rgba(251, 244, 223, 0.5);
+    padding: 14px;
+}
+
+.pandit-availability-row > strong {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 18px;
+    padding-bottom: 13px;
+}
+
+.pandit-advance-box {
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.52);
+    padding: 18px;
+}
+
+.pandit-advance-box h2 {
+    font-size: 22px;
+    margin-bottom: 14px;
+}
+
+.pandit-small-select select {
+    min-height: 40px;
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 12px;
+    background: rgba(251, 244, 223, 0.72);
+    color: var(--cream);
+    font: inherit;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 6px 12px;
+    width: 100%;
+}
+
+.pandit-edit-toggle {
+    display: none;
+}
+
+.pandit-edit-profile-btn {
+    cursor: pointer;
+}
+
+.pandit-qualification-edit-btn {
+    cursor: pointer;
+}
+
+.pandit-profile-summary {
+    display: grid;
+    grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+    gap: 22px;
+    align-items: center;
+    border: 1px solid rgba(199, 141, 34, 0.22);
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(251, 244, 223, 0.72));
+    box-shadow: 0 20px 60px -54px rgba(63, 36, 23, 0.7);
+    margin-bottom: 20px;
+    padding: 24px;
+}
+
+.pandit-profile-photo-wrap {
+    width: 120px;
+    height: 120px;
+    border: 3px solid rgba(199, 141, 34, 0.42);
+    border-radius: 24px;
+    overflow: hidden;
+}
+
+.pandit-profile-photo-wrap img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.pandit-profile-summary span {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.pandit-profile-summary h2 {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 32px;
+    letter-spacing: 0;
+    margin: 7px 0 8px;
+}
+
+.pandit-profile-summary p {
+    color: var(--muted);
+    max-width: 720px;
+    margin: 0 0 16px;
+}
+
+.pandit-progress {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    max-width: 520px;
+}
+
+.pandit-progress div {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(123, 96, 79, 0.14);
+    overflow: hidden;
+}
+
+.pandit-progress span {
+    width: 80%;
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+}
+
+.pandit-progress span.pandit-progress-85 {
+    width: 85%;
+}
+
+.pandit-progress strong {
+    color: #9b4c14;
+    font-weight: 900;
+}
+
+.pandit-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    min-width: 0;
+}
+
+.pandit-profile-item {
+    border: 1px solid rgba(199, 141, 34, 0.18);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.55);
+    padding: 14px;
+}
+
+.pandit-profile-item span,
+.pandit-profile-item strong {
+    display: block;
+}
+
+.pandit-profile-item span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 6px;
+}
+
+.pandit-profile-item strong {
+    color: var(--cream);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.pandit-profile-item.pandit-wide,
+.pandit-form-wide {
+    grid-column: 1 / -1;
+}
+
+.pandit-profile-edit {
+    display: none;
+}
+
+.pandit-qualification-edit {
+    display: none;
+}
+
+.pandit-online-setup-edit {
+    display: none;
+}
+
+.pandit-documents-edit {
+    display: none;
+}
+
+.pandit-bank-edit {
+    display: none;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-profile-view {
+    display: none;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-profile-edit {
+    display: block;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-qualification-view {
+    display: none;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-qualification-edit {
+    display: block;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-documents-view {
+    display: none;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-documents-edit {
+    display: block;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-bank-view {
+    display: none;
+}
+
+.pandit-edit-toggle:checked ~ .pandit-bank-edit {
+    display: block;
+}
+
+.pandit-dashboard-form textarea {
+    width: 100%;
+    min-height: 118px;
+    border: 1px solid rgba(199, 141, 34, 0.26);
+    border-radius: 14px;
+    background: rgba(251, 244, 223, 0.72);
+    color: var(--cream);
+    font: inherit;
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 11px 14px;
+    resize: vertical;
+}
+
+.pandit-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pandit-online-summary {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.pandit-documents-summary {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.pandit-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(199, 141, 34, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 8px 12px;
+}
+
+.pandit-online-icon {
+    width: 96px;
+    height: 96px;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    font-size: 34px;
+}
+
+.pandit-online-setup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.pandit-online-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.pandit-online-chip-section {
+    border: 1px solid rgba(199, 141, 34, 0.16);
+    border-radius: 16px;
+    background: rgba(251, 244, 223, 0.48);
+    padding: 14px;
+}
+
+.pandit-online-chip-section h3 {
+    color: var(--cream);
+    font-size: 15px;
+    margin: 0 0 10px;
+}
+
+.pandit-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.pandit-document-card {
+    border: 1px solid rgba(199, 141, 34, 0.16);
+    border-radius: 16px;
+    background: rgba(251, 244, 223, 0.48);
+    padding: 16px;
+}
+
+.pandit-document-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.pandit-document-top strong {
+    color: var(--cream);
+    font-size: 15px;
+}
+
+.pandit-document-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 12px;
+}
+
+.pandit-document-btn {
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    min-height: 38px;
+    padding: 0 12px;
+}
+
+.pandit-document-btn.secondary {
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+    border: 1px solid rgba(232, 91, 33, 0.22);
+}
+
+.pandit-bank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.pandit-online-edit-toggle:checked ~ .pandit-online-setup-view {
+    display: none;
+}
+
+.pandit-online-edit-toggle:checked ~ .pandit-online-setup-edit {
+    display: block;
+}
+
+.pandit-cancel-btn {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(232, 91, 33, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
+    cursor: pointer;
+    font-weight: 900;
+    padding: 0 20px;
+}
+
+.pandit-qualification-summary {
+    grid-template-columns: 96px 1fr;
+}
+
+.pandit-qualification-icon {
+    width: 96px;
+    height: 96px;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--gold), var(--saffron));
+    color: #fff;
+    font-size: 38px;
+    box-shadow: 0 18px 34px -24px rgba(232, 91, 33, 0.9);
+}
+
+.pandit-knowledge-view {
+    border-top: 1px solid rgba(199, 141, 34, 0.18);
+    margin-top: 20px;
+    padding-top: 20px;
+}
+
+.pandit-knowledge-view h2 {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 24px;
+    letter-spacing: 0;
+    margin-bottom: 14px;
+}
+
+.pandit-readonly-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 42px;
+    border: 1px solid rgba(199, 141, 34, 0.28);
+    border-radius: 999px;
+    background: rgba(251, 244, 223, 0.68);
+    color: rgba(55, 32, 22, 0.72);
+    font-size: 13px;
+    font-weight: 900;
+    padding: 9px 15px;
+}
+
+.pandit-readonly-chip.selected {
+    border-color: transparent;
+    background: linear-gradient(135deg, rgba(199, 141, 34, 0.96), rgba(232, 91, 33, 0.96));
+    color: #fff;
+    box-shadow: 0 12px 24px -18px rgba(232, 91, 33, 0.9);
+}
+
+@media (max-width: 991px) {
+    .pandit-grid,
+    .pandit-session-details,
+    .pandit-profile-grid,
+    .pandit-service-grid,
+    .pandit-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-span-2 {
+        grid-column: auto;
+    }
+
+    .pandit-dashboard-shell {
+        display: block;
+    }
+
+    .pandit-sidebar {
+        width: 280px;
+        height: 100vh;
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 20;
+        transform: translateX(-100%);
+        transition: transform 0.24s ease;
+    }
+
+    .pandit-menu-toggle:checked + .pandit-dashboard-shell .pandit-sidebar {
+        transform: translateX(0);
+    }
+
+    .pandit-menu-button {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(199, 141, 34, 0.26);
+        border-radius: 50%;
+        background: #fff;
+        color: var(--saffron-dark);
+        cursor: pointer;
+    }
+
+    .pandit-mobile-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pandit-topbar {
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .pandit-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pandit-dashboard-meta-grid,
+    .pandit-booking-row {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-dashboard-heading {
+        display: block;
+    }
+
+    .pandit-dashboard-heading > span {
+        display: inline-flex;
+        margin-top: 14px;
+    }
+
+    .pandit-page-heading {
+        display: block;
+    }
+
+    .pandit-add-btn,
+    .pandit-switch {
+        margin-top: 14px;
+    }
+
+    .pandit-availability-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pandit-muhurat-slot {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .pandit-remove-slot {
+        grid-column: span 2;
+    }
+
+    .pandit-availability-row > strong {
+        grid-column: span 2;
+        padding-bottom: 0;
+    }
+
+}
+
+@media (max-width: 575px) {
+    .pandit-login-panel,
+    .pandit-form-card,
+    .pandit-session-card,
+    .pandit-panel,
+    .pandit-service-card {
+        border-radius: 18px;
+        padding: 22px;
+    }
+
+    .pandit-hero {
+        padding-top: 38px;
+    }
+
+    .pandit-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-dashboard-meta-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-dashboard-content {
+        padding: 20px 14px;
+    }
+
+    .pandit-topbar-profile div {
+        display: none;
+    }
+
+    .pandit-mobile-brand .brand-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .pandit-session-top,
+    .pandit-session-actions,
+    .pandit-topbar,
+    .pandit-dashboard-heading,
+    .pandit-page-heading,
+    .pandit-panel-heading,
+    .pandit-profile-actions,
+    .pandit-service-top,
+    .pandit-availability-day-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pandit-session-actions button,
+    .pandit-session-actions a,
+    .pandit-muted-action {
+        width: 100%;
+    }
+
+    .pandit-service-grid,
+    .pandit-form-row,
+    .pandit-availability-row,
+    .pandit-muhurat-slot,
+    .pandit-card-actions,
+    .pandit-documents-grid,
+    .pandit-bank-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-availability-day-head {
+        display: block;
+    }
+
+    .pandit-availability-day-head > strong {
+        display: block;
+        padding-bottom: 10px;
+    }
+
+    .pandit-remove-slot {
+        grid-column: auto;
+    }
+
+    .pandit-add-slot-btn {
+        width: 100%;
+    }
+
+    .pandit-availability-row > strong {
+        grid-column: auto;
+    }
+
+    .pandit-submit-btn.compact,
+    .pandit-add-btn,
+    .pandit-switch {
+        width: 100%;
+    }
+
+    .pandit-panel-heading {
+        display: block;
+    }
+
+    .pandit-panel-heading > span {
+        margin-bottom: 12px;
+    }
+
+    .pandit-profile-summary,
+    .pandit-profile-grid,
+    .pandit-qualification-summary,
+    .pandit-online-summary,
+    .pandit-documents-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-profile-photo-wrap {
+        width: 96px;
+        height: 96px;
+    }
+
+    .pandit-qualification-icon {
+        width: 82px;
+        height: 82px;
+        font-size: 32px;
+    }
+
+    .pandit-profile-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .pandit-cancel-btn {
+        width: 100%;
+    }
+}

@@ -15,7 +15,7 @@
                 </div>
             </div>
             @foreach ([
-                ['Quick Links', ['Home', 'Light Diya', 'Book Pooja', 'Book Hawan', 'Live Aarti', 'Blogs', 'Contact Us']],
+                ['Quick Links', ['Home', 'Light Diya', 'Book Pooja', 'Book Hawan', 'Live Sessions', 'Blogs', 'Contact Us']],
                 ['Our Services', ['All Diyas', 'All Poojas', 'All Hawans', 'Sankalp', 'Live Sessions', 'Spiritual Dashboard']],
                 ['Important Links', ['Privacy Policy', 'Terms & Conditions', 'Refund Policy', 'Donation Policy', 'Spiritual Disclaimer', 'Cookie Policy']],
             ] as $col)
