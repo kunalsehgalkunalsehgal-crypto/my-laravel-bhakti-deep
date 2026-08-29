@@ -141,9 +141,12 @@
                             <span>Status <strong>{{ ucfirst($booking->status) }}</strong></span>
                         </div>
                         @if ($canJoinMeeting)
-                            <a href="{{ route('live.session.join', ['type' => 'pooja', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-gold w-100">
+                            <a href="{{ route('live.session', ['type' => 'pooja', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-gold w-100">
                                 Join Pooja <i class="bi bi-arrow-right"></i>
                             </a>
+                            {{-- <a href="{{ route('live.session.join', ['type' => 'pooja', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-gold w-100">
+                                Join Pooja <i class="bi bi-arrow-right"></i>
+                            </a> --}}
                         @else
                             <span class="btn btn-ghost-gold w-100 disabled">Live link pending</span>
                         @endif
