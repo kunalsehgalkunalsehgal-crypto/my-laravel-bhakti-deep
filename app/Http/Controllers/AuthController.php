@@ -114,7 +114,9 @@ class AuthController extends Controller
         $this->clearOtpFlow();
 
         return redirect()
-            ->route('home')
+            // ->route ('home')
+                ->intended(route('home'))
+
             ->with('success', 'Login successful.');
     }
 
@@ -222,8 +224,19 @@ class AuthController extends Controller
         $this->clearOtpFlow();
 
         return redirect()
-            ->route('home')
+            // ->route('home')
+                ->intended(route('home'))
             ->with('success', 'Registration successful.');
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('home')->with('success', 'Logged out successfully.');
     }
 
     private function findAccountByEmail(string $email): ?array

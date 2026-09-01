@@ -283,6 +283,23 @@
 <script>
 const diyaOptions = @json($diyaOptions);
 const deities = @json($activeDeities->map(fn ($deity) => ['id' => $deity->id, 'name' => $deity->name])->values());
+const diyaBookingDraft = @json($diyaBookingDraft ?? []);
+const diyaDraftFields = [
+    'diya_id',
+    'deity_id',
+    'full_name',
+    'mobile',
+    'gotra',
+    'dob',
+    'birth_time',
+    'birth_place',
+    'father_name',
+    'mother_name',
+    'spouse_name',
+    'family_names',
+    'purpose',
+    'mannokamna'
+];
 
 function formatAmount(amount) {
     return 'Rs.' + Number(amount || 0).toLocaleString('en-IN', {
@@ -313,6 +330,23 @@ function clearError() {
     if (!errorBox) return;
     errorBox.textContent = '';
     errorBox.classList.add('d-none');
+}
+
+function diyaFormPayload(form, includeConsent = false) {
+    const formData = new FormData(form);
+    const payload = {};
+
+    diyaDraftFields.forEach(field => {
+        if (formData.has(field)) {
+            payload[field] = formData.get(field);
+        }
+    });
+
+    if (includeConsent && formData.has('consent')) {
+        payload.consent = formData.get('consent');
+    }
+
+    return payload;
 }
 
 function syncDiyaUi() {
@@ -357,6 +391,47 @@ function syncDiyaUi() {
     }
 }
 
+function restoreDiyaDraft() {
+    if (!diyaBookingDraft || Object.keys(diyaBookingDraft).length === 0) {
+        syncDiyaUi();
+        return;
+    }
+
+    const selectedDiyaInput = document.getElementById('selectedDiyaId');
+    if (
+        diyaBookingDraft.diya_id
+        && selectedDiyaInput
+        && diyaOptions.some(diya => Number(diya.id) === Number(diyaBookingDraft.diya_id))
+    ) {
+        selectedDiyaInput.value = diyaBookingDraft.diya_id;
+    }
+
+    diyaDraftFields.filter(field => field !== 'diya_id').forEach(field => {
+        const input = document.querySelector(`[name="${field}"]`);
+        if (input && Object.prototype.hasOwnProperty.call(diyaBookingDraft, field)) {
+            input.value = diyaBookingDraft[field] ?? '';
+        }
+    });
+
+    if (diyaBookingDraft.purpose) {
+        let matchedPurpose = false;
+
+        document.querySelectorAll('.ld-purpose-btn').forEach(button => {
+            const isActive = button.dataset.purpose === diyaBookingDraft.purpose;
+            button.classList.toggle('active', isActive);
+            matchedPurpose = matchedPurpose || isActive;
+        });
+
+        if (!matchedPurpose) {
+            document.querySelectorAll('.ld-purpose-btn').forEach(button => button.classList.remove('active'));
+        }
+
+        setText('sumPurpose', diyaBookingDraft.purpose);
+    }
+
+    syncDiyaUi();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.ld-diya-card').forEach(card => {
         card.addEventListener('click', function () {
@@ -380,7 +455,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('diyaOfferingForm')?.addEventListener('submit', async function (event) {
         event.preventDefault();
         clearError();
-
         const diya = selectedDiya();
         const payButton = document.getElementById('payButton');
 
@@ -399,11 +473,44 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+    @guest
+        const originalGuestText = payButton.innerHTML;
+        payButton.disabled = true;
+        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Saving...';
+
+        try {
+            const response = await fetch(@json(route('diya.draft')), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': @json(csrf_token()),
+                },
+                body: JSON.stringify(diyaFormPayload(this)),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                const message = result.message || Object.values(result.errors || {})[0]?.[0] || 'Could not save your diya details.';
+                throw new Error(message);
+            }
+
+            window.location.href = result.redirect_url || "{{ route('diya.continue') }}";
+        } catch (error) {
+            showError(error.message || 'Could not save your diya details. Please try again.');
+            payButton.disabled = false;
+            payButton.innerHTML = originalGuestText;
+        }
+
+        return;
+    @endguest
+
         const originalText = payButton.innerHTML;
         payButton.disabled = true;
         payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Lighting Diya...';
 
-        const payload = Object.fromEntries(new FormData(this).entries());
+        const payload = diyaFormPayload(this, true);
 
         try {
             const response = await fetch(@json(route('diya.store')), {
@@ -431,7 +538,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    syncDiyaUi();
+    restoreDiyaDraft();
 });
 </script>
 @endpush

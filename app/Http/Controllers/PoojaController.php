@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Admin\Donation;
-use App\Models\Admin\PaymentLog;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
 use App\Models\Admin\SankalpForm;
@@ -11,7 +9,7 @@ use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditLanguage;
 use App\Models\Pandit\PanditQualification;
 use App\Services\PanditBookingService;
-use App\Services\VideoMeetingService;
+use App\Services\RazorpayPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -288,6 +286,9 @@ class PoojaController extends Controller
             throw ValidationException::withMessages(['pooja_slug' => 'Selected Pooja is no longer active.']);
         }
 
+        $bookingService = app(PanditBookingService::class);
+        $bookingService->ensureRitualSlot($pooja, $validated['slot']);
+
         if (
             ($booking['service_type'] ?? null) !== 'pooja'
             || (int) ($booking['service_id'] ?? 0) !== (int) $pooja->id
@@ -300,12 +301,12 @@ class PoojaController extends Controller
             throw ValidationException::withMessages(['booking' => 'Pandit selection does not match this Pooja booking. Please select pandit again.']);
         }
 
-        $bookingService = app(PanditBookingService::class);
         $packageAmount = $bookingService->packageAmount($pooja, $validated['package_name'], 'pooja');
         $dakshina = (float) ($validated['donation_amount'] ?? 0);
         $totalAmount = $packageAmount + $dakshina;
+        [$holdStart, $holdEnd] = $bookingService->holdTimes();
 
-        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $packageAmount, $dakshina, $totalAmount) {
+        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
             Pandit::whereKey($selectedPanditId)->lockForUpdate()->firstOrFail();
 
             [$pandit, $panditService, $slotTimes] = $bookingService->ensurePanditCanServe(
@@ -348,8 +349,6 @@ class PoojaController extends Controller
                 ],
             ]);
 
-            $token = $bookingService->token();
-
             $session = PoojaSession::create([
                 'user_id' => auth()->id(),
                 'service_type' => 'pooja',
@@ -362,9 +361,10 @@ class PoojaController extends Controller
                 'slot' => $validated['slot'],
                 'slot_start_time' => $slotTimes['start'],
                 'slot_end_time' => $slotTimes['end'],
-                'live_session_token' => $token,
-                'status' => 'scheduled',
-                'payment_status' => 'paid',
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'payment_hold_started_at' => $holdStart,
+                'payment_hold_expires_at' => $holdEnd,
                 'admin_note' => json_encode([
                     'pooja_id' => $pooja->id,
                     'pooja_name' => $pooja->name,
@@ -379,49 +379,35 @@ class PoojaController extends Controller
                 ]),
             ]);
 
-            $session->update([
-                'live_session_link' => $bookingService->routeWithToken('live.session', ['type' => 'pooja', 'id' => $session->id], $token),
-            ]);
-
-            $donation = Donation::create([
-                'user_id' => auth()->id(),
-                'amount' => $totalAmount,
-                'currency' => 'INR',
-                'donor_name' => $validated['full_name'],
-                'donor_mobile' => $validated['mobile'],
-                'razorpay_order_id' => 'demo_pooja_order_'.$session->id,
-                'razorpay_payment_id' => 'demo_pooja_payment_'.$session->id,
-                'payment_status' => 'paid',
-                'receipt_number' => 'BDP-'.now()->format('Ymd').'-'.$session->id,
-                'paid_at' => now(),
-            ]);
-
-            PaymentLog::create([
-                'donation_id' => $donation->id,
-                'user_id' => auth()->id(),
-                'gateway' => 'demo',
-                'order_id' => $donation->razorpay_order_id,
-                'payment_id' => $donation->razorpay_payment_id,
-                'status' => 'paid',
-                'amount' => $totalAmount,
-                'payload' => [
+            $bookingService->createPendingPayment($session, $totalAmount, [
                     'booking_type' => 'pooja',
                     'pooja_session_id' => $session->id,
+                    'pooja_id' => $pooja->id,
+                    'pooja_slug' => $pooja->slug,
+                    'pooja_name' => $pooja->name,
+                    'package_name' => $validated['package_name'],
+                    'package_amount' => $packageAmount,
                     'sankalp_form_id' => $sankalp->id,
+                    'donor_name' => $validated['full_name'],
+                    'donor_mobile' => $validated['mobile'],
+                    'dakshina' => $dakshina,
                     'server_amount_source' => 'poojas.base_price',
-                ],
             ]);
 
-            return $session;
+            return $session->fresh('latestPaymentAttempt');
         });
 
         session()->forget('pooja_booking');
+        $payment = app(RazorpayPaymentService::class)->createOrder($session->latestPaymentAttempt, $session, $request->user());
 
         return response()->json([
             'success' => true,
-            'message' => 'Booking successful',
+            'message' => 'Booking held for 10 minutes. Complete payment to confirm.',
             'session_id' => $session->id,
-            'redirect_url' => $session->live_session_link,
+            'payment_status' => $session->payment_status,
+            'hold_expires_at' => $session->payment_hold_expires_at?->toISOString(),
+            'payment' => $payment,
+            'redirect_url' => route('user.profile'),
         ]);
     }
 }

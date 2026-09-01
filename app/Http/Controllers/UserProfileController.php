@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Admin\DiyaSession;
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\NotificationLog;
 use App\Models\Admin\PoojaSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,13 +23,18 @@ class UserProfileController extends Controller
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),
-            'poojaBookings' => PoojaSession::with(['service', 'sankalp'])
+            'poojaBookings' => PoojaSession::with(['service', 'sankalp', 'latestPaymentAttempt'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),
-            'hawanBookings' => HawanSession::with(['service', 'sankalp'])
+            'hawanBookings' => HawanSession::with(['service', 'sankalp', 'latestPaymentAttempt'])
                 ->where('user_id', $user->id)
                 ->latest()
+                ->get(),
+            'bookingNotifications' => NotificationLog::where('user_id', $user->id)
+                ->where('channel', 'my_bookings')
+                ->latest()
+                ->limit(5)
                 ->get(),
         ]);
     }

@@ -17,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class DiyaController extends Controller
 {
+    private const BOOKING_DRAFT_SESSION_KEY = 'diya_booking_draft';
+
     public function index()
     {
         $diyas = collect();
@@ -47,6 +49,19 @@ class DiyaController extends Controller
             'activeDeities' => $activeDeities,
             'diyaOptions' => $diyas->map(fn (Diya $diya) => $diya->toOfferingArray())->values(),
             'diyaStats' => $diyaStats,
+            'diyaBookingDraft' => session(self::BOOKING_DRAFT_SESSION_KEY, []),
+        ]);
+    }
+
+    public function saveDraft(Request $request)
+    {
+        $validated = Validator::make($request->only($this->draftFields()), $this->draftRules())->validate();
+
+        session()->put(self::BOOKING_DRAFT_SESSION_KEY, $validated);
+
+        return response()->json([
+            'success' => true,
+            'redirect_url' => route('diya.continue'),
         ]);
     }
 
@@ -201,6 +216,8 @@ class DiyaController extends Controller
             ],
         ]);
 
+        session()->forget(self::BOOKING_DRAFT_SESSION_KEY);
+
         return response()->json([
             'success' => true,
             'message' => 'Diya offering created successfully.',
@@ -241,5 +258,48 @@ class DiyaController extends Controller
         }
 
         return $startAt->copy()->addDay();
+    }
+
+    private function draftFields(): array
+    {
+        return [
+            'diya_id',
+            'deity_id',
+            'full_name',
+            'mobile',
+            'gotra',
+            'dob',
+            'birth_time',
+            'birth_place',
+            'father_name',
+            'mother_name',
+            'spouse_name',
+            'family_names',
+            'purpose',
+            'mannokamna',
+        ];
+    }
+
+    private function draftRules(): array
+    {
+        return [
+            'diya_id' => [
+                'required',
+                Rule::exists('diyas', 'id')->where(fn ($query) => $query->where('status', 'active')->whereNull('deleted_at')),
+            ],
+            'deity_id' => ['nullable', 'integer', Rule::exists('deities', 'id')->where(fn ($query) => $query->where('status', 'active'))],
+            'full_name' => ['required', 'string', 'max:255'],
+            'mobile' => ['required', 'string', 'max:20'],
+            'gotra' => ['nullable', 'string', 'max:255'],
+            'dob' => ['nullable', 'date'],
+            'birth_time' => ['nullable', 'string', 'max:255'],
+            'birth_place' => ['nullable', 'string', 'max:255'],
+            'father_name' => ['nullable', 'string', 'max:255'],
+            'mother_name' => ['nullable', 'string', 'max:255'],
+            'spouse_name' => ['nullable', 'string', 'max:255'],
+            'family_names' => ['nullable', 'string'],
+            'purpose' => ['required', 'string', 'max:255'],
+            'mannokamna' => ['nullable', 'string'],
+        ];
     }
 }

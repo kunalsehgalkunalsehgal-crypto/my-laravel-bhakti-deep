@@ -4,6 +4,13 @@ namespace App\Models\Admin\Concerns;
 
 use App\Models\Admin\SankalpForm;
 use App\Models\Admin\Service;
+use App\Models\BookingUserConfirmation;
+use App\Models\OfflineArrivalOtp;
+use App\Models\PanditNoShowReport;
+use App\Models\PanditPayout;
+use App\Models\PaymentAttempt;
+use App\Models\PaymentDispute;
+use App\Models\SessionCompletionProof;
 use App\Models\VideoMeeting;
 use App\Models\User;
 
@@ -35,7 +42,13 @@ trait SessionModel
             'live_session_token',
             'status',
             'payment_status',
+            'payment_hold_started_at',
+            'payment_hold_expires_at',
+            'latest_payment_attempt_id',
             'admin_note',
+            'pandit_cancel_reason',
+            'pandit_cancelled_at',
+            'cancelled_by_pandit_id',
             'completed_at',
             'expires_at',
         ];
@@ -49,6 +62,9 @@ trait SessionModel
             'end_at' => 'datetime',
             'completed_at' => 'datetime',
             'expires_at' => 'datetime',
+            'payment_hold_started_at' => 'datetime',
+            'payment_hold_expires_at' => 'datetime',
+            'pandit_cancelled_at' => 'datetime',
             'hawan_type_price' => 'decimal:2',
         ];
     }
@@ -81,5 +97,45 @@ trait SessionModel
     public function videoMeeting()
     {
         return $this->morphOne(VideoMeeting::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function latestPaymentAttempt()
+    {
+        return $this->belongsTo(PaymentAttempt::class, 'latest_payment_attempt_id');
+    }
+
+    public function paymentAttempts()
+    {
+        return $this->morphMany(PaymentAttempt::class, 'payable', 'payable_type', 'payable_id');
+    }
+
+    public function paymentDisputes()
+    {
+        return $this->morphMany(PaymentDispute::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function panditPayouts()
+    {
+        return $this->morphMany(PanditPayout::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function completionProofs()
+    {
+        return $this->morphMany(SessionCompletionProof::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function userConfirmations()
+    {
+        return $this->morphMany(BookingUserConfirmation::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function noShowReports()
+    {
+        return $this->morphMany(PanditNoShowReport::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function offlineArrivalOtps()
+    {
+        return $this->morphMany(OfflineArrivalOtp::class, 'session', 'session_type', 'session_id');
     }
 }

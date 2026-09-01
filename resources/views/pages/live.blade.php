@@ -156,6 +156,31 @@
         font-size: 13px;
     }
 
+    .family-invite-form {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .family-invite-link {
+        display: none;
+        margin-top: 10px;
+        overflow-wrap: anywhere;
+    }
+
+    .family-invite-link.show {
+        display: block;
+    }
+
+    .family-row.revoked,
+    .family-row.expired {
+        opacity: .62;
+    }
+
+    .live-page .embedded-meeting-panel {
+        margin-top: 0 !important;
+    }
+
     @media (max-width: 767.98px) {
         .live-topbar .container {
             flex-wrap: nowrap;
@@ -213,8 +238,7 @@
 
 @section('body')
 @php
-    // Demo state. Accepted values: upcoming, live, completed.
-    $sessionStatus = $sessionStatus ?? request('status', 'upcoming');
+    $sessionStatus = $sessionStatus ?? request('status', $bookingRecord ? 'live' : 'upcoming');
     $requestedSessionType = $sessionType ?? request()->route('type') ?? request('type', 'aarti');
     $sessionType = in_array($requestedSessionType, ['aarti', 'pooja', 'hawan', 'diya'], true) ? $requestedSessionType : 'aarti';
     $sessionId = $sessionId ?? request()->route('id') ?? 101;
@@ -238,13 +262,13 @@
         && \Illuminate\Support\Facades\Auth::guard('pandit')->check()
         && (int) \Illuminate\Support\Facades\Auth::guard('pandit')->id() === (int) $bookingRecord->pandit_id
         && filled($videoMeeting->external_meeting_id);
-    $providerMeetingActionUrl = $bookingIsReadyForMeeting
+    $providerMeetingActionUrl = $providerMeetingActionUrl ?? ($bookingIsReadyForMeeting
         ? route($canStartProviderMeeting ? 'live.session.start' : 'live.session.join', ['type' => $sessionType, 'id' => $bookingRecord->id, 'token' => request('token')])
-        : null;
-    $providerMeetingAction = $canStartProviderMeeting ? 'Start '.ucfirst($sessionType) : 'Join '.ucfirst($sessionType);
+        : null);
+    $providerMeetingAction = $providerMeetingAction ?? ($canStartProviderMeeting ? 'Start '.ucfirst($sessionType) : 'Join '.ucfirst($sessionType));
     $hasLiveRoomAccess = $sessionType === 'aarti' || (!$isPrivateBookedSession || $bookingIsReadyForMeeting);
     $isPaidSession = $isPrivateBookedSession && $hasLiveRoomAccess;
-    $sankalpName = $bookingSankalp?->full_name ?: 'Rahul Sharma';
+    $sankalpName = $bookingSankalp?->full_name ?: $bookingRecord?->user?->name ?: 'Devotee';
     $slotTime = $bookingRecord?->slot ?: 'Today - 7:00 PM IST';
     $bookingDateLabel = $bookingRecord?->booking_date ? $bookingRecord->booking_date->format('d M Y') : 'Today';
     $bookingMobile = $bookingSankalp?->mobile ?: '-';
@@ -324,14 +348,10 @@
     $sessionImage = public_path($session['image']);
     $playerImage = file_exists($sessionImage) ? $session['image'] : $session['fallbackImage'];
     $topbarLabel = ['upcoming' => 'Starting Soon', 'live' => 'LIVE', 'completed' => 'Completed'][$sessionStatus] ?? 'LIVE';
-    $joinedCount = 4;
-
-    $familyMembers = [
-        ['relation' => 'Mother', 'name' => 'Smt. Sunita'],
-        ['relation' => 'Father', 'name' => 'Shri Ramesh'],
-        ['relation' => 'Spouse', 'name' => 'Aarav'],
-        ['relation' => 'Guest', 'name' => 'Priya'],
-    ];
+    $familyInvites = collect($familyInvites ?? []);
+    $activeFamilyInvite = $activeFamilyInvite ?? null;
+    $canManageFamily = $canManageFamily ?? false;
+    $joinedCount = $familyInvites->filter(fn ($invite) => $invite->statusLabel() === 'Joined')->count();
 
     $progressByType = [
         'aarti' => [
@@ -382,9 +402,9 @@
     $comingUpItems = $comingUpItemsByType[$sessionType] ?? $comingUpItemsByType['aarti'];
 
     $donationAmounts = [
-        ['label' => '&#8377;11', 'value' => 11],
-        ['label' => '&#8377;51', 'value' => 51],
         ['label' => '&#8377;101', 'value' => 101],
+        ['label' => '&#8377;251', 'value' => 251],
+        ['label' => '&#8377;501', 'value' => 501],
         ['label' => 'Custom', 'value' => 'custom'],
     ];
 @endphp
@@ -401,7 +421,7 @@
         <div class="d-flex align-items-center gap-2 gap-md-3 live-topbar-actions">
             <span class="live-pill {{ $sessionStatus }}"><i></i> {{ $topbarLabel }}</span>
             @if ($hasLiveRoomAccess)
-                <span class="family-pill d-none d-sm-inline-flex"><i class="bi bi-people"></i> {{ $joinedCount }} family joined</span>
+                <span class="family-pill d-none d-sm-inline-flex"><i class="bi bi-people"></i> <span data-family-top-count>{{ $joinedCount }}</span> family joined</span>
             @endif
             @if ($hasLiveRoomAccess && $sessionStatus !== 'completed')
                 <button class="btn btn-gold btn-sm rounded-pill" data-scroll-donation><i class="bi bi-heart"></i> Donate</button>
@@ -429,7 +449,9 @@
         @else
         <div class="row g-4">
             <div class="col-lg-8">
-                @if ($sessionStatus === 'upcoming')
+                @if ($embeddedMeetingView && $bookingIsReadyForMeeting && $sessionStatus !== 'completed')
+                    @include($embeddedMeetingView)
+                @elseif ($sessionStatus === 'upcoming')
                     <div class="live-player live-session-intro">
                         @if ($sessionType !== 'hawan' && !file_exists(public_path($session['image'])))
                             {{-- TODO: replace with live aarti image. --}}
@@ -468,8 +490,12 @@
                                         <i class="bi bi-camera-video"></i> {{ $providerMeetingAction }}
                                     </a>
                                 @endif
-                                <button class="btn btn-saffron btn-sm"><i class="bi bi-whatsapp"></i> Invite Family</button>
-                                <button class="btn btn-ghost-gold btn-sm" data-copy-join-link><i class="bi bi-link-45deg"></i> Copy Join Link</button>
+                                @if ($canManageFamily)
+                                    <button class="btn btn-saffron btn-sm" data-focus-invite><i class="bi bi-whatsapp"></i> Invite Family</button>
+                                @endif
+                                @if ($activeFamilyInvite)
+                                    <button class="btn btn-ghost-gold btn-sm" data-copy-current-link><i class="bi bi-link-45deg"></i> Copy Invite Link</button>
+                                @endif
                                 <button class="btn btn-ghost-gold btn-sm"><i class="bi bi-person-lines-fill"></i> View Sankalp</button>
                                 <button class="btn btn-gold btn-sm" data-scroll-donation><i class="bi bi-heart"></i> Add Donation</button>
                             </div>
@@ -521,13 +547,9 @@
                                     <button class="btn btn-ghost-gold btn-sm"><i class="bi bi-award"></i> Download Certificate</button>
                                 @endif
                             </div>
-                            <p class="session-note"><i class="bi bi-people"></i> {{ $joinedCount }} family members joined this session.</p>
+                            <p class="session-note"><i class="bi bi-people"></i> <span data-family-top-count>{{ $joinedCount }}</span> family members joined this session.</p>
                         </div>
                     </div>
-                @endif
-
-                @if ($embeddedMeetingView && $providerMeetingActionUrl && $sessionStatus !== 'completed')
-                    @include($embeddedMeetingView)
                 @endif
 
                 <div class="glass timeline-card large mt-4">
@@ -542,16 +564,40 @@
 
             <aside class="col-lg-4">
                 <div class="glass side-panel">
-                    <div class="d-flex justify-content-between align-items-center"><h3>{{ $sessionStatus === 'completed' ? 'Family Summary' : 'Family Present' }}</h3><span>{{ $joinedCount }} joined</span></div>
-                    @foreach ($familyMembers as $i => $member)
-                        <div class="family-row"><b class="{{ $i % 2 ? 'saffron' : '' }}">{{ substr($member['name'], 0, 1) }}</b><strong>{{ $member['relation'] }}<small>{{ $member['name'] }}</small></strong><em><i class="bi bi-check-circle"></i> {{ $sessionStatus === 'upcoming' ? 'Invited' : ($sessionStatus === 'completed' ? 'Joined' : 'Live') }}</em></div>
-                    @endforeach
-                    @if ($sessionStatus !== 'completed')
-                        <button class="btn btn-saffron w-100 mt-3"><i class="bi bi-whatsapp"></i> Invite Family on WhatsApp</button>
-                        <button class="btn btn-ghost-gold w-100 mt-2" data-copy-join-link><i class="bi bi-link-45deg"></i> Copy Join Link</button>
-                        <p class="session-note"><i class="bi bi-broadcast"></i> Family members can join live session.</p>
-                    @else
-                        <p class="session-note"><i class="bi bi-receipt"></i> Donation receipt message has been added to this completed session.</p>
+                    <div class="d-flex justify-content-between align-items-center"><h3>{{ $sessionStatus === 'completed' ? 'Family Summary' : 'Family Invites' }}</h3><span data-family-count>{{ $joinedCount }} joined</span></div>
+
+                    <div data-family-list>
+                        @forelse ($familyInvites as $invite)
+                            @php
+                                $inviteExpired = $invite->expires_at && $invite->expires_at->isPast();
+                                $inviteStatus = $invite->revoked_at ? 'Revoked' : ($inviteExpired ? 'Expired' : $invite->statusLabel());
+                            @endphp
+                            <div class="family-row {{ strtolower($inviteStatus) }}" data-invite-row="{{ $invite->id }}">
+                                <b>{{ substr($invite->name, 0, 1) }}</b>
+                                <strong>{{ $invite->relation }}<small>{{ $invite->name }}</small></strong>
+                                <em><i class="bi bi-check-circle"></i> <span data-invite-status>{{ $inviteStatus }}</span></em>
+                                @if ($canManageFamily && !$invite->revoked_at)
+                                    <button type="button" class="btn btn-ghost-gold btn-sm" data-revoke-invite="{{ route('live.family.revoke', ['type' => $sessionType, 'id' => $bookingRecord->id, 'invite' => $invite]) }}">Revoke</button>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="session-note mb-0" data-empty-family>No family invites yet.</p>
+                        @endforelse
+                    </div>
+
+                    @if ($canManageFamily && $sessionStatus !== 'completed')
+                        <form class="family-invite-form" data-invite-form action="{{ route('live.family.store', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}">
+                            <input class="form-control sacred-input" name="name" placeholder="Family member name" required>
+                            <input class="form-control sacred-input" name="relation" placeholder="Relation" required>
+                            <button class="btn btn-saffron w-100" type="submit"><i class="bi bi-person-plus"></i> Create Invite Link</button>
+                        </form>
+                        <div class="alert alert-success family-invite-link" data-invite-link></div>
+                        <p class="session-note"><i class="bi bi-shield-check"></i> Invite links are booking-specific and expire automatically.</p>
+                    @elseif ($activeFamilyInvite)
+                        <p class="session-note"><i class="bi bi-shield-check"></i> You joined as {{ $activeFamilyInvite->name }}.</p>
+                        <button class="btn btn-ghost-gold w-100 mt-2" type="button" data-leave-session>
+                            <i class="bi bi-box-arrow-left"></i> Leave Session
+                        </button>
                     @endif
                 </div>
 
@@ -566,20 +612,20 @@
                     </div>
                 @endif
 
-                @if ($sessionStatus !== 'completed')
-                    <div class="donation-panel mt-4" data-donation-panel>
-                        <h3><i class="bi bi-heart"></i> Quick Donation</h3>
-                        <p>Offer a small contribution as the aarti unfolds.</p>
+                @if ($canManageFamily && $sessionStatus !== 'completed')
+                    <div class="donation-panel mt-4" data-donation-panel data-dakshina-url="{{ route('live.dakshina.pay', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" data-csrf-token="{{ csrf_token() }}">
+                        <h3><i class="bi bi-heart"></i> Dakshina</h3>
+                        <p>Offer dakshina for this {{ $sessionType }} booking.</p>
                         <div class="row g-2">
                             @foreach($donationAmounts as $i => $amount)
-                                <div class="col-6 col-sm-3 col-lg-3"><button type="button" class="btn {{ $i === 1 ? 'btn-gold active' : 'btn-ghost-gold' }} w-100" data-donation-amount="{{ $amount['value'] }}">{!! $amount['label'] !!}</button></div>
+                                <div class="col-6 col-sm-3 col-lg-3"><button type="button" class="btn {{ $i === 0 ? 'btn-gold active' : 'btn-ghost-gold' }} w-100" data-donation-amount="{{ $amount['value'] }}">{!! $amount['label'] !!}</button></div>
                             @endforeach
                         </div>
                         <div class="donation-custom mt-3" data-custom-donation>
-                            <input type="number" min="1" class="form-control sacred-input" placeholder="Enter amount" data-custom-donation-input>
+                            <input type="number" min="1" max="100000" class="form-control sacred-input" placeholder="Enter amount" data-custom-donation-input>
                         </div>
-                        <button class="btn btn-light w-100 mt-3" data-donate-button>Donate Securely</button>
-                        <p class="session-note">TODO: connect Razorpay donation API</p>
+                        <button class="btn btn-light w-100 mt-3" data-donate-button>Pay Dakshina</button>
+                        <p class="session-note" data-donation-message>Payment amount is verified on server.</p>
                     </div>
                 @endif
 
@@ -610,7 +656,77 @@ document.addEventListener('DOMContentLoaded', function () {
     const donationPanel = document.querySelector('[data-donation-panel]');
     const liveExitLink = document.querySelector('[data-live-exit="true"]');
     const scrollDonationButtons = document.querySelectorAll('[data-scroll-donation]');
-    const copyJoinButtons = document.querySelectorAll('[data-copy-join-link]');
+    const inviteForm = document.querySelector('[data-invite-form]');
+    const inviteList = document.querySelector('[data-family-list]');
+    const inviteLinkBox = document.querySelector('[data-invite-link]');
+    const csrfToken = @json(csrf_token());
+    const familyLeaveUrl = @json($activeFamilyInvite ? route('live.family.leave', ['token' => request()->route('token')]) : null);
+    const familyChannel = @json($canManageFamily && $bookingRecord ? 'live-session.'.$sessionType.'.'.$bookingRecord->id : null);
+
+    const setFamilyCount = function (count) {
+        document.querySelectorAll('[data-family-count]').forEach(function (item) {
+            item.textContent = count + ' joined';
+        });
+
+        document.querySelectorAll('[data-family-top-count]').forEach(function (item) {
+            item.textContent = count;
+        });
+    };
+
+    const setInviteStatus = function (invite) {
+        const row = document.querySelector('[data-invite-row="' + invite.id + '"]');
+
+        if (!row) {
+            return;
+        }
+
+        row.classList.remove('invited', 'joined', 'left');
+        row.classList.add(invite.status.toLowerCase());
+        row.querySelector('[data-invite-status]')?.replaceChildren(document.createTextNode(invite.status));
+    };
+
+    const copyText = function (text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+        }
+    };
+
+    const addInviteRow = function (invite) {
+        const row = document.createElement('div');
+        const avatar = document.createElement('b');
+        const title = document.createElement('strong');
+        const name = document.createElement('small');
+        const status = document.createElement('em');
+        const revoke = document.createElement('button');
+
+        row.className = 'family-row';
+        row.dataset.inviteRow = invite.id;
+        avatar.textContent = invite.name.charAt(0);
+        title.textContent = invite.relation;
+        name.textContent = invite.name;
+        status.innerHTML = '<i class="bi bi-check-circle"></i> <span data-invite-status></span>';
+        status.querySelector('[data-invite-status]').textContent = invite.status;
+        title.appendChild(name);
+        row.append(avatar, title, status);
+
+        if (invite.revoke_url) {
+            revoke.type = 'button';
+            revoke.className = 'btn btn-ghost-gold btn-sm';
+            revoke.dataset.revokeInvite = invite.revoke_url;
+            revoke.textContent = 'Revoke';
+            row.appendChild(revoke);
+        }
+
+        inviteList.prepend(row);
+    };
+
+    if (familyChannel && window.Echo) {
+        window.Echo.private(familyChannel)
+            .listen('.FamilyMemberStatusChanged', function (event) {
+                setInviteStatus(event.invite);
+                setFamilyCount(event.joined_count);
+            });
+    }
 
     if (liveExitLink) {
         liveExitLink.addEventListener('click', function (event) {
@@ -622,6 +738,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    document.querySelectorAll('[data-focus-invite]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (inviteForm) {
+                inviteForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                inviteForm.querySelector('input')?.focus();
+            }
+        });
+    });
+
     scrollDonationButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             const panel = document.querySelector('[data-donation-panel]');
@@ -632,63 +757,171 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    copyJoinButtons.forEach(function (button) {
+    document.querySelectorAll('[data-copy-current-link]').forEach(function (button) {
         button.addEventListener('click', function () {
-            const joinUrl = window.location.href;
-
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(joinUrl);
-            }
-
+            copyText(window.location.href);
             button.innerHTML = '<i class="bi bi-check-circle"></i> Link Copied';
             window.setTimeout(function () {
-                button.innerHTML = '<i class="bi bi-link-45deg"></i> Copy Join Link';
+                button.innerHTML = '<i class="bi bi-link-45deg"></i> Copy Invite Link';
             }, 1800);
         });
     });
 
-    if (!donationPanel) {
-        return;
+    if (inviteForm && inviteList) {
+        inviteForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            fetch(inviteForm.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: new FormData(inviteForm),
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Invite could not be created.');
+                    }
+
+                    return response.json();
+                })
+                .then(function (result) {
+                    const invite = result.invite;
+                    document.querySelector('[data-empty-family]')?.remove();
+                    addInviteRow(invite);
+
+                    inviteLinkBox.textContent = invite.join_url;
+                    inviteLinkBox.classList.add('show');
+                    copyText(invite.join_url);
+                    inviteForm.reset();
+                })
+                .catch(function (error) {
+                    inviteLinkBox.textContent = error.message || 'Invite could not be created.';
+                    inviteLinkBox.classList.add('show');
+                });
+        });
     }
 
-    const amountButtons = donationPanel.querySelectorAll('[data-donation-amount]');
-    const customWrap = donationPanel.querySelector('[data-custom-donation]');
-    const customInput = donationPanel.querySelector('[data-custom-donation-input]');
-    const donateButton = donationPanel.querySelector('[data-donate-button]');
-    let selectedAmount = '51';
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-revoke-invite]');
 
-    amountButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            amountButtons.forEach(function (item) {
-                item.classList.remove('active', 'btn-gold');
-                item.classList.add('btn-ghost-gold');
-            });
+        if (button) {
+            fetch(button.dataset.revokeInvite, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Invite could not be revoked.');
+                    }
 
-            button.classList.add('active', 'btn-gold');
-            button.classList.remove('btn-ghost-gold');
-            selectedAmount = button.getAttribute('data-donation-amount');
-
-            if (selectedAmount === 'custom') {
-                customWrap.classList.add('show');
-                customInput.focus();
-            } else {
-                customWrap.classList.remove('show');
-                customInput.value = '';
-            }
-        });
-    });
-
-    donateButton.addEventListener('click', function () {
-        const amount = selectedAmount === 'custom' ? customInput.value : selectedAmount;
-
-        if (!amount || Number(amount) <= 0) {
-            alert('Please enter a valid donation amount');
-            return;
+                    return response.json();
+                })
+                .then(function () {
+                    const row = button.closest('[data-invite-row]');
+                    row?.querySelector('[data-invite-status]')?.replaceChildren(document.createTextNode('Revoked'));
+                    row?.classList.add('revoked');
+                    button.remove();
+                });
         }
-
-        console.log('Selected donation amount:', amount);
-        // TODO: connect Razorpay donation API
     });
+
+    if (familyLeaveUrl) {
+        document.querySelector('[data-leave-session]')?.addEventListener('click', function () {
+            fetch(familyLeaveUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            }).finally(function () {
+                window.location.href = @json(route('home'));
+            });
+        });
+
+        window.addEventListener('beforeunload', function () {
+            fetch(familyLeaveUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                keepalive: true,
+            });
+        });
+    }
+
+    if (donationPanel) {
+        const amountButtons = donationPanel.querySelectorAll('[data-donation-amount]');
+        const customWrap = donationPanel.querySelector('[data-custom-donation]');
+        const customInput = donationPanel.querySelector('[data-custom-donation-input]');
+        const donateButton = donationPanel.querySelector('[data-donate-button]');
+        const donationMessage = donationPanel.querySelector('[data-donation-message]');
+        let selectedAmount = '101';
+
+        amountButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                amountButtons.forEach(function (item) {
+                    item.classList.remove('active', 'btn-gold');
+                    item.classList.add('btn-ghost-gold');
+                });
+
+                button.classList.add('active', 'btn-gold');
+                button.classList.remove('btn-ghost-gold');
+                selectedAmount = button.getAttribute('data-donation-amount');
+
+                if (selectedAmount === 'custom') {
+                    customWrap.classList.add('show');
+                    customInput.focus();
+                } else {
+                    customWrap.classList.remove('show');
+                    customInput.value = '';
+                }
+            });
+        });
+
+        donateButton.addEventListener('click', function () {
+            const amount = selectedAmount === 'custom' ? customInput.value : selectedAmount;
+
+            if (!amount || Number(amount) <= 0) {
+                donationMessage.textContent = 'Please enter a valid dakshina amount.';
+                return;
+            }
+
+            donateButton.disabled = true;
+            donationMessage.textContent = 'Verifying payment on server...';
+
+            fetch(donationPanel.dataset.dakshinaUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': donationPanel.dataset.csrfToken,
+                },
+                body: JSON.stringify({ amount: Number(amount) }),
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Dakshina payment failed.');
+                    }
+
+                    return response.json();
+                })
+                .then(function (result) {
+                    donationMessage.textContent = result.message + ' Receipt: ' + result.receipt_number;
+                    customInput.value = '';
+                })
+                .catch(function (error) {
+                    donationMessage.textContent = error.message || 'Dakshina payment failed.';
+                })
+                .finally(function () {
+                    donateButton.disabled = false;
+                });
+        });
+    }
 });
 </script>
 @endpush

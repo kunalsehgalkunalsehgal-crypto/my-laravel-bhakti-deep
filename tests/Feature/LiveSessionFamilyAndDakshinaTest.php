@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\VideoMeetingProvider;
+use App\Events\FamilyMemberStatusChanged;
 use App\Models\Admin\Donation;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PaymentLog;
@@ -13,6 +14,7 @@ use App\Models\VideoMeeting;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class LiveSessionFamilyAndDakshinaTest extends TestCase
@@ -46,12 +48,20 @@ class LiveSessionFamilyAndDakshinaTest extends TestCase
             'relation' => 'Mother',
         ]);
 
+        Event::fake([FamilyMemberStatusChanged::class]);
+
         $this->get(route('live.family.join', ['token' => $token]))
             ->assertOk()
             ->assertSee('Sita Sharma');
 
         $this->assertGuest();
         $this->assertNotNull(LiveSessionInvite::first()->joined_at);
+        Event::assertDispatched(
+            FamilyMemberStatusChanged::class,
+            fn ($event) => $event->invite->id === LiveSessionInvite::first()->id
+                && $event->invite->statusLabel() === 'Joined'
+                && $event->joinedCount === 1
+        );
 
         $this->postJson(route('live.family.sdk', ['token' => $token]))
             ->assertOk()
@@ -60,6 +70,17 @@ class LiveSessionFamilyAndDakshinaTest extends TestCase
                 'role' => 0,
                 'userName' => 'Sita Sharma',
             ]);
+
+        Event::fake([FamilyMemberStatusChanged::class]);
+
+        $this->postJson(route('live.family.leave', ['token' => $token]))
+            ->assertOk();
+
+        Event::assertDispatched(
+            FamilyMemberStatusChanged::class,
+            fn ($event) => $event->invite->statusLabel() === 'Left'
+                && $event->joinedCount === 0
+        );
     }
 
     public function test_invite_and_dakshina_are_limited_to_booking_owner_and_revoke_blocks_join(): void

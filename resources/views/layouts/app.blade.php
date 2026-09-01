@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'BhaktiDeep - AI Powered Virtual Temple')</title>
     <meta name="description" content="@yield('description', 'Light a virtual diya, book a personalized pooja, or join a live hawan from home.')">
 <link rel="icon" type="image/x-icon" href="https://i.pinimg.com/736x/c3/30/ae/c330aeba4ebb8971936067cd0b077c70.jpg">
@@ -25,6 +26,7 @@
     @include('partials.footer')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    @vite(['resources/js/app.js'])
     <script src="{{ asset('js/bhaktideep.js') }}"></script>
     @stack('scripts')
 </body>

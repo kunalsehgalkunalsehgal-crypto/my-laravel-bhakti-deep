@@ -9,6 +9,8 @@
 @endpush
 
 @section('body')
+@include('partials.razorpay-checkout')
+
 <section class="ld-hero">
     <div class="container">
         <div class="row align-items-center g-5">
@@ -710,7 +712,7 @@ async function proceedToPay() {
     const payButton = document.getElementById('payButton');
     const originalText = payButton.innerHTML;
     payButton.disabled = true;
-    payButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving Booking...';
+    payButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting Payment...';
 
     try {
         const response = await fetch(@json(route('pooja.store')), {
@@ -727,6 +729,14 @@ async function proceedToPay() {
 
         if (!response.ok || !result.success) {
             throw new Error(result.message || 'Booking save failed');
+        }
+
+        if (result.payment) {
+            window.startBhaktiDeepPayment(result.payment, payButton, function () {
+                payButton.innerHTML = originalText;
+                checkPaymentReadiness();
+            });
+            return;
         }
 
         window.location.href = result.redirect_url;

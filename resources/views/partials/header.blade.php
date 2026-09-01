@@ -34,7 +34,13 @@
                 </ul>
 
                 <div class="header-actions">
-                  <a href="{{ route('login') }}" class="btn btn-outline-saffron" ><i class="bi bi-box-arrow-in-right"></i> Login with OTP</a>
+                    @auth
+                        <a href="{{ route('user.profile') }}" class="btn btn-outline-saffron" aria-label="User Profile">
+                            <i class="bi bi-person-circle"></i> Profile
+                        </a>
+                    @else
+                        <a href="{{ route('login') }}" class="btn btn-outline-saffron"><i class="bi bi-box-arrow-in-right"></i> Login with OTP</a>
+                    @endauth
                     <a class="btn btn-saffron" href="{{ route('personalized-pooja') }}"><i class="bi bi-stars"></i> Start Bhakti Journey</a>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 @php
-    $sdkEndpointUrl = route('live.session.sdk', [
+    $sdkEndpointUrl = $sdkEndpointUrl ?? route('live.session.sdk', [
         'type' => $sessionType,
         'id' => $bookingRecord->id,
         'token' => request('token'),
@@ -59,6 +59,13 @@
     @push('scripts')
         <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react.min.js"></script>
         <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react-dom.min.js"></script>
+
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux.min.js"></script>
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux-thunk.min.js"></script>
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/lodash.min.js"></script>
+
+
+
         <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/zoom-meeting-embedded-{{ $zoomSdkVersion }}.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {

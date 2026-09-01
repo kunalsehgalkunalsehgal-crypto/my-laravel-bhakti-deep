@@ -22,6 +22,10 @@ class User extends Authenticatable
         'name',
         'mobile',
         'email',
+        'dob',
+        'gotra',
+        'birth_place',
+        'address',
         'password',
         'email_verified_at',
     ];
@@ -45,6 +49,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'dob' => 'date',
             'password' => 'hashed',
         ];
     }

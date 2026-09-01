@@ -31,18 +31,34 @@ class VideoMeetingFlowTest extends TestCase
     {
         $provider = new FakeVideoMeetingProvider();
         $this->app->instance(VideoMeetingProvider::class, $provider);
+        config([
+            'services.razorpay.key_id' => 'rzp_test_key',
+            'services.razorpay.key_secret' => 'rzp_test_secret',
+        ]);
+        Http::fake([
+            'https://api.razorpay.com/v1/orders' => Http::response([
+                'id' => 'order_video_test',
+                'amount' => 100,
+                'currency' => 'INR',
+                'status' => 'created',
+            ]),
+        ]);
 
         [$pandit, $hawan, $pooja, $hawanService, $poojaService] = $this->bookingFixtures();
 
         $hawanDate = Carbon::tomorrow('Asia/Kolkata');
         $poojaDate = Carbon::tomorrow('Asia/Kolkata')->addDay();
 
-        $this->withSession(['hawan_booking' => $this->hawanBookingSession()])
+        $user = $this->user('booking-owner@example.test');
+
+        $this->actingAs($user)
+            ->withSession(['hawan_booking' => $this->hawanBookingSession()])
             ->postJson('/book-hawan', $this->hawanPayload($hawan, $hawanDate))
             ->assertOk()
             ->assertJson(['success' => true]);
 
-        $this->withSession(['pooja_booking' => $this->poojaBookingSession()])
+        $this->actingAs($user)
+            ->withSession(['pooja_booking' => $this->poojaBookingSession()])
             ->postJson('/book-pooja', $this->poojaPayload($pooja, $poojaDate))
             ->assertOk()
             ->assertJson(['success' => true]);
@@ -50,21 +66,28 @@ class VideoMeetingFlowTest extends TestCase
         $hawanSession = HawanSession::firstOrFail();
         $poojaSession = PoojaSession::firstOrFail();
 
-        $this->assertSame('scheduled', $hawanSession->status);
-        $this->assertSame('scheduled', $poojaSession->status);
-        $this->assertSame('paid', $hawanSession->payment_status);
-        $this->assertSame('paid', $poojaSession->payment_status);
+        $this->assertSame('pending', $hawanSession->status);
+        $this->assertSame('pending', $poojaSession->status);
+        $this->assertSame('pending', $hawanSession->payment_status);
+        $this->assertSame('pending', $poojaSession->payment_status);
         $this->assertSame(0, $provider->calls);
         $this->assertDatabaseCount('video_meetings', 0);
 
         $this->actingAs($pandit, 'pandit')
             ->post(route('pandit.bookings.accept', ['type' => 'hawan', 'id' => $hawanSession->id]))
             ->assertRedirect();
-        app(VideoMeetingService::class)->createForSessionIfReady($hawanSession->fresh());
 
         $this->actingAs($pandit, 'pandit')
             ->post(route('pandit.bookings.accept', ['type' => 'pooja', 'id' => $poojaSession->id]))
             ->assertRedirect();
+
+        $this->assertSame(0, $provider->calls);
+        $this->assertDatabaseCount('video_meetings', 0);
+
+        $hawanSession->update(['payment_status' => 'paid']);
+        $poojaSession->update(['payment_status' => 'paid']);
+
+        app(VideoMeetingService::class)->createForSessionIfReady($hawanSession->fresh());
         app(VideoMeetingService::class)->createForSessionIfReady($poojaSession->fresh());
 
         $this->assertSame(2, $provider->calls);

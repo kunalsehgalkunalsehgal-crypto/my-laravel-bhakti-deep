@@ -25,9 +25,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\DiyaController;
 use App\Http\Controllers\HawanController;
+use App\Http\Controllers\LiveSessionController;
 use App\Http\Controllers\PanditController;
 use App\Http\Controllers\PanditSelectionController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PoojaController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\VideoMeetingSdkController;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
@@ -63,13 +66,17 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/light-diya', [DiyaController::class, 'index'])->name('light-diya');
-Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
+Route::post('/light-diya/draft', [DiyaController::class, 'saveDraft'])->name('diya.draft');
+// Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
 Route::get('/diya-session/{session}', [DiyaController::class, 'session'])->name('diya.session');
 Route::get('/personalized-pooja', [PoojaController::class, 'index'])->name('personalized-pooja');
 Route::get('/hawan', [HawanController::class, 'index'])->name('hawan');
 Route::view('/lakshmi-pooja', 'pages.lakshmi-pooja')->name('lakshmi-pooja');
 Route::view('/how-it-works', 'pages.how-it-works')->name('how.works');
 Route::redirect('/live', '/live-sessions')->name('live');
+Route::get('/live-family/{token}', [LiveSessionController::class, 'joinInvite'])->name('live.family.join');
+Route::post('/live-family/{token}/meeting-sdk', [LiveSessionController::class, 'inviteSdkConfig'])->name('live.family.sdk');
+Route::post('/live-family/{token}/leave', [LiveSessionController::class, 'leaveInvite'])->name('live.family.leave');
 Route::get('/live-sessions', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
         ->where('payment_status', 'paid')
@@ -220,6 +227,8 @@ Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
         'sessionId' => $id,
         'bookingRecord' => $bookingRecord,
         'embeddedMeetingView' => $bookingRecord?->videoMeeting?->provider === 'zoom' ? 'video-meetings.zoom-sdk' : null,
+        'familyInvites' => app(LiveSessionController::class)->familyInvites($bookingRecord),
+        'canManageFamily' => Auth::check() && (int) $bookingRecord->user_id === (int) Auth::id(),
     ]);
 })->whereIn('type', ['aarti', 'pooja', 'hawan', 'diya'])->name('live.session');
 Route::get('/book-pooja', fn () => redirect('/personalized-pooja'))->name('pooja.booking');
@@ -241,9 +250,13 @@ Route::redirect('/registration', '/signup')->name('registration');
 Route::redirect('/pandit/login', '/login')->name('pandit.login');
 Route::get('/pandit/register', [AuthController::class, 'showPanditRegister'])->name('pandit.register');
 
-Route::prefix('pandit')->name('pandit.')->middleware('auth:pandit')->group(function () {
+Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.nocache'])->group(function () {
     Route::post('/logout', [PanditController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [PanditController::class, 'dashboard'])->name('dashboard');
+    Route::get('/bookings', [PanditController::class, 'bookings'])->name('bookings.index');
+    Route::get('/bookings/{type}/{id}', [PanditController::class, 'showBooking'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('bookings.show');
     Route::post('/resubmit', [PanditController::class, 'resubmit'])->name('resubmit');
     Route::get('/profile', [PanditController::class, 'profile'])->name('profile');
     Route::post('/profile', [PanditController::class, 'updateProfile'])->name('profile.update');
@@ -266,6 +279,9 @@ Route::prefix('pandit')->name('pandit.')->middleware('auth:pandit')->group(funct
     Route::post('/bookings/{type}/{id}/accept', [PanditController::class, 'acceptBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.accept');
+    Route::post('/bookings/{type}/{id}/cancel', [PanditController::class, 'cancelBooking'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('bookings.cancel');
 
 
 
@@ -293,18 +309,18 @@ Route::post('/register/{type}/verify-otp', [AuthController::class, 'verifyRegist
     ->whereIn('type', ['user', 'pandit'])
     ->name('register.verify-otp');
 
-Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
-Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');
-Route::get('/book-hawan/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'show'])->name('hawan.pandits.show');
-Route::post('/book-hawan/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'select'])->name('hawan.pandits.select');
-Route::get('/book-hawan/{slug}/review', [HawanController::class, 'review'])->name('hawan.review');
-Route::post('/book-hawan', [HawanController::class, 'store'])->name('hawan.store');
-Route::get('/book-pooja/{slug}', [PoojaController::class, 'show'])->name('pooja.show');
-Route::get('/book-pooja/{slug}/pandits', [PanditSelectionController::class, 'poojaIndex'])->name('pooja.pandits');
-Route::get('/book-pooja/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'poojaShow'])->name('pooja.pandits.show');
-Route::post('/book-pooja/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'poojaSelect'])->name('pooja.pandits.select');
-Route::get('/book-pooja/{slug}/review', [PoojaController::class, 'review'])->name('pooja.review');
-Route::post('/book-pooja', [PoojaController::class, 'store'])->name('pooja.store');
+// Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
+// Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');
+// Route::get('/book-hawan/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'show'])->name('hawan.pandits.show');
+// Route::post('/book-hawan/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'select'])->name('hawan.pandits.select');
+// Route::get('/book-hawan/{slug}/review', [HawanController::class, 'review'])->name('hawan.review');
+// Route::post('/book-hawan', [HawanController::class, 'store'])->name('hawan.store');
+// Route::get('/book-pooja/{slug}', [PoojaController::class, 'show'])->name('pooja.show');
+// Route::get('/book-pooja/{slug}/pandits', [PanditSelectionController::class, 'poojaIndex'])->name('pooja.pandits');
+// Route::get('/book-pooja/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'poojaShow'])->name('pooja.pandits.show');
+// Route::post('/book-pooja/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'poojaSelect'])->name('pooja.pandits.select');
+// Route::get('/book-pooja/{slug}/review', [PoojaController::class, 'review'])->name('pooja.review');
+// Route::post('/book-pooja', [PoojaController::class, 'store'])->name('pooja.store');
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('admin.guest')->group(function () {
@@ -420,7 +436,44 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 
+Route::middleware('auth')->group(function () {
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
+Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
+Route::post('/payments/bookings/{type}/{id}/retry', [PaymentController::class, 'retry'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('payments.bookings.retry');
+Route::post('/payments/razorpay/verify', [PaymentController::class, 'verify'])->name('payments.razorpay.verify');
+Route::post('/payments/razorpay/failure', [PaymentController::class, 'failure'])->name('payments.razorpay.failure');
+Route::post('/live-sessions/{type}/{id}/family-invites', [LiveSessionController::class, 'storeInvite'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.family.store');
+Route::post('/live-sessions/{type}/{id}/family-invites/{invite}/revoke', [LiveSessionController::class, 'revokeInvite'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.family.revoke');
+Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class, 'payDakshina'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.dakshina.pay');
+Route::get('/light-diya/continue', function () {
+    return redirect()->route('light-diya');
+})->name('diya.continue');
+    Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
 
+Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
+Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');
+Route::get('/book-hawan/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'show'])->name('hawan.pandits.show');
+Route::post('/book-hawan/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'select'])->name('hawan.pandits.select');
+Route::get('/book-hawan/{slug}/review', [HawanController::class, 'review'])->name('hawan.review');
+Route::post('/book-hawan', [HawanController::class, 'store'])->name('hawan.store');
+Route::get('/book-pooja/{slug}', [PoojaController::class, 'show'])->name('pooja.show');
+Route::get('/book-pooja/{slug}/pandits', [PanditSelectionController::class, 'poojaIndex'])->name('pooja.pandits');
+Route::get('/book-pooja/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'poojaShow'])->name('pooja.pandits.show');
+Route::post('/book-pooja/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'poojaSelect'])->name('pooja.pandits.select');
+Route::get('/book-pooja/{slug}/review', [PoojaController::class, 'review'])->name('pooja.review');
+Route::post('/book-pooja', [PoojaController::class, 'store'])->name('pooja.store');
+
+
+});
 
 
 

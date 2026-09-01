@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use App\Models\Admin\HawanSession;
+use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
 use App\Models\Admin\Admin;
 
@@ -9,7 +11,17 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-// Admin ↔ Pandit private chat
+Broadcast::channel('live-session.{type}.{id}', function ($user, string $type, string $id) {
+    $booking = match ($type) {
+        'hawan' => HawanSession::find($id),
+        'pooja' => PoojaSession::find($id),
+        default => null,
+    };
+
+    return $booking && (int) $booking->user_id === (int) $user->id;
+}, ['guards' => ['web']]);
+
+// Admin <-> Pandit private chat
 Broadcast::channel('pandit.chat.{panditId}', function ($user, $panditId) {
 
     // Koi bhi logged-in Admin

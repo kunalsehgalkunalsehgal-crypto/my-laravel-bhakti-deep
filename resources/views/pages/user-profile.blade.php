@@ -18,6 +18,7 @@
 .booking-item:first-child { border-top: 0; padding-top: 0; }
 .booking-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .booking-pill { border-radius: 999px; background: rgba(232,91,33,.1); color: #9b4c14; font-size: 12px; font-weight: 700; padding: 5px 10px; }
+.booking-pay { margin-top: 10px; }
 .profile-form-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .profile-form-grid .full { grid-column: 1 / -1; }
 @media (max-width: 575px) {
@@ -28,6 +29,8 @@
 @endpush
 
 @section('body')
+@include('partials.razorpay-checkout')
+
 <main class="profile-page">
     <section class="container profile-wrap">
         <div class="profile-head mb-4">
@@ -122,6 +125,10 @@
 
         <div class="mt-5">
             <h2 class="mb-3">My Bookings</h2>
+            @foreach($bookingNotifications as $notification)
+                <div class="alert alert-info">{{ $notification->message }}</div>
+            @endforeach
+
             <div class="row g-4">
                 @foreach ([
                     'Diya' => $diyaBookings,
@@ -146,7 +153,20 @@
                                     <div class="booking-meta">
                                         <em class="booking-pill">{{ ucfirst($booking->status) }}</em>
                                         <em class="booking-pill">{{ ucfirst($booking->payment_status) }}</em>
+                                        @if($type !== 'Diya' && $booking->latestPaymentAttempt)
+                                            <em class="booking-pill">{{ ucfirst(str_replace('_', ' ', $booking->latestPaymentAttempt->status)) }}</em>
+                                        @endif
                                     </div>
+                                    @if($type !== 'Diya' && $booking->payment_status !== 'paid')
+                                        <button
+                                            class="btn btn-saffron btn-sm rounded-pill booking-pay"
+                                            type="button"
+                                            data-retry-payment
+                                            data-retry-url="{{ route('payments.bookings.retry', ['type' => strtolower($type), 'id' => $booking->id]) }}"
+                                        >
+                                            <i class="bi bi-arrow-clockwise"></i> Retry Payment
+                                        </button>
+                                    @endif
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No {{ strtolower($type) }} bookings yet.</p>
@@ -159,3 +179,40 @@
     </section>
 </main>
 @endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('[data-retry-payment]').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting Payment...';
+
+            try {
+                const response = await fetch(button.dataset.retryUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Payment retry failed.');
+                }
+
+                window.startBhaktiDeepPayment(result.payment, button, function () {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                });
+            } catch (error) {
+                alert(error.message || 'Payment retry failed.');
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        });
+    });
+</script>
+@endpush

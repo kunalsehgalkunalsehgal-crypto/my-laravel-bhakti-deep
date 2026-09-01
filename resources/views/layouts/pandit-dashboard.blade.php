@@ -24,8 +24,8 @@
         ['My Profile', 'bi-person-badge', route('pandit.profile'), $activeMenu === 'profile'],
         ['Qualification', 'bi-mortarboard', route('pandit.qualification'), $activeMenu === 'qualification'],
         ['My Services', 'bi-stars', route('pandit.services'), $activeMenu === 'services'],
-        ['Bookings', 'bi-calendar2-check', '#', $activeMenu === 'bookings'],
-        ['Live Sessions', 'bi-camera-video', '#', $activeMenu === 'live-sessions'],
+        ['Bookings', 'bi-calendar2-check', route('pandit.bookings.index'), $activeMenu === 'bookings'],
+        ['Live Sessions', 'bi-camera-video', route('live.sessions'), $activeMenu === 'live-sessions'],
         ['Availability', 'bi-clock-history', route('pandit.availability'), $activeMenu === 'availability'],
         ['Earnings', 'bi-currency-rupee', '#', $activeMenu === 'earnings'],
         ['Dakshina', 'bi-gift', '#', $activeMenu === 'dakshina'],
@@ -34,7 +34,7 @@
         ['Bank Details', 'bi-bank', route('pandit.bank-details'), $activeMenu === 'bank-details'],
         ['Notifications', 'bi-bell', route('pandit.notifications'), $activeMenu === 'notifications'],
         ['Messages', 'bi-chat-dots', route('pandit.messages'), $activeMenu === 'messages'],
-        ['Logout', 'bi-box-arrow-right', '#', $activeMenu === 'logout'],
+        ['Logout', 'bi-box-arrow-right', route('pandit.logout'), $activeMenu === 'logout'],
         ['Connect Zoom', 'bi-camera-video-fill', route('pandit.zoom.connect'), $activeMenu === 'zoom'],
     ];
     $unreadCount = isset($pandit) ? \App\Models\Pandit\PanditNotification::where('pandit_id', $pandit->id)->where('is_read', false)->count() : 0;
@@ -52,17 +52,27 @@
             </span>
         </a>
         <nav>
-            @foreach ($sidebarItems as [$label, $icon, $url, $active])
-                <a href="{{ $url }}" class="{{ $active ? 'active' : '' }}">
-                    <i class="bi {{ $icon }}"></i>
-                    <span>{{ $label }}</span>
-                    @if($label === 'Notifications' && $unreadCount > 0)
-                        <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadCount }}</span>
-                    @endif
-                    @if($label === 'Messages' && $unreadMessages > 0)
-                        <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadMessages }}</span>
-                    @endif
-                </a>
+            @foreach($sidebarItems as [$label, $icon, $url, $active])
+                @if($label === 'Logout')
+                    <form method="POST" action="{{ $url }}" class="pandit-nav-form">
+                        @csrf
+                        <button type="submit">
+                            <i class="bi {{ $icon }}"></i>
+                            <span>{{ $label }}</span>
+                        </button>
+                    </form>
+                @else
+                    <a href="{{ $url }}" class="{{ $active ? 'active' : '' }}">
+                        <i class="bi {{ $icon }}"></i>
+                        <span>{{ $label }}</span>
+                        @if($label === 'Notifications' && $unreadCount > 0)
+                            <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadCount }}</span>
+                        @endif
+                        @if($label === 'Messages' && $unreadMessages > 0)
+                            <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadMessages }}</span>
+                        @endif
+                    </a>
+                @endif
             @endforeach
         </nav>
     </aside>
@@ -76,6 +86,10 @@
             </a>
             <div class="pandit-topbar-profile">
                 <button class="pandit-icon-button" type="button" aria-label="Notifications"><i class="bi bi-bell"></i></button>
+                <form method="POST" action="{{ route('pandit.logout') }}" class="pandit-topbar-logout">
+                    @csrf
+                    <button class="pandit-icon-button" type="submit" aria-label="Logout"><i class="bi bi-box-arrow-right"></i></button>
+                </form>
                 <img src="{{ $pandit->profile_photo ? asset('storage/'.$pandit->profile_photo) : asset('assets/small-deep.jpg') }}" alt="{{ $pandit->pandit_name ?: $pandit->full_name}}">
                 <div>
                     <strong>{{ $pandit->pandit_name ?: $pandit->full_name}}</strong>
@@ -89,5 +103,6 @@
         </main>
     </div>
 </div>
+@stack('scripts')
 </body>
 </html>

@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\Donation;
+use App\Models\Admin\PaymentLog;
 use App\Models\Admin\PoojaSession;
+use App\Models\PaymentAttempt;
 use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditService;
 use Carbon\Carbon;
@@ -15,8 +18,9 @@ use Illuminate\Validation\ValidationException;
 class PanditBookingService
 {
     public const SAMUHIK_HAWAN_MAX_PRIMARY_BOOKINGS = 5;
+    public const PAYMENT_HOLD_MINUTES = 10;
 
-    public const BOOKING_STATUSES = ['pending', 'scheduled', 'confirmed', 'active', 'completed', 'cancelled'];
+    public const BOOKING_STATUSES = ['pending', 'scheduled', 'confirmed', 'active', 'completed', 'cancelled', 'cancelled_by_pandit'];
 
     public const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
 
@@ -51,6 +55,15 @@ class PanditBookingService
         }
 
         return ['start' => $startTime, 'end' => $endTime];
+    }
+
+    public function ensureRitualSlot(Model $ritual, string $slot): void
+    {
+        $slots = $ritual->available_slots ?: [];
+
+        if ($slots && !in_array($slot, $slots, true)) {
+            throw ValidationException::withMessages(['slot' => 'Selected slot is no longer available for this service.']);
+        }
     }
 
     public function approvedService(Pandit $pandit, string $serviceType, iterable $serviceNames, ?int $serviceId = null, ?int $ritualId = null): ?PanditService
@@ -93,6 +106,10 @@ class PanditBookingService
         ?int $ritualId = null
     ): array {
         $slotTimes = $this->slotTimes($slot);
+        if (Carbon::parse($bookingDate)->startOfDay()->lt(today())) {
+            throw ValidationException::withMessages(['booking_date' => 'Booking date cannot be in the past.']);
+        }
+
         $day = Carbon::parse($bookingDate)->format('l');
         $onlineColumn = $serviceType === 'pooja' ? 'online_pooja' : 'online_hawan';
 
@@ -139,6 +156,7 @@ class PanditBookingService
                 ->where('pandit_id', $panditId)
                 ->whereDate('booking_date', $bookingDate)
                 ->whereNotIn('status', ['cancelled', 'completed'])
+                ->where(fn ($active) => $this->activePaymentOrHold($active))
                 ->where(function ($overlap) use ($startTime, $endTime) {
                     $overlap
                         ->where(function ($time) use ($startTime, $endTime) {
@@ -208,7 +226,7 @@ class PanditBookingService
             ->where('slot_start_time', $startTime)
             ->where('slot_end_time', $endTime)
             ->where('status', '!=', 'cancelled')
-            ->whereNotIn('payment_status', ['failed', 'refunded'])
+            ->where(fn ($active) => $this->activePaymentOrHold($active))
             ->count();
     }
 
@@ -251,6 +269,64 @@ class PanditBookingService
             && hash_equals((string) $session->live_session_token, $token);
     }
 
+    public function holdTimes(): array
+    {
+        $start = now();
+
+        return [$start, $start->copy()->addMinutes(self::PAYMENT_HOLD_MINUTES)];
+    }
+
+    public function createPendingPayment(Model $session, float $amount, array $meta): PaymentAttempt
+    {
+        $holdStart = $session->payment_hold_started_at ?: now();
+        $holdEnd = $session->payment_hold_expires_at ?: $holdStart->copy()->addMinutes(self::PAYMENT_HOLD_MINUTES);
+
+        $donation = Donation::create([
+            'user_id' => $session->user_id,
+            'payment_purpose' => PaymentAttempt::PURPOSE_BOOKING,
+            'session_type' => get_class($session),
+            'session_id' => $session->id,
+            'amount' => $amount,
+            'currency' => 'INR',
+            'donor_name' => $meta['donor_name'] ?? null,
+            'donor_mobile' => $meta['donor_mobile'] ?? null,
+            'payment_status' => 'pending',
+        ]);
+
+        $attempt = PaymentAttempt::create([
+            'user_id' => $session->user_id,
+            'donation_id' => $donation->id,
+            'payable_type' => get_class($session),
+            'payable_id' => $session->id,
+            'purpose' => PaymentAttempt::PURPOSE_BOOKING,
+            'amount' => $amount,
+            'currency' => 'INR',
+            'status' => PaymentAttempt::STATUS_PENDING,
+            'hold_started_at' => $holdStart,
+            'hold_expires_at' => $holdEnd,
+            'metadata' => $meta,
+        ]);
+
+        $donation->update(['latest_payment_attempt_id' => $attempt->id]);
+        $session->update(['latest_payment_attempt_id' => $attempt->id]);
+
+        PaymentLog::create([
+            'donation_id' => $donation->id,
+            'payment_attempt_id' => $attempt->id,
+            'loggable_type' => get_class($session),
+            'loggable_id' => $session->id,
+            'user_id' => $session->user_id,
+            'gateway' => 'none',
+            'event_type' => 'payment_hold_created',
+            'status' => 'pending',
+            'occurred_at' => $holdStart,
+            'amount' => $amount,
+            'payload' => $meta,
+        ]);
+
+        return $attempt;
+    }
+
     public function token(): string
     {
         return Str::random(48);
@@ -278,6 +354,7 @@ class PanditBookingService
             ->where('pandit_id', $panditId)
             ->whereDate('booking_date', $bookingDate)
             ->whereNotIn('status', ['cancelled', 'completed'])
+            ->where(fn ($active) => $this->activePaymentOrHold($active))
             ->where(function ($overlap) use ($startTime, $endTime) {
                 $overlap
                     ->where(function ($time) use ($startTime, $endTime) {
@@ -299,6 +376,7 @@ class PanditBookingService
             ->where('pandit_id', $panditId)
             ->whereDate('booking_date', $bookingDate)
             ->whereNotIn('status', ['cancelled', 'completed'])
+            ->where(fn ($active) => $this->activePaymentOrHold($active))
             ->where(function ($overlap) use ($startTime, $endTime) {
                 $overlap
                     ->where(function ($time) use ($startTime, $endTime) {
@@ -313,5 +391,28 @@ class PanditBookingService
                     });
             })
             ->exists();
+    }
+
+    private function activePaymentOrHold($query)
+    {
+        return $query
+            ->where('payment_status', 'paid')
+            ->orWhere(function ($hold) {
+                $hold->where('payment_status', 'pending')
+                    ->where('payment_hold_expires_at', '>', now());
+            })
+            ->orWhere(function ($cancelled) {
+                $cancelled->where('status', 'cancelled_by_pandit')
+                    ->where(function ($slot) {
+                        $slot->whereDate('booking_date', '>', today())
+                            ->orWhere(function ($today) {
+                                $today->whereDate('booking_date', today())
+                                    ->where(function ($time) {
+                                        $time->whereNull('slot_end_time')
+                                            ->orWhere('slot_end_time', '>', now()->format('H:i:s'));
+                                    });
+                            });
+                    });
+            });
     }
 }

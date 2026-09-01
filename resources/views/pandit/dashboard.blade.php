@@ -82,6 +82,9 @@
             <div><span>Dakshina</span><strong>Rs {{ number_format($nextSession['dakshina']) }}</strong></div>
         </div>
         <div class="pandit-session-actions">
+            <a href="{{ $nextSession['detail_url'] }}">
+                <i class="bi bi-eye"></i> View Details
+            </a>
             @if($nextSession['mobile'])
                 <a href="tel:{{ $nextSession['mobile'] }}"><i class="bi bi-telephone"></i> Call Yajman</a>
             @endif
@@ -93,7 +96,7 @@
                     </button>
                 </form>
             @elseif($nextSession['can_start_meeting'])
-                <a href="{{ $nextSession['meeting_start_url'] }}" target="_blank" rel="noopener" class="primary">
+                <a href="{{ $nextSession['meeting_start_url'] }}" class="primary">
                     <i class="bi bi-camera-video"></i> Start {{ $nextSession['label'] }}
                 </a>
             @else
@@ -114,62 +117,32 @@
     </section>
 @endif
 
-<section class="pandit-panel pandit-booking-panel">
+<section class="pandit-panel pandit-booking-panel" id="assigned-bookings">
     <div class="pandit-panel-heading">
         <div>
-            <h2>Recent Bookings</h2>
-            <p>Your latest assigned pooja and hawan sessions.</p>
+            <h2>Latest Assigned Bookings</h2>
+            <p>Your latest 5 pooja and hawan bookings.</p>
         </div>
         <span><i class="bi bi-calendar2-check"></i></span>
     </div>
 
     <div class="pandit-booking-list">
-        @forelse($recentSessions as $session)
-            <article class="pandit-booking-row">
-                <div>
-                    <span class="pandit-status-pill">{{ $session['label'] }}</span>
-                    <h3>{{ $session['service_name'] }}</h3>
-                    <p>{{ $session['yajman'] }} @if($session['package_name']) - {{ $session['package_name'] }} @endif</p>
-                </div>
-                <div>
-                    <span>Date</span>
-                    <strong>{{ $session['booking_date']?->format('d M Y') ?? 'Pending' }}</strong>
-                </div>
-                <div>
-                    <span>Slot</span>
-                    <strong>{{ $session['slot'] ?: 'Pending' }}</strong>
-                </div>
-                <div>
-                    <span>Status</span>
-                    <strong>{{ ucfirst($session['status']) }}</strong>
-                </div>
-                <div>
-                    <span>Dakshina</span>
-                    <strong>Rs {{ number_format($session['dakshina']) }}</strong>
-                </div>
-                <div>
-                    @if($session['can_accept'])
-                        <form method="POST" action="{{ $session['accept_url'] }}">
-                            @csrf
-                            <button type="submit" class="primary">
-                                <i class="bi bi-check2-circle"></i> Accept Booking
-                            </button>
-                        </form>
-                    @elseif($session['can_start_meeting'])
-                        <a href="{{ $session['meeting_start_url'] }}" target="_blank" rel="noopener" class="primary">
-                            <i class="bi bi-camera-video"></i> Start {{ $session['label'] }}
-                        </a>
-                    @else
-                        <span class="pandit-muted-action">Live link pending</span>
-                    @endif
-                </div>
-            </article>
+        @forelse($latestBookings as $session)
+            @include('pandit.bookings.partials.booking-row', ['session' => $session])
         @empty
             <div class="pandit-empty-slot">
                 <i class="bi bi-inbox"></i>
-                No bookings assigned yet.
+                No assigned bookings yet.
             </div>
         @endforelse
     </div>
+
+    @if($latestBookings->isNotEmpty())
+        <div class="pandit-session-actions" style="margin-top:16px">
+            <a href="{{ route('pandit.bookings.index') }}" class="primary">
+                <i class="bi bi-calendar2-week"></i> View All Bookings
+            </a>
+        </div>
+    @endif
 </section>
 @endsection

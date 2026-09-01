@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Admin\Donation;
 use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
-use App\Models\Admin\PaymentLog;
 use App\Models\Admin\SankalpForm;
 use App\Models\Pandit\Pandit;
 use App\Services\PanditBookingService;
-use App\Services\VideoMeetingService;
+use App\Services\RazorpayPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -113,6 +111,9 @@ class HawanController extends Controller
             throw ValidationException::withMessages(['hawan_slug' => 'Selected Hawan is no longer active.']);
         }
 
+        $bookingService = app(PanditBookingService::class);
+        $bookingService->ensureRitualSlot($hawan, $validated['slot']);
+
         $selectedHawanType = $hawan->enabledHawanType($validated['hawan_type']);
 
         if (!$selectedHawanType) {
@@ -132,13 +133,13 @@ class HawanController extends Controller
             throw ValidationException::withMessages(['booking' => 'Pandit selection does not match this Hawan booking. Please select pandit again.']);
         }
 
-        $bookingService = app(PanditBookingService::class);
         $packageName = $selectedHawanType['title'];
         $packageAmount = (float) $selectedHawanType['price'];
         $dakshina = (float) ($validated['donation_amount'] ?? 0);
         $totalAmount = $packageAmount + $dakshina;
+        [$holdStart, $holdEnd] = $bookingService->holdTimes();
 
-        $session = DB::transaction(function () use ($bookingService, $hawan, $validated, $selectedPanditId, $booking, $selectedHawanType, $packageName, $packageAmount, $dakshina, $totalAmount) {
+        $session = DB::transaction(function () use ($bookingService, $hawan, $validated, $selectedPanditId, $booking, $selectedHawanType, $packageName, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
             Pandit::whereKey($selectedPanditId)->lockForUpdate()->firstOrFail();
 
             [$pandit, $panditService, $slotTimes] = $bookingService->ensurePanditCanServe(
@@ -198,8 +199,6 @@ class HawanController extends Controller
                 ],
             ]);
 
-            $token = $bookingService->token();
-
             $session = HawanSession::create([
                 'user_id' => auth()->id(),
                 'service_type' => 'hawan',
@@ -215,9 +214,10 @@ class HawanController extends Controller
                 'slot' => $validated['slot'],
                 'slot_start_time' => $slotTimes['start'],
                 'slot_end_time' => $slotTimes['end'],
-                'live_session_token' => $token,
-                'status' => 'scheduled',
-                'payment_status' => 'paid',
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'payment_hold_started_at' => $holdStart,
+                'payment_hold_expires_at' => $holdEnd,
                 'admin_note' => json_encode([
                     'hawan_id' => $hawan->id,
                     'hawan_slug' => $hawan->slug,
@@ -235,51 +235,35 @@ class HawanController extends Controller
                 ]),
             ]);
 
-            $session->update([
-                'live_session_link' => $bookingService->routeWithToken('live.session', ['type' => 'hawan', 'id' => $session->id], $token),
-            ]);
-
-            $donation = Donation::create([
-                'user_id' => auth()->id(),
-                'amount' => $totalAmount,
-                'currency' => 'INR',
-                'donor_name' => $validated['full_name'],
-                'donor_mobile' => $validated['mobile'],
-                'razorpay_order_id' => 'demo_order_'.$session->id,
-                'razorpay_payment_id' => 'demo_payment_'.$session->id,
-                'payment_status' => 'paid',
-                'receipt_number' => 'BDH-'.now()->format('Ymd').'-'.$session->id,
-                'paid_at' => now(),
-            ]);
-
-            PaymentLog::create([
-                'donation_id' => $donation->id,
-                'user_id' => auth()->id(),
-                'gateway' => 'demo',
-                'order_id' => $donation->razorpay_order_id,
-                'payment_id' => $donation->razorpay_payment_id,
-                'status' => 'paid',
-                'amount' => $totalAmount,
-                'payload' => [
+            $bookingService->createPendingPayment($session, $totalAmount, [
                     'booking_type' => 'hawan',
                     'hawan_session_id' => $session->id,
+                    'hawan_id' => $hawan->id,
+                    'hawan_slug' => $hawan->slug,
+                    'hawan_name' => $hawan->name,
                     'hawan_type' => $selectedHawanType['key'],
                     'hawan_type_price' => $packageAmount,
                     'sankalp_form_id' => $sankalp->id,
+                    'donor_name' => $validated['full_name'],
+                    'donor_mobile' => $validated['mobile'],
+                    'dakshina' => $dakshina,
                     'server_amount_source' => 'hawans.hawan_type_price',
-                ],
             ]);
 
-            return $session;
+            return $session->fresh('latestPaymentAttempt');
         });
 
         session()->forget('hawan_booking');
+        $payment = app(RazorpayPaymentService::class)->createOrder($session->latestPaymentAttempt, $session, $request->user());
 
         return response()->json([
             'success' => true,
-            'message' => 'Booking successful',
+            'message' => 'Booking held for 10 minutes. Complete payment to confirm.',
             'session_id' => $session->id,
-            'redirect_url' => $session->live_session_link,
+            'payment_status' => $session->payment_status,
+            'hold_expires_at' => $session->payment_hold_expires_at?->toISOString(),
+            'payment' => $payment,
+            'redirect_url' => route('user.profile'),
         ]);
     }
 }

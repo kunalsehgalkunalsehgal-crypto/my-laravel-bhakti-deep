@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.auth' => \App\Http\Middleware\AdminAuthenticate::class,
             'admin.guest' => \App\Http\Middleware\RedirectIfAdminAuthenticated::class,
             'admin.permission' => \App\Http\Middleware\EnsureAdminHasPermission::class,
+            'pandit.nocache' => \App\Http\Middleware\NoCachePanditPages::class,
         ]);
         //bhai is me na dekhoki ye mane live karne se pehle delee karna ha 
         $middleware->trustProxies(at: '*');

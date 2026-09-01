@@ -24,6 +24,8 @@ class DiyaSession extends Model
             'end_at' => 'datetime',
             'completed_at' => 'datetime',
             'expires_at' => 'datetime',
+            'payment_hold_started_at' => 'datetime',
+            'payment_hold_expires_at' => 'datetime',
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FamilyMemberStatusChanged;
 use App\Models\Admin\Donation;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PaymentLog;
@@ -59,11 +60,7 @@ class LiveSessionController extends Controller
     public function joinInvite(string $token): View
     {
         $invite = $this->validInvite($token);
-        $invite->update([
-            'joined_at' => $invite->joined_at ?: now(),
-            'left_at' => null,
-            'last_seen_at' => now(),
-        ]);
+        $this->markInviteJoined($invite);
 
         $booking = $invite->booking;
         abort_unless($booking, 404);
@@ -89,7 +86,7 @@ class LiveSessionController extends Controller
         $invite = LiveSessionInvite::where('token_hash', hash('sha256', $token))->firstOrFail();
 
         if ($invite->isValid()) {
-            $invite->update(['left_at' => now(), 'last_seen_at' => now()]);
+            $this->markInviteLeft($invite);
         }
 
         return response()->json(['success' => true]);
@@ -104,11 +101,7 @@ class LiveSessionController extends Controller
 
         abort_unless($this->bookingReady($booking), 403);
 
-        $invite->update([
-            'joined_at' => $invite->joined_at ?: now(),
-            'left_at' => null,
-            'last_seen_at' => now(),
-        ]);
+        $this->markInviteJoined($invite);
 
         return response()->json(
             $providers
@@ -236,5 +229,49 @@ class LiveSessionController extends Controller
                 'invite' => $invite,
             ]),
         ];
+    }
+
+    private function markInviteJoined(LiveSessionInvite $invite): void
+    {
+        $oldStatus = $invite->statusLabel();
+
+        $invite->update([
+            'joined_at' => $invite->joined_at ?: now(),
+            'left_at' => null,
+            'last_seen_at' => now(),
+        ]);
+
+        $this->broadcastInviteStatus($invite, $oldStatus);
+    }
+
+    private function markInviteLeft(LiveSessionInvite $invite): void
+    {
+        $oldStatus = $invite->statusLabel();
+
+        $invite->update([
+            'left_at' => now(),
+            'last_seen_at' => now(),
+        ]);
+
+        $this->broadcastInviteStatus($invite, $oldStatus);
+    }
+
+    private function broadcastInviteStatus(LiveSessionInvite $invite, string $oldStatus): void
+    {
+        if ($invite->statusLabel() === $oldStatus) {
+            return;
+        }
+
+        broadcast(new FamilyMemberStatusChanged($invite, $this->joinedInviteCount($invite)));
+    }
+
+    private function joinedInviteCount(LiveSessionInvite $invite): int
+    {
+        return LiveSessionInvite::query()
+            ->where('session_type', $invite->session_type)
+            ->where('session_id', $invite->session_id)
+            ->whereNotNull('joined_at')
+            ->whereNull('left_at')
+            ->count();
     }
 }

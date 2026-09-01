@@ -315,8 +315,30 @@
     padding: 12px 13px;
 }
 
+.pandit-nav-form {
+    margin: 0;
+}
+
+.pandit-nav-form button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    border-radius: 14px;
+    background: none;
+    color: rgba(55, 32, 22, 0.78);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 12px 13px;
+    text-align: left;
+}
+
 .pandit-sidebar nav a.active,
-.pandit-sidebar nav a:hover {
+.pandit-sidebar nav a:hover,
+.pandit-nav-form button:hover {
     background: rgba(232, 91, 33, 0.1);
     color: var(--saffron-dark);
 }
@@ -368,6 +390,10 @@
     border-radius: 50%;
     background: #fff;
     color: var(--saffron-dark);
+}
+
+.pandit-topbar-logout {
+    margin: 0;
 }
 
 .pandit-topbar-profile img {
@@ -613,9 +639,21 @@
     gap: 12px;
 }
 
+.pandit-booking-section {
+    margin-top: 18px;
+}
+
+.pandit-booking-section h3 {
+    color: var(--cream);
+    font-family: "Cinzel", serif;
+    font-size: 20px;
+    letter-spacing: 0;
+    margin: 0 0 10px;
+}
+
 .pandit-booking-row {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(110px, 1fr));
+    grid-template-columns: minmax(190px, 1.3fr) repeat(6, minmax(90px, 0.8fr)) minmax(150px, 1fr);
     align-items: center;
     gap: 14px;
     border: 1px solid rgba(199, 141, 34, 0.18);
@@ -649,8 +687,15 @@
     margin: 0;
 }
 
+.pandit-booking-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .pandit-booking-row button.primary,
-.pandit-booking-row a.primary {
+.pandit-booking-row a.primary,
+.pandit-booking-row a.secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -663,6 +708,12 @@
     color: #fff;
     font-size: 12px;
     font-weight: 800;
+}
+
+.pandit-booking-row a.secondary {
+    border: 1px solid rgba(232, 91, 33, 0.28);
+    background: rgba(255, 255, 255, 0.72);
+    color: #9b4c14;
 }
 
 .pandit-page-heading p {
@@ -1605,7 +1656,11 @@
 
     .pandit-session-actions button,
     .pandit-session-actions a,
-    .pandit-muted-action {
+    .pandit-muted-action,
+    .pandit-booking-actions,
+    .pandit-booking-actions form,
+    .pandit-booking-actions button,
+    .pandit-booking-actions a {
         width: 100%;
     }
 

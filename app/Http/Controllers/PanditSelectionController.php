@@ -253,6 +253,7 @@ class PanditSelectionController extends Controller
                 ->whereDoesntHave('hawanBookings', function ($q) use ($request, $slotTimes, $selectedHawanId) {
                     $q->whereDate('booking_date', $request->date)
                         ->whereNotIn('status', ['cancelled', 'completed'])
+                        ->where(fn ($active) => $this->activePaymentOrHold($active))
                         ->where(function ($overlap) use ($request, $slotTimes) {
                             $overlap->where(function ($time) use ($slotTimes) {
                                 $time->whereNotNull('slot_start_time')
@@ -285,13 +286,20 @@ class PanditSelectionController extends Controller
                         and hawan_sessions.slot_start_time = ?
                         and hawan_sessions.slot_end_time = ?
                         and hawan_sessions.status != 'cancelled'
-                        and hawan_sessions.payment_status not in ('failed', 'refunded')
+                        and (
+                            hawan_sessions.payment_status = 'paid'
+                            or (
+                                hawan_sessions.payment_status = 'pending'
+                                and hawan_sessions.payment_hold_expires_at > ?
+                            )
+                        )
                     ) < ?",
                     [
                         $selectedHawanId,
                         $request->date,
                         $slotTimes['start'],
                         $slotTimes['end'],
+                        now(),
                         PanditBookingService::SAMUHIK_HAWAN_MAX_PRIMARY_BOOKINGS,
                     ]
                 );
@@ -299,6 +307,7 @@ class PanditSelectionController extends Controller
             $query->whereDoesntHave('hawanBookings', function ($q) use ($request, $slotTimes) {
                 $q->whereDate('booking_date', $request->date)
                     ->whereNotIn('status', ['cancelled', 'completed'])
+                    ->where(fn ($active) => $this->activePaymentOrHold($active))
                     ->where(function ($overlap) use ($request, $slotTimes) {
                         $overlap->where(function ($time) use ($slotTimes) {
                             $time->whereNotNull('slot_start_time')
@@ -316,6 +325,7 @@ class PanditSelectionController extends Controller
             ->whereDoesntHave('poojaBookings', function ($q) use ($request, $slotTimes) {
                 $q->whereDate('booking_date', $request->date)
                     ->whereNotIn('status', ['cancelled', 'completed'])
+                    ->where(fn ($active) => $this->activePaymentOrHold($active))
                     ->where(function ($overlap) use ($request, $slotTimes) {
                         $overlap->where(function ($time) use ($slotTimes) {
                             $time->whereNotNull('slot_start_time')
@@ -474,5 +484,27 @@ class PanditSelectionController extends Controller
         abort_unless($selectedType, 404);
 
         return $selectedType;
+    }
+
+    private function activePaymentOrHold($query)
+    {
+        return $query->where('payment_status', 'paid')
+            ->orWhere(function ($hold) {
+                $hold->where('payment_status', 'pending')
+                    ->where('payment_hold_expires_at', '>', now());
+            })
+            ->orWhere(function ($cancelled) {
+                $cancelled->where('status', 'cancelled_by_pandit')
+                    ->where(function ($slot) {
+                        $slot->whereDate('booking_date', '>', today())
+                            ->orWhere(function ($today) {
+                                $today->whereDate('booking_date', today())
+                                    ->where(function ($time) {
+                                        $time->whereNull('slot_end_time')
+                                            ->orWhere('slot_end_time', '>', now()->format('H:i:s'));
+                                    });
+                            });
+                    });
+            });
     }
 }

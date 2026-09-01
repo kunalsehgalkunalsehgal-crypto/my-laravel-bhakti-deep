@@ -17,6 +17,7 @@ use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
+use App\Services\PanditBookingCancellationService;
 use App\Services\VideoMeetingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -65,12 +66,11 @@ class PanditController extends Controller
 {
     Auth::guard('pandit')->logout();
 
-    Session::forget('pandit_id');
-
+    $request->session()->forget('pandit_id');
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
-    return redirect()->route('pandit.login');
+    return redirect()->route('login');
 }
 
     // REGISTER
@@ -89,25 +89,13 @@ class PanditController extends Controller
         if (!$pandit) return redirect()->route('pandit.login');
 
         $today = Carbon::today();
-        $hawanSessions = HawanSession::with(['user', 'service', 'sankalp', 'videoMeeting'])
-            ->where('pandit_id', $pandit->id)
-            ->get()
-            ->map(fn ($session) => $this->formatDashboardSession($session, 'hawan'));
-
-        $poojaSessions = PoojaSession::with(['user', 'service', 'sankalp', 'videoMeeting'])
-            ->where('pandit_id', $pandit->id)
-            ->get()
-            ->map(fn ($session) => $this->formatDashboardSession($session, 'pooja'));
-
-        $sessions = $hawanSessions
-            ->merge($poojaSessions)
-            ->sortBy([
-                ['booking_date', 'asc'],
-                ['slot', 'asc'],
-            ])
+        $sessions = $this->assignedBookingSessions($pandit);
+        $latestBookings = $sessions
+            ->sortByDesc('created_at')
+            ->take(5)
             ->values();
 
-        $activeSessions = $sessions->reject(fn ($session) => in_array($session['status'], ['completed', 'cancelled'], true));
+        $activeSessions = $sessions->reject(fn ($session) => in_array($session['status'], ['completed', 'cancelled', 'cancelled_by_pandit'], true));
         $todaySessions = $activeSessions->filter(fn ($session) => $session['booking_date']?->isSameDay($today));
         $upcomingSessions = $activeSessions->filter(fn ($session) => !$session['booking_date'] || $session['booking_date']->greaterThanOrEqualTo($today));
         $completedSessions = $sessions->filter(fn ($session) => $session['status'] === 'completed' || $session['completed_at']);
@@ -121,18 +109,46 @@ class PanditController extends Controller
         ];
 
         $nextSession = $todaySessions->first() ?: $upcomingSessions->first();
-        $recentSessions = $sessions
-            ->sortByDesc(fn ($session) => $session['booking_date']?->timestamp ?? 0)
-            ->take(6)
-            ->values();
-
         $dashboardCounts = [
             'services' => $pandit->services()->count(),
             'unread_notifications' => PanditNotification::where('pandit_id', $pandit->id)->where('is_read', false)->count(),
             'unread_messages' => PanditMessage::where('pandit_id', $pandit->id)->where('sender', 'admin')->where('is_read', false)->count(),
         ];
 
-        return view('pandit.dashboard', compact('pandit', 'stats', 'nextSession', 'recentSessions', 'dashboardCounts'));
+        return view('pandit.dashboard', compact('pandit', 'stats', 'nextSession', 'dashboardCounts', 'latestBookings'));
+    }
+
+    public function bookings()
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+
+        $bookings = $this->assignedBookingSessions($pandit)
+            ->sortByDesc('created_at')
+            ->values();
+
+        return view('pandit.bookings.index', compact('pandit', 'bookings'));
+    }
+
+    public function showBooking(string $type, string $id)
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+
+        $model = match ($type) {
+            'pooja' => PoojaSession::class,
+            'hawan' => HawanSession::class,
+            default => abort(404),
+        };
+
+        $session = $model::with(['user', 'service', 'sankalp', 'pandit', 'videoMeeting'])
+            ->whereKey($id)
+            ->where('pandit_id', $pandit->id)
+            ->firstOrFail();
+
+        $booking = $this->formatDashboardSession($session, $type);
+
+        return view('pandit.bookings.show', compact('pandit', 'booking'));
     }
 
     private function formatDashboardSession($session, string $type): array
@@ -140,24 +156,30 @@ class PanditController extends Controller
         $meta = $this->decodeBookingMeta($session->admin_note);
         $serviceKey = $type === 'pooja' ? 'pooja_name' : 'hawan_name';
         $serviceName = $meta[$serviceKey] ?? $session->service?->name ?? ucfirst($type).' Booking';
+        $packageName = $session->hawan_type_title
+            ?? $meta['hawan_type_title']
+            ?? $meta['package_name']
+            ?? null;
         $canStartMeeting = $session->payment_status === 'paid'
             && $session->status === 'confirmed'
             && $session->videoMeeting;
 
         return [
             'id' => $session->id,
+            'booking_id' => strtoupper($type).'-'.$session->id,
             'type' => $type,
             'label' => ucfirst($type),
             'service_name' => $serviceName,
-            'package_name' => $meta['package_name'] ?? null,
+            'package_name' => $packageName,
             'booking_date' => $session->booking_date,
             'slot' => $session->slot,
             'status' => $session->status,
             'payment_status' => $session->payment_status,
             'completed_at' => $session->completed_at,
+            'created_at' => $session->created_at,
             'live_session_link' => $session->live_session_link,
+            'detail_url' => route('pandit.bookings.show', ['type' => $type, 'id' => $session->id]),
             'meeting_start_url' => $canStartMeeting ? route('live.session', ['type' => $type, 'id' => $session->id]) : null,
-            // 'meeting_start_url' => $canStartMeeting ? route('live.session.start', ['type' => $type, 'id' => $session->id]) : null,
             'can_start_meeting' => $canStartMeeting,
             'yajman' => $session->sankalp?->full_name ?? $session->user?->name ?? 'Not added',
             'purpose' => $session->sankalp?->purpose ?? $session->sankalp?->mannokamna ?? 'Not added',
@@ -165,11 +187,39 @@ class PanditController extends Controller
             'mobile' => $session->sankalp?->mobile,
             'dakshina' => (float) ($meta['dakshina'] ?? 0),
             'total_amount' => (float) ($meta['total_amount'] ?? $meta['package_amount'] ?? 0),
+            'amount' => (float) ($meta['total_amount'] ?? $meta['package_amount'] ?? $meta['dakshina'] ?? 0),
             'accept_url' => in_array($session->status, ['pending', 'scheduled'], true)
                 ? route('pandit.bookings.accept', ['type' => $type, 'id' => $session->id])
                 : null,
             'can_accept' => in_array($session->status, ['pending', 'scheduled'], true),
+            'cancel_url' => route('pandit.bookings.cancel', ['type' => $type, 'id' => $session->id]),
+            'can_cancel' => $session->payment_status === 'paid'
+                && !in_array($session->status, ['completed', 'cancelled', 'cancelled_by_pandit'], true),
+            'pandit_cancel_reason' => $session->pandit_cancel_reason,
+            'pandit_cancelled_at' => $session->pandit_cancelled_at,
+            'pandit_name' => $session->pandit?->pandit_name ?: ($session->pandit?->full_name ?: 'Not added'),
         ];
+    }
+
+    private function assignedBookingSessions(Pandit $pandit)
+    {
+        $hawanSessions = HawanSession::with(['user', 'service', 'sankalp', 'pandit', 'videoMeeting'])
+            ->where('pandit_id', $pandit->id)
+            ->get()
+            ->map(fn ($session) => $this->formatDashboardSession($session, 'hawan'));
+
+        $poojaSessions = PoojaSession::with(['user', 'service', 'sankalp', 'pandit', 'videoMeeting'])
+            ->where('pandit_id', $pandit->id)
+            ->get()
+            ->map(fn ($session) => $this->formatDashboardSession($session, 'pooja'));
+
+        return collect($hawanSessions)
+            ->merge($poojaSessions)
+            ->sortBy([
+                ['booking_date', 'asc'],
+                ['slot', 'asc'],
+            ])
+            ->values();
     }
 
     public function acceptBooking(Request $request, string $type, string $id)
@@ -204,6 +254,27 @@ class PanditController extends Controller
         }
 
         return back()->with('success', ucfirst($type).' booking accepted successfully.');
+    }
+
+    public function cancelBooking(Request $request, string $type, string $id)
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $result = app(PanditBookingCancellationService::class)
+            ->cancel($type, (int) $id, $pandit, $validated['reason']);
+
+        $redirect = back()->with('success', 'Refund of ₹'.number_format($result['amount']).' initiated.');
+
+        if ($result['processed']) {
+            $redirect->with('info', 'Refund Processed ₹'.number_format($result['amount']));
+        }
+
+        return $redirect;
     }
 
     private function decodeBookingMeta(?string $adminNote): array

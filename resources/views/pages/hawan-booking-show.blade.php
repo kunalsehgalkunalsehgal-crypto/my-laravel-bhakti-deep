@@ -14,6 +14,8 @@
 @endphp
 
 @section('body')
+    @include('partials.razorpay-checkout')
+
     <!-- Hero Section -->
     {{-- <section class="hawan-hero-section">
         <div class="container">
@@ -1345,7 +1347,7 @@
         const payButton = document.getElementById('payButton');
         const originalText = payButton.innerHTML;
         payButton.disabled = true;
-        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving Booking...';
+        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Starting Payment...';
 
         try {
             const response = await fetch(@json(route('hawan.store')), {
@@ -1362,6 +1364,14 @@
 
             if (!response.ok || !result.success) {
                 throw new Error(result.message || 'Booking save failed');
+            }
+
+            if (result.payment) {
+                window.startBhaktiDeepPayment(result.payment, payButton, function () {
+                    payButton.innerHTML = originalText;
+                    checkPaymentReadiness();
+                });
+                return;
             }
 
             window.location.href = result.redirect_url;
