@@ -6,6 +6,7 @@ use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Services\PanditBookingService;
 use App\Services\VideoMeetingProviderManager;
+use App\Models\VideoMeetingAttendance;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,23 @@ class VideoMeetingSdkController extends Controller
         $isHost = $request->query('mode') === 'host';
 
         abort_if($isHost && !$isAssignedPandit, 403);
+
+        $participantType = VideoMeetingAttendance::PARTICIPANT_UNKNOWN;
+        $participantId = null;
+
+        if ($isAssignedPandit) {
+            $participantType = VideoMeetingAttendance::PARTICIPANT_PANDIT;
+            $participantId = Auth::guard('pandit')->id();
+        } elseif (Auth::check() && (int) Auth::id() === (int) $bookingRecord->user_id) {
+            $participantType = VideoMeetingAttendance::PARTICIPANT_USER;
+            $participantId = Auth::id();
+        }
+
+        VideoMeetingAttendance::recordJoinAttempt($bookingRecord, $participantType, $participantId, [
+            'source' => 'embedded_sdk_config',
+            'route' => 'live.session.sdk',
+            'mode' => $isHost ? 'host' : 'participant',
+        ]);
 
         try {
             $payload = $providers

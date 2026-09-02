@@ -35,4 +35,9 @@ class VideoMeeting extends Model
     {
         return $this->morphTo(__FUNCTION__, 'session_type', 'session_id');
     }
+
+    public function attendances()
+    {
+        return $this->hasMany(VideoMeetingAttendance::class);
+    }
 }

@@ -99,6 +99,16 @@
         color: #1f1206;
     }
 
+    .report-issue-form {
+        display: none;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .report-issue-form.show {
+        display: grid;
+    }
+
     .session-note {
         color: var(--muted);
         font-size: 13px;
@@ -351,6 +361,18 @@
     $familyInvites = collect($familyInvites ?? []);
     $activeFamilyInvite = $activeFamilyInvite ?? null;
     $canManageFamily = $canManageFamily ?? false;
+    $activeDispute = $activeDispute ?? null;
+    $canReportIssue = $canManageFamily && $isPrivateBookedSession && in_array($sessionType, ['pooja', 'hawan'], true) && $bookingRecord;
+    $disputeStatusLabel = $activeDispute ? \Illuminate\Support\Str::of($activeDispute->status)->replace('_', ' ')->title() : null;
+    $reportReasons = [
+        'pandit_not_joined' => 'Pandit not joined',
+        'pandit_joined_late' => 'Pandit joined late',
+        'session_incomplete' => 'Session incomplete',
+        'wrong_service' => 'Wrong service',
+        'technical_issue' => 'Technical issue',
+        'behaviour_issue' => 'Behaviour issue',
+        'other' => 'Other',
+    ];
     $joinedCount = $familyInvites->filter(fn ($invite) => $invite->statusLabel() === 'Joined')->count();
 
     $progressByType = [
@@ -425,6 +447,14 @@
             @endif
             @if ($hasLiveRoomAccess && $sessionStatus !== 'completed')
                 <button class="btn btn-gold btn-sm rounded-pill" data-scroll-donation><i class="bi bi-heart"></i> Donate</button>
+            @endif
+            @if ($canReportIssue)
+                @if ($activeDispute)
+                    <span class="family-pill d-none d-md-inline-flex"><i class="bi bi-exclamation-circle"></i> Issue Reported - Status: {{ $disputeStatusLabel }}</span>
+                    <a class="btn btn-ghost-gold btn-sm rounded-pill" href="{{ route('user.reports.show', ['dispute' => $activeDispute]) }}"><i class="bi bi-eye"></i> View Report</a>
+                @else
+                    <button class="btn btn-ghost-gold btn-sm rounded-pill" data-toggle-report><i class="bi bi-exclamation-triangle"></i> Report an Issue</button>
+                @endif
             @endif
         </div>
     </div>
@@ -612,6 +642,54 @@
                     </div>
                 @endif
 
+                @if ($canReportIssue)
+                    <div class="glass side-panel mt-4" data-report-panel>
+                        <h3>Report an Issue</h3>
+
+                        @if (session('success'))
+                            <div class="alert alert-success mb-3">{{ session('success') }}</div>
+                        @endif
+
+                        @if ($activeDispute)
+                            <div class="alert alert-warning mb-3">Issue Reported - Status: {{ $disputeStatusLabel }}</div>
+                            <a class="btn btn-ghost-gold w-100" href="{{ route('user.reports.show', ['dispute' => $activeDispute]) }}">
+                                <i class="bi bi-eye"></i> View Report
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-ghost-gold w-100" data-toggle-report>
+                                <i class="bi bi-exclamation-triangle"></i> Report an Issue
+                            </button>
+
+                            <form method="POST" action="{{ route('live.issue-report.store', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" enctype="multipart/form-data" class="report-issue-form {{ $errors->has('reason') || $errors->has('description') || $errors->has('proof') ? 'show' : '' }}" data-report-form>
+                                @csrf
+                                <select name="reason" class="form-control sacred-input" required>
+                                    <option value="">Select reason</option>
+                                    @foreach ($reportReasons as $value => $label)
+                                        <option value="{{ $value }}" @selected(old('reason') === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('reason')
+                                    <p class="text-warning small mb-0">{{ $message }}</p>
+                                @enderror
+
+                                <textarea name="description" rows="4" class="form-control sacred-input" placeholder="Describe the issue" required>{{ old('description') }}</textarea>
+                                @error('description')
+                                    <p class="text-warning small mb-0">{{ $message }}</p>
+                                @enderror
+
+                                <input type="file" name="proof" class="form-control sacred-input" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+                                @error('proof')
+                                    <p class="text-warning small mb-0">{{ $message }}</p>
+                                @enderror
+
+                                <button class="btn btn-saffron w-100" type="submit">
+                                    <i class="bi bi-send"></i> Submit Issue
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($canManageFamily && $sessionStatus !== 'completed')
                     <div class="donation-panel mt-4" data-donation-panel data-dakshina-url="{{ route('live.dakshina.pay', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" data-csrf-token="{{ csrf_token() }}">
                         <h3><i class="bi bi-heart"></i> Dakshina</h3>
@@ -659,6 +737,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const inviteForm = document.querySelector('[data-invite-form]');
     const inviteList = document.querySelector('[data-family-list]');
     const inviteLinkBox = document.querySelector('[data-invite-link]');
+    const reportPanel = document.querySelector('[data-report-panel]');
+    const reportForm = document.querySelector('[data-report-form]');
+    const reportButtons = document.querySelectorAll('[data-toggle-report]');
     const csrfToken = @json(csrf_token());
     const familyLeaveUrl = @json($activeFamilyInvite ? route('live.family.leave', ['token' => request()->route('token')]) : null);
     const familyChannel = @json($canManageFamily && $bookingRecord ? 'live-session.'.$sessionType.'.'.$bookingRecord->id : null);
@@ -743,6 +824,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (inviteForm) {
                 inviteForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 inviteForm.querySelector('input')?.focus();
+            }
+        });
+    });
+
+    reportButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (reportPanel) {
+                reportPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if (reportForm) {
+                reportForm.classList.add('show');
+                reportForm.querySelector('select, textarea')?.focus();
             }
         });
     });

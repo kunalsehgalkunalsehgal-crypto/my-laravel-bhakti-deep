@@ -5,12 +5,14 @@ namespace App\Models\Admin\Concerns;
 use App\Models\Admin\SankalpForm;
 use App\Models\Admin\Service;
 use App\Models\BookingUserConfirmation;
+use App\Models\Dispute;
 use App\Models\OfflineArrivalOtp;
 use App\Models\PanditNoShowReport;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentDispute;
 use App\Models\SessionCompletionProof;
+use App\Models\VideoMeetingAttendance;
 use App\Models\VideoMeeting;
 use App\Models\User;
 
@@ -99,6 +101,11 @@ trait SessionModel
         return $this->morphOne(VideoMeeting::class, 'session', 'session_type', 'session_id');
     }
 
+    public function videoMeetingAttendances()
+    {
+        return $this->morphMany(VideoMeetingAttendance::class, 'session', 'session_type', 'session_id');
+    }
+
     public function latestPaymentAttempt()
     {
         return $this->belongsTo(PaymentAttempt::class, 'latest_payment_attempt_id');
@@ -132,6 +139,11 @@ trait SessionModel
     public function noShowReports()
     {
         return $this->morphMany(PanditNoShowReport::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function disputes()
+    {
+        return $this->morphMany(Dispute::class, 'disputable');
     }
 
     public function offlineArrivalOtps()

@@ -145,6 +145,9 @@
                                     $title = $type === 'Diya'
                                         ? ($booking->diya?->name ?? $meta['diya_name'] ?? 'Diya Offering')
                                         : ($booking->service?->name ?? $meta[strtolower($type).'_name'] ?? $type.' Booking');
+                                    $canRetryPayment = $type !== 'Diya'
+                                        && !in_array($booking->status, ['cancelled', 'cancelled_by_pandit', 'completed', 'refunded'], true)
+                                        && !in_array($booking->payment_status, ['paid', 'refunded'], true);
                                 @endphp
 
                                 <div class="booking-item">
@@ -157,7 +160,7 @@
                                             <em class="booking-pill">{{ ucfirst(str_replace('_', ' ', $booking->latestPaymentAttempt->status)) }}</em>
                                         @endif
                                     </div>
-                                    @if($type !== 'Diya' && $booking->payment_status !== 'paid')
+                                    @if($canRetryPayment)
                                         <button
                                             class="btn btn-saffron btn-sm rounded-pill booking-pay"
                                             type="button"

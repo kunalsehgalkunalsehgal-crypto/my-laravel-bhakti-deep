@@ -17,6 +17,7 @@ use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
+use App\Models\Dispute;
 use App\Services\PanditBookingCancellationService;
 use App\Services\VideoMeetingService;
 use Carbon\Carbon;
@@ -94,6 +95,7 @@ class PanditController extends Controller
             ->sortByDesc('created_at')
             ->take(5)
             ->values();
+        $reportedBookings = $this->reportedBookings($pandit)->take(5)->values();
 
         $activeSessions = $sessions->reject(fn ($session) => in_array($session['status'], ['completed', 'cancelled', 'cancelled_by_pandit'], true));
         $todaySessions = $activeSessions->filter(fn ($session) => $session['booking_date']?->isSameDay($today));
@@ -111,11 +113,14 @@ class PanditController extends Controller
         $nextSession = $todaySessions->first() ?: $upcomingSessions->first();
         $dashboardCounts = [
             'services' => $pandit->services()->count(),
+            'open_reports' => $reportedBookings
+                ->whereIn('status', [Dispute::STATUS_OPEN, Dispute::STATUS_UNDER_REVIEW])
+                ->count(),
             'unread_notifications' => PanditNotification::where('pandit_id', $pandit->id)->where('is_read', false)->count(),
             'unread_messages' => PanditMessage::where('pandit_id', $pandit->id)->where('sender', 'admin')->where('is_read', false)->count(),
         ];
 
-        return view('pandit.dashboard', compact('pandit', 'stats', 'nextSession', 'dashboardCounts', 'latestBookings'));
+        return view('pandit.dashboard', compact('pandit', 'stats', 'nextSession', 'dashboardCounts', 'latestBookings', 'reportedBookings'));
     }
 
     public function bookings()
@@ -220,6 +225,43 @@ class PanditController extends Controller
                 ['slot', 'asc'],
             ])
             ->values();
+    }
+
+    private function reportedBookings(Pandit $pandit)
+    {
+        return Dispute::query()
+            ->with(['disputable.service', 'disputable.sankalp', 'user'])
+            ->whereIn('disputable_type', [HawanSession::class, PoojaSession::class])
+            ->whereHasMorph('disputable', [HawanSession::class, PoojaSession::class], function ($query) use ($pandit) {
+                $query->where('pandit_id', $pandit->id);
+            })
+            ->latest()
+            ->get()
+            ->map(fn (Dispute $dispute) => $this->formatReportedBooking($dispute));
+    }
+
+    private function formatReportedBooking(Dispute $dispute): array
+    {
+        $booking = $dispute->disputable;
+        $type = $booking instanceof HawanSession ? 'hawan' : 'pooja';
+        $meta = $this->decodeBookingMeta($booking?->admin_note);
+        $serviceName = $meta[$type.'_name'] ?? $booking?->service?->name ?? ucfirst($type).' Booking';
+
+        return [
+            'id' => $dispute->id,
+            'booking_id' => strtoupper($type).'-'.$booking?->id,
+            'type' => $type,
+            'label' => ucfirst($type),
+            'service_name' => $serviceName,
+            'booking_date' => $booking?->booking_date,
+            'slot' => $booking?->slot,
+            'status' => $dispute->status,
+            'reason' => ucfirst(str_replace('_', ' ', $dispute->reason)),
+            'reported_at' => $dispute->opened_at ?: $dispute->created_at,
+            'yajman' => $booking?->sankalp?->full_name ?? $dispute->user?->name ?? 'Not added',
+            'report_url' => route('pandit.reports.show', ['dispute' => $dispute]),
+            'has_response' => filled($dispute->pandit_response),
+        ];
     }
 
     public function acceptBooking(Request $request, string $type, string $id)

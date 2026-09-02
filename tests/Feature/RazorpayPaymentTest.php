@@ -86,6 +86,50 @@ class RazorpayPaymentTest extends TestCase
             ->assertSee('Retry Payment');
     }
 
+    public function test_cancelled_refunded_booking_does_not_show_or_allow_retry(): void
+    {
+        [$user, $session] = $this->startBooking('closed-retry@example.test');
+
+        $session->update([
+            'status' => 'cancelled_by_pandit',
+            'payment_status' => 'refunded',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('user.profile'))
+            ->assertOk()
+            ->assertDontSee('Retry Payment');
+
+        $this->actingAs($user)
+            ->postJson(route('payments.bookings.retry', ['type' => 'hawan', 'id' => $session->id]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('payment');
+
+        $this->assertSame(1, $this->orders);
+        $this->assertDatabaseCount('payment_attempts', 1);
+    }
+
+    public function test_cancelled_refunded_booking_cannot_be_paid_by_old_attempt(): void
+    {
+        [$user, $session, $attempt] = $this->startBooking('closed-verify@example.test');
+
+        $session->update([
+            'status' => 'cancelled_by_pandit',
+            'payment_status' => 'refunded',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('payments.razorpay.verify'), $this->successPayload($attempt))
+            ->assertUnprocessable()
+            ->assertJson(['message' => 'This booking cannot be paid again.']);
+
+        $session->refresh();
+
+        $this->assertSame('cancelled_by_pandit', $session->status);
+        $this->assertSame('refunded', $session->payment_status);
+        $this->assertSame(PaymentAttempt::STATUS_CANCELLED, $attempt->fresh()->status);
+    }
+
     public function test_retry_uses_same_booking_with_new_razorpay_order(): void
     {
         [$user, $session, $attempt] = $this->startBooking('retry@example.test');

@@ -28,8 +28,8 @@ class PaymentController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($session->payment_status === 'paid') {
-                throw ValidationException::withMessages(['payment' => 'This booking is already paid.']);
+            if ($session->payment_status === 'paid' || $this->bookingClosedForPayment($session)) {
+                throw ValidationException::withMessages(['payment' => 'This booking cannot be paid again.']);
             }
 
             if (!$session->payment_hold_expires_at || $session->payment_hold_expires_at->lte(now())) {
@@ -75,6 +75,14 @@ class PaymentController extends Controller
             if ($session->payment_status === 'paid') {
                 $this->cancelAttempt($attempt);
                 return response()->json(['success' => true, 'redirect_url' => route('user.profile')]);
+            }
+
+            if ($this->bookingClosedForPayment($session)) {
+                if (in_array($attempt->status, [PaymentAttempt::STATUS_PENDING, PaymentAttempt::STATUS_PROCESSING], true)) {
+                    $this->cancelAttempt($attempt);
+                }
+
+                return response()->json(['message' => 'This booking cannot be paid again.'], 422);
             }
 
             if (!in_array($attempt->status, [PaymentAttempt::STATUS_PENDING, PaymentAttempt::STATUS_PROCESSING], true)) {
@@ -216,6 +224,12 @@ class PaymentController extends Controller
             ->where('payable_id', $session->id)
             ->whereIn('status', [PaymentAttempt::STATUS_PENDING, PaymentAttempt::STATUS_PROCESSING])
             ->update(['status' => PaymentAttempt::STATUS_CANCELLED, 'cancelled_at' => now()]);
+    }
+
+    private function bookingClosedForPayment(Model $session): bool
+    {
+        return in_array($session->status, ['cancelled', 'cancelled_by_pandit', 'completed', 'refunded'], true)
+            || $session->payment_status === 'refunded';
     }
 
     private function cancelAttempt(PaymentAttempt $attempt): void

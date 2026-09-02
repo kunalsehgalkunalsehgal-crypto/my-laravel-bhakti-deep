@@ -25,6 +25,7 @@
         ['Qualification', 'bi-mortarboard', route('pandit.qualification'), $activeMenu === 'qualification'],
         ['My Services', 'bi-stars', route('pandit.services'), $activeMenu === 'services'],
         ['Bookings', 'bi-calendar2-check', route('pandit.bookings.index'), $activeMenu === 'bookings'],
+        ['Reports', 'bi-exclamation-triangle', route('pandit.reports.index'), $activeMenu === 'reports'],
         ['Live Sessions', 'bi-camera-video', route('live.sessions'), $activeMenu === 'live-sessions'],
         ['Availability', 'bi-clock-history', route('pandit.availability'), $activeMenu === 'availability'],
         ['Earnings', 'bi-currency-rupee', '#', $activeMenu === 'earnings'],
@@ -39,6 +40,14 @@
     ];
     $unreadCount = isset($pandit) ? \App\Models\Pandit\PanditNotification::where('pandit_id', $pandit->id)->where('is_read', false)->count() : 0;
     $unreadMessages = isset($pandit) ? \App\Models\Pandit\PanditMessage::where('pandit_id', $pandit->id)->where('sender', 'admin')->where('is_read', false)->count() : 0;
+    $openReportCount = isset($pandit)
+        ? \App\Models\Dispute::query()
+            ->whereIn('status', [\App\Models\Dispute::STATUS_OPEN, \App\Models\Dispute::STATUS_UNDER_REVIEW])
+            ->whereHasMorph('disputable', [\App\Models\Admin\HawanSession::class, \App\Models\Admin\PoojaSession::class], function ($query) use ($pandit) {
+                $query->where('pandit_id', $pandit->id);
+            })
+            ->count()
+        : 0;
 @endphp
 
 <input type="checkbox" id="panditMenuToggle" class="pandit-menu-toggle">
@@ -67,6 +76,9 @@
                         <span>{{ $label }}</span>
                         @if($label === 'Notifications' && $unreadCount > 0)
                             <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadCount }}</span>
+                        @endif
+                        @if($label === 'Reports' && $openReportCount > 0)
+                            <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $openReportCount }}</span>
                         @endif
                         @if($label === 'Messages' && $unreadMessages > 0)
                             <span style="margin-left:auto;background:#e85d04;color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:2px 8px">{{ $unreadMessages }}</span>

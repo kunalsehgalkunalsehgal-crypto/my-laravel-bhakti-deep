@@ -27,13 +27,17 @@ use App\Http\Controllers\DiyaController;
 use App\Http\Controllers\HawanController;
 use App\Http\Controllers\LiveSessionController;
 use App\Http\Controllers\PanditController;
+use App\Http\Controllers\PanditReportController;
 use App\Http\Controllers\PanditSelectionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PoojaController;
 use App\Http\Controllers\UserProfileController;
+use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\VideoMeetingSdkController;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
+use App\Models\Dispute;
+use App\Models\VideoMeetingAttendance;
 use App\Services\PanditBookingService;
 use App\Services\VideoMeetingProviderManager;
 use Illuminate\Support\Facades\Auth;
@@ -164,6 +168,22 @@ Route::get('/live-sessions/{type}/{id}/join', function (string $type, string $id
         403
     );
 
+    $participantType = VideoMeetingAttendance::PARTICIPANT_UNKNOWN;
+    $participantId = null;
+
+    if (Auth::check() && (int) Auth::id() === (int) $bookingRecord->user_id) {
+        $participantType = VideoMeetingAttendance::PARTICIPANT_USER;
+        $participantId = Auth::id();
+    } elseif (Auth::guard('pandit')->check() && (int) Auth::guard('pandit')->id() === (int) $bookingRecord->pandit_id) {
+        $participantType = VideoMeetingAttendance::PARTICIPANT_PANDIT;
+        $participantId = Auth::guard('pandit')->id();
+    }
+
+    VideoMeetingAttendance::recordJoinAttempt($bookingRecord, $participantType, $participantId, [
+        'source' => 'external_join_route',
+        'route' => 'live.session.join',
+    ]);
+
     return redirect()->away($bookingRecord->videoMeeting->join_url);
 })->whereIn('type', ['pooja', 'hawan'])->name('live.session.join');
 Route::get('/live-sessions/{type}/{id}/start', function (string $type, string $id) {
@@ -183,6 +203,16 @@ Route::get('/live-sessions/{type}/{id}/start', function (string $type, string $i
         && $bookingRecord->status === 'confirmed'
         && filled($bookingRecord->videoMeeting?->external_meeting_id),
         403
+    );
+
+    VideoMeetingAttendance::recordJoinAttempt(
+        $bookingRecord,
+        VideoMeetingAttendance::PARTICIPANT_PANDIT,
+        Auth::guard('pandit')->id(),
+        [
+            'source' => 'external_start_route',
+            'route' => 'live.session.start',
+        ]
     );
 
     return redirect()->away(
@@ -222,6 +252,16 @@ Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
         403
     );
 
+    $activeDispute = null;
+
+    if (Auth::check() && (int) $bookingRecord->user_id === (int) Auth::id()) {
+        $activeDispute = $bookingRecord->disputes()
+            ->where('user_id', Auth::id())
+            ->whereIn('status', [Dispute::STATUS_OPEN, Dispute::STATUS_UNDER_REVIEW])
+            ->latest()
+            ->first();
+    }
+
     return view('pages.live', [
         'sessionType' => $type,
         'sessionId' => $id,
@@ -229,6 +269,7 @@ Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
         'embeddedMeetingView' => $bookingRecord?->videoMeeting?->provider === 'zoom' ? 'video-meetings.zoom-sdk' : null,
         'familyInvites' => app(LiveSessionController::class)->familyInvites($bookingRecord),
         'canManageFamily' => Auth::check() && (int) $bookingRecord->user_id === (int) Auth::id(),
+        'activeDispute' => $activeDispute,
     ]);
 })->whereIn('type', ['aarti', 'pooja', 'hawan', 'diya'])->name('live.session');
 Route::get('/book-pooja', fn () => redirect('/personalized-pooja'))->name('pooja.booking');
@@ -282,6 +323,10 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::post('/bookings/{type}/{id}/cancel', [PanditController::class, 'cancelBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.cancel');
+    Route::get('/reports', [PanditReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/{dispute}', [PanditReportController::class, 'show'])->name('reports.show');
+    Route::post('/reports/{dispute}/response', [PanditReportController::class, 'respond'])->name('reports.respond');
+    Route::get('/reports/{dispute}/evidences/{evidence}', [PanditReportController::class, 'evidence'])->name('reports.evidence');
 
 
 
@@ -454,6 +499,11 @@ Route::post('/live-sessions/{type}/{id}/family-invites/{invite}/revoke', [LiveSe
 Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class, 'payDakshina'])
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.dakshina.pay');
+Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::class, 'storeIssueReport'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.issue-report.store');
+Route::get('/reports/{dispute}', [UserReportController::class, 'show'])->name('user.reports.show');
+Route::get('/reports/{dispute}/evidences/{evidence}', [UserReportController::class, 'evidence'])->name('user.reports.evidence');
 Route::get('/light-diya/continue', function () {
     return redirect()->route('light-diya');
 })->name('diya.continue');

@@ -7,14 +7,19 @@ use App\Models\Admin\Donation;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PaymentLog;
 use App\Models\Admin\PoojaSession;
+use App\Models\Dispute;
 use App\Models\LiveSessionInvite;
+use App\Models\Pandit\PanditNotification;
+use App\Models\VideoMeetingAttendance;
 use App\Services\VideoMeetingProviderManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class LiveSessionController extends Controller
@@ -101,6 +106,12 @@ class LiveSessionController extends Controller
 
         abort_unless($this->bookingReady($booking), 403);
 
+        VideoMeetingAttendance::recordJoinAttempt($booking, VideoMeetingAttendance::PARTICIPANT_UNKNOWN, null, [
+            'source' => 'family_invite_sdk_config',
+            'route' => 'live.family.sdk',
+            'invite_id' => $invite->id,
+        ]);
+
         $this->markInviteJoined($invite);
 
         return response()->json(
@@ -156,6 +167,70 @@ class LiveSessionController extends Controller
         ]);
     }
 
+    public function storeIssueReport(Request $request, string $type, string $id): RedirectResponse
+    {
+        $booking = $this->ownedReportableBooking($type, $id);
+        $activeStatuses = [Dispute::STATUS_OPEN, Dispute::STATUS_UNDER_REVIEW];
+
+        $existingDispute = $booking->disputes()
+            ->where('user_id', Auth::id())
+            ->whereIn('status', $activeStatuses)
+            ->first();
+
+        if ($existingDispute) {
+            return back()->with('success', 'Issue Reported - Status: Open');
+        }
+
+        $validated = $request->validate([
+            'reason' => [
+                'required',
+                'string',
+                Rule::in([
+                    'pandit_not_joined',
+                    'pandit_joined_late',
+                    'session_incomplete',
+                    'wrong_service',
+                    'technical_issue',
+                    'behaviour_issue',
+                    'other',
+                ]),
+            ],
+            'description' => ['required', 'string', 'max:5000'],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ]);
+
+        $dispute = $booking->disputes()->create([
+            'user_id' => Auth::id(),
+            'pandit_id' => $booking->pandit_id,
+            'reason' => $validated['reason'],
+            'description' => $validated['description'],
+            'status' => Dispute::STATUS_OPEN,
+            'opened_at' => now(),
+        ]);
+
+        if ($request->hasFile('proof')) {
+            $file = $request->file('proof');
+            $filePath = Storage::disk('local')->putFileAs(
+                'dispute-evidences/'.$dispute->id,
+                $file,
+                Str::uuid().'.'.$file->extension()
+            );
+
+            $dispute->evidences()->create([
+                'uploaded_by_type' => Auth::user()::class,
+                'uploaded_by_id' => Auth::id(),
+                'file_path' => $filePath,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
+
+        $this->notifyPanditAboutIssueReport($booking, $dispute);
+
+        return back()->with('success', 'Issue Reported - Status: Open');
+    }
+
     public function familyInvites(Model $booking)
     {
         return LiveSessionInvite::query()
@@ -177,12 +252,49 @@ class LiveSessionController extends Controller
         return $booking;
     }
 
+    private function ownedReportableBooking(string $type, string $id): Model
+    {
+        abort_unless(Auth::check(), 403);
+
+        $booking = $this->bookingRecord($type, $id);
+
+        abort_unless((int) $booking->user_id === (int) Auth::id(), 403);
+
+        return $booking;
+    }
+
     private function bookingRecord(string $type, string $id): Model
     {
         return match ($type) {
             'pooja' => PoojaSession::with(['sankalp', 'videoMeeting'])->findOrFail($id),
             'hawan' => HawanSession::with(['sankalp', 'videoMeeting'])->findOrFail($id),
         };
+    }
+
+    private function notifyPanditAboutIssueReport(Model $booking, Dispute $dispute): void
+    {
+        if (!$booking->pandit_id) {
+            return;
+        }
+
+        $type = $booking instanceof HawanSession ? 'Hawan' : 'Pooja';
+        $serviceName = $this->bookingServiceName($booking, strtolower($type));
+
+        PanditNotification::create([
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'New issue reported',
+            'message' => 'A user reported an issue for '.$type.' booking #'.$booking->id.' - '.$serviceName.'. Open Reports to respond. Report #'.$dispute->id.'.',
+            'is_read' => false,
+        ]);
+    }
+
+    private function bookingServiceName(Model $booking, string $type): string
+    {
+        $meta = $booking->admin_note ? (json_decode($booking->admin_note, true) ?: []) : [];
+
+        return $meta[$type.'_name']
+            ?? $booking->service?->name
+            ?? ucfirst($type).' Booking';
     }
 
     private function validInvite(string $token): LiveSessionInvite
