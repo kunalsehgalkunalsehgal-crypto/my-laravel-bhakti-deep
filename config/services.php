@@ -51,4 +51,8 @@ return [
         'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com'),
     ],
 
+    'payouts' => [
+        'provider' => env('PAYOUT_PROVIDER'),
+    ],
+
 ];

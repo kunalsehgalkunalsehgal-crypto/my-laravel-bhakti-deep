@@ -26,7 +26,7 @@
         ['My Services', 'bi-stars', route('pandit.services'), $activeMenu === 'services'],
         ['Bookings', 'bi-calendar2-check', route('pandit.bookings.index'), $activeMenu === 'bookings'],
         ['Reports', 'bi-exclamation-triangle', route('pandit.reports.index'), $activeMenu === 'reports'],
-        ['Live Sessions', 'bi-camera-video', route('live.sessions'), $activeMenu === 'live-sessions'],
+        ['Live Sessions', 'bi-camera-video', route('pandit.live-sessions.index'), $activeMenu === 'live-sessions'],
         ['Availability', 'bi-clock-history', route('pandit.availability'), $activeMenu === 'availability'],
         ['Earnings', 'bi-currency-rupee', '#', $activeMenu === 'earnings'],
         ['Dakshina', 'bi-gift', '#', $activeMenu === 'dakshina'],

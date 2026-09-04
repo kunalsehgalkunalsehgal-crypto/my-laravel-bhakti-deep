@@ -11,6 +11,7 @@ use App\Models\Dispute;
 use App\Models\LiveSessionInvite;
 use App\Models\Pandit\PanditNotification;
 use App\Models\VideoMeetingAttendance;
+use App\Services\PanditPayoutLedgerService;
 use App\Services\VideoMeetingProviderManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -178,6 +179,8 @@ class LiveSessionController extends Controller
             ->first();
 
         if ($existingDispute) {
+            app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'existing_dispute_open');
+
             return back()->with('success', 'Issue Reported - Status: Open');
         }
 
@@ -227,6 +230,7 @@ class LiveSessionController extends Controller
         }
 
         $this->notifyPanditAboutIssueReport($booking, $dispute);
+        app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'dispute_opened');
 
         return back()->with('success', 'Issue Reported - Status: Open');
     }

@@ -21,6 +21,8 @@
         ['Blogs', 'admin.blogs.index', 'manage-blogs'],
         ['Notifications', 'admin.notifications.index', 'view-notifications'],
         ['Reports', 'admin.reports.index', 'view-reports'],
+        ['Disputes', 'admin.disputes.index', 'view-reports'],
+        ['Payouts', 'admin.payouts.index', 'view-reports'],
         ['Admin Roles', 'admin.roles.index', 'manage-roles'],
         ['Permissions', 'admin.permissions.index', 'manage-permissions'],
         ['Admin Users', 'admin.admins.index', 'manage-admins'],

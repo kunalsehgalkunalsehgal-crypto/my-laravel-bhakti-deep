@@ -7,11 +7,13 @@ use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminDeityController;
 use App\Http\Controllers\Admin\AdminDiyaController;
+use App\Http\Controllers\Admin\AdminDisputeController;
 use App\Http\Controllers\Admin\AdminDonationController;
 use App\Http\Controllers\Admin\AdminHawanController;
 use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminPanditController;
+use App\Http\Controllers\Admin\AdminPayoutController;
 use App\Http\Controllers\Admin\AdminPermissionController;
 use App\Http\Controllers\Admin\AdminPlaylistController;
 use App\Http\Controllers\Admin\AdminPoojaController;
@@ -27,6 +29,7 @@ use App\Http\Controllers\DiyaController;
 use App\Http\Controllers\HawanController;
 use App\Http\Controllers\LiveSessionController;
 use App\Http\Controllers\PanditController;
+use App\Http\Controllers\PanditLiveSessionController;
 use App\Http\Controllers\PanditReportController;
 use App\Http\Controllers\PanditSelectionController;
 use App\Http\Controllers\PaymentController;
@@ -298,6 +301,10 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::get('/bookings/{type}/{id}', [PanditController::class, 'showBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.show');
+    Route::get('/live-sessions', [PanditLiveSessionController::class, 'index'])->name('live-sessions.index');
+    Route::get('/live-sessions/{type}/{id}', [PanditLiveSessionController::class, 'show'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live-sessions.show');
     Route::post('/resubmit', [PanditController::class, 'resubmit'])->name('resubmit');
     Route::get('/profile', [PanditController::class, 'profile'])->name('profile');
     Route::post('/profile', [PanditController::class, 'updateProfile'])->name('profile.update');
@@ -472,6 +479,29 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/reports', [AdminReportController::class, 'index'])
             ->middleware('admin.permission:view-reports')
             ->name('reports.index');
+
+        Route::get('/payouts', [AdminPayoutController::class, 'index'])
+            ->middleware('admin.permission:view-reports')
+            ->name('payouts.index');
+
+        Route::get('/disputes', [AdminDisputeController::class, 'index'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.index');
+        Route::get('/disputes/{dispute}', [AdminDisputeController::class, 'show'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.show');
+        Route::patch('/disputes/{dispute}', [AdminDisputeController::class, 'update'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.update');
+        Route::post('/disputes/{dispute}/refund-user', [AdminDisputeController::class, 'refundUser'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.refund-user');
+        Route::post('/disputes/{dispute}/resolve-pandit-favour', [AdminDisputeController::class, 'resolvePanditFavour'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.resolve-pandit-favour');
+        Route::get('/disputes/{dispute}/evidences/{evidence}', [AdminDisputeController::class, 'evidence'])
+            ->middleware('admin.permission:view-reports')
+            ->name('disputes.evidence');
 
         Route::resource('/settings', AdminSettingController::class)
             ->middleware('admin.permission:manage-settings');

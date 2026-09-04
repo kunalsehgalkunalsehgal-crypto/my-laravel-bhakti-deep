@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\VideoMeetingProvider;
+use App\Events\LiveSessionUpdated;
 use App\Models\Admin\HawanSession;
 use App\Models\Pandit\Pandit;
 use App\Models\PanditZoomConnection;
@@ -11,6 +12,7 @@ use App\Models\VideoMeeting;
 use App\Models\VideoMeetingAttendance;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class ZoomAttendanceProofTest extends TestCase
@@ -56,6 +58,7 @@ class ZoomAttendanceProofTest extends TestCase
     public function test_signed_zoom_webhooks_record_actual_attendance_and_skip_duplicates(): void
     {
         config(['services.zoom.webhook_secret_token' => 'test-webhook-secret']);
+        Event::fake([LiveSessionUpdated::class]);
         [$user, $pandit, $session, $meeting] = $this->sessionWithMeeting('zoom', '987654321');
 
         PanditZoomConnection::create([
@@ -154,6 +157,7 @@ class ZoomAttendanceProofTest extends TestCase
             'participant_type' => VideoMeetingAttendance::PARTICIPANT_UNKNOWN,
             'event_type' => VideoMeetingAttendance::EVENT_MEETING_ENDED,
         ]);
+        Event::assertDispatched(LiveSessionUpdated::class);
     }
 
     public function test_zoom_webhook_rejects_invalid_signature(): void

@@ -184,7 +184,7 @@ class PanditController extends Controller
             'created_at' => $session->created_at,
             'live_session_link' => $session->live_session_link,
             'detail_url' => route('pandit.bookings.show', ['type' => $type, 'id' => $session->id]),
-            'meeting_start_url' => $canStartMeeting ? route('live.session', ['type' => $type, 'id' => $session->id]) : null,
+            'meeting_start_url' => $canStartMeeting ? route('pandit.live-sessions.show', ['type' => $type, 'id' => $session->id]) : null,
             'can_start_meeting' => $canStartMeeting,
             'yajman' => $session->sankalp?->full_name ?? $session->user?->name ?? 'Not added',
             'purpose' => $session->sankalp?->purpose ?? $session->sankalp?->mannokamna ?? 'Not added',

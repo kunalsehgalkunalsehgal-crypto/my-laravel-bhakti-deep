@@ -8,7 +8,6 @@ use App\Models\Admin\NotificationLog;
 use App\Models\Admin\PaymentLog;
 use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
-use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentRefund;
 use Illuminate\Database\Eloquent\Model;
@@ -60,6 +59,7 @@ class PanditBookingCancellationService
                 'reason' => $reason,
                 'status' => $processed ? PaymentRefund::STATUS_REFUNDED : PaymentRefund::STATUS_PROCESSING,
                 'gateway_refund_id' => $refundData['id'] ?? null,
+                'gateway_status' => $refundData['status'] ?? null,
                 'requested_at' => now(),
                 'processed_at' => $processed ? now() : null,
                 'metadata' => $refundData,
@@ -78,25 +78,7 @@ class PanditBookingCancellationService
                 'refunded_amount' => $processed ? $amount : 0,
             ]);
 
-            PanditPayout::where('session_type', get_class($session))
-                ->where('session_id', $session->id)
-                ->update(['status' => PanditPayout::STATUS_CANCELLED, 'payout_amount' => 0]);
-
-            PanditPayout::create([
-                'pandit_id' => $pandit->id,
-                'payment_attempt_id' => $attempt->id,
-                'donation_id' => $attempt->donation_id,
-                'session_type' => get_class($session),
-                'session_id' => $session->id,
-                'payout_type' => PanditPayout::TYPE_BOOKING,
-                'gross_amount' => $amount,
-                'platform_fee' => 0,
-                'dakshina_amount' => 0,
-                'payout_amount' => 0,
-                'currency' => $attempt->currency,
-                'status' => PanditPayout::STATUS_CANCELLED,
-                'metadata' => ['not_eligible_reason' => 'cancelled_by_pandit'],
-            ]);
+            app(PanditPayoutLedgerService::class)->cancelForRefund($session, $attempt, 'cancelled_by_pandit');
 
             $this->log($attempt, $refund, $processed);
             $this->notifyUser($session, $initiatedMessage);

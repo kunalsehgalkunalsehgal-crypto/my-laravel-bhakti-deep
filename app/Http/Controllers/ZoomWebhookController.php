@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\LiveSessionUpdated;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Models\PanditZoomConnection;
@@ -67,6 +68,10 @@ class ZoomWebhookController extends Controller
         }
 
         $this->storeAttendance($request, $meeting, $eventType);
+
+        if ($meeting->session) {
+            broadcast(new LiveSessionUpdated($meeting->session));
+        }
 
         return response()->json([
             'status' => 'success'

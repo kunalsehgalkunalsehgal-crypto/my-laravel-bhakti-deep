@@ -43,7 +43,8 @@
         th, td { text-align:left; padding:12px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
         th { color:#475467; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
         .badge { display:inline-flex; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; font-weight:700; }
-        .badge.active, .badge.paid, .badge.published, .badge.completed { background:#e8f7f1; color:#067647; }
+        .badge.active, .badge.paid, .badge.published, .badge.completed, .badge.ready { background:#e8f7f1; color:#067647; }
+        .badge.hold, .badge.processing { background:#fff7e6; color:var(--warn); }
         .badge.failed, .badge.cancelled, .badge.inactive { background:#fff1f0; color:var(--bad); }
         .alert { padding:11px 13px; border-radius:7px; margin-bottom:14px; border:1px solid var(--line); background:#fff; }
         .alert.success { border-color:#a6e7c8; color:#067647; background:#effaf5; }

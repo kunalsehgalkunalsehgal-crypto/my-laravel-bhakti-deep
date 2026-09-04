@@ -8,9 +8,11 @@ use App\Models\Admin\DiyaSession;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Services\PanditBookingService;
+use App\Services\PanditPayoutLedgerService;
 use App\Services\VideoMeetingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AdminBookingController extends Controller
 {
@@ -38,7 +40,7 @@ class AdminBookingController extends Controller
 
     public function show(string $type, string $id)
     {
-        $record = $this->model($type)::with(['user', 'service', 'sankalp', 'pandit'])->findOrFail($id);
+        $record = $this->model($type)::with(['user', 'service', 'sankalp', 'pandit', 'panditPayouts'])->findOrFail($id);
 
         return view('admin.bookings.show', compact('record', 'type'));
     }
@@ -52,9 +54,17 @@ class AdminBookingController extends Controller
             'admin_note' => ['nullable', 'string'],
         ]);
 
-        $record = $this->model($type)::findOrFail($id);
-        $data['completed_at'] = $data['status'] === 'completed' ? now() : $record->completed_at;
-        $record->update($data);
+        $record = DB::transaction(function () use ($type, $id, $data) {
+            $record = $this->model($type)::whereKey($id)->lockForUpdate()->firstOrFail();
+            $data['completed_at'] = $data['status'] === 'completed' ? now() : $record->completed_at;
+            $record->update($data);
+
+            if (in_array($type, ['hawan', 'pooja'], true)) {
+                app(PanditPayoutLedgerService::class)->syncForBooking($record, 'admin_booking_update');
+            }
+
+            return $record;
+        });
 
         if (in_array($type, ['hawan', 'pooja'], true)) {
             rescue(fn () => app(VideoMeetingService::class)->createForSessionIfReady($record));

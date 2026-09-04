@@ -9,6 +9,7 @@ use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditAvailabilitySlot;
 use App\Models\Pandit\PanditOnlineSetup;
 use App\Models\Pandit\PanditService;
+use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
 use App\Models\User;
 use Carbon\Carbon;
@@ -60,6 +61,16 @@ class RazorpayPaymentTest extends TestCase
         $this->assertSame(PaymentAttempt::STATUS_PAID, $attempt->fresh()->status);
         $this->assertSame('paid', Donation::first()->payment_status);
         $this->assertDatabaseCount('video_meetings', 0);
+        $this->assertDatabaseHas('pandit_payouts', [
+            'payment_attempt_id' => $attempt->id,
+            'session_type' => HawanSession::class,
+            'session_id' => $session->id,
+            'status' => PanditPayout::STATUS_HOLD,
+            'booking_amount' => 5102,
+            'pandit_amount' => 5102,
+            'platform_amount' => 0,
+            'paid_at' => null,
+        ]);
 
         Http::assertSent(fn ($request) => $request['amount'] === 510200);
     }

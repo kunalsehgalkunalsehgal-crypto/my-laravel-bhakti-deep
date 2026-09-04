@@ -29,6 +29,7 @@ class PaymentRefund extends Model
         'reason',
         'status',
         'gateway_refund_id',
+        'gateway_status',
         'requested_at',
         'approved_at',
         'processed_at',

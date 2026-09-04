@@ -5,6 +5,7 @@ use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
 use App\Models\Admin\Admin;
+use App\Models\User;
 
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -18,8 +19,12 @@ Broadcast::channel('live-session.{type}.{id}', function ($user, string $type, st
         default => null,
     };
 
-    return $booking && (int) $booking->user_id === (int) $user->id;
-}, ['guards' => ['web']]);
+    return $booking && match (true) {
+        $user instanceof User => (int) $booking->user_id === (int) $user->id,
+        $user instanceof Pandit => (int) $booking->pandit_id === (int) $user->id,
+        default => false,
+    };
+}, ['guards' => ['web', 'pandit']]);
 
 // Admin <-> Pandit private chat
 Broadcast::channel('pandit.chat.{panditId}', function ($user, $panditId) {

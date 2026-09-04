@@ -10,6 +10,7 @@ use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
 use App\Models\PaymentAttempt;
 use App\Services\PanditBookingService;
+use App\Services\PanditPayoutLedgerService;
 use App\Services\RazorpayPaymentService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -122,6 +123,10 @@ class PaymentController extends Controller
                 'status' => 'scheduled',
                 'payment_status' => 'paid',
             ]);
+
+            if ($attempt->purpose === PaymentAttempt::PURPOSE_BOOKING) {
+                app(PanditPayoutLedgerService::class)->holdForSuccessfulPayment($session, $attempt);
+            }
 
             $this->log($attempt, 'payment_verified', 'paid', $data);
 

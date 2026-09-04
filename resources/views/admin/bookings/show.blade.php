@@ -13,6 +13,7 @@
         $packageLabel = $type === 'hawan' ? 'Hawan Type' : 'Package';
         $dakshina = isset($bookingMeta['dakshina']) ? 'Rs.'.number_format((float) $bookingMeta['dakshina']) : '-';
         $totalAmount = isset($bookingMeta['total_amount']) ? 'Rs.'.number_format((float) $bookingMeta['total_amount']) : '-';
+        $payout = $record->panditPayouts->sortByDesc('created_at')->first();
     @endphp
     <div class="toolbar"><h1>{{ ucfirst($type) }} Booking #{{ $record->id }}</h1><a class="btn" href="{{ route('admin.bookings.'.$type) }}">Back</a></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));">
@@ -47,6 +48,21 @@
             </tbody></table>
         </div>
     </div>
+    @if($payout)
+        <div class="panel">
+            <h2>Payout</h2>
+            <table><tbody>
+                <tr><th>Status</th><td><span class="badge {{ $payout->status }}">{{ ucfirst($payout->status) }}</span></td></tr>
+                <tr><th>Booking Amount</th><td>Rs {{ number_format((float) $payout->booking_amount) }}</td></tr>
+                <tr><th>Pandit Amount</th><td>Rs {{ number_format((float) $payout->pandit_amount) }}</td></tr>
+                <tr><th>Platform Amount</th><td>Rs {{ number_format((float) $payout->platform_amount) }}</td></tr>
+                <tr><th>Provider Payout ID</th><td>{{ $payout->provider_payout_id ?: ($payout->payout_reference ?: 'Not Available') }}</td></tr>
+                <tr><th>Eligible At</th><td>{{ $payout->eligible_at?->format('d M Y, h:i A') ?? 'Not Available' }}</td></tr>
+                <tr><th>Paid At</th><td>{{ $payout->paid_at?->format('d M Y, h:i A') ?? 'Not Available' }}</td></tr>
+                <tr><th>Cancelled At</th><td>{{ $payout->cancelled_at?->format('d M Y, h:i A') ?? 'Not Available' }}</td></tr>
+            </tbody></table>
+        </div>
+    @endif
     <form class="panel" method="POST" action="{{ route('admin.bookings.update', [$type, $record]) }}">
         @csrf @method('PUT')
         <h2>Update Session</h2>

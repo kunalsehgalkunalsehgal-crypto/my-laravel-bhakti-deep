@@ -200,7 +200,7 @@ class PanditDashboardTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_pandit_start_session_links_to_internal_live_session(): void
+    public function test_pandit_start_session_links_to_secure_pandit_live_session(): void
     {
         [$pandit] = $this->pandits();
         $user = User::factory()->create(['name' => 'Rohan Sen']);
@@ -229,7 +229,8 @@ class PanditDashboardTest extends TestCase
             ->get(route('pandit.bookings.index'));
 
         $response->assertOk()
-            ->assertSee(route('live.session', ['type' => 'pooja', 'id' => $booking->id]), false)
+            ->assertSee(route('pandit.live-sessions.show', ['type' => 'pooja', 'id' => $booking->id]), false)
+            ->assertDontSee(route('live.session', ['type' => 'pooja', 'id' => $booking->id]), false)
             ->assertDontSee(route('live.session.start', ['type' => 'pooja', 'id' => $booking->id]), false)
             ->assertDontSee('target="_blank"', false);
     }

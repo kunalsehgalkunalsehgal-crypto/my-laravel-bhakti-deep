@@ -359,6 +359,8 @@
     $playerImage = file_exists($sessionImage) ? $session['image'] : $session['fallbackImage'];
     $topbarLabel = ['upcoming' => 'Starting Soon', 'live' => 'LIVE', 'completed' => 'Completed'][$sessionStatus] ?? 'LIVE';
     $familyInvites = collect($familyInvites ?? []);
+    $liveRealtimeSnapshot = $bookingRecord ? \App\Support\LiveSessionSnapshot::make($bookingRecord) : null;
+    $liveRealtimeStatus = $liveRealtimeSnapshot['session']['status'] ?? $topbarLabel;
     $activeFamilyInvite = $activeFamilyInvite ?? null;
     $canManageFamily = $canManageFamily ?? false;
     $activeDispute = $activeDispute ?? null;
@@ -441,9 +443,10 @@
             </a>
         </div>
         <div class="d-flex align-items-center gap-2 gap-md-3 live-topbar-actions">
-            <span class="live-pill {{ $sessionStatus }}"><i></i> {{ $topbarLabel }}</span>
+            <span class="live-pill {{ $sessionStatus }}" data-live-session-pill><i></i> <span data-live-session-status>{{ $liveRealtimeStatus }}</span></span>
             @if ($hasLiveRoomAccess)
                 <span class="family-pill d-none d-sm-inline-flex"><i class="bi bi-people"></i> <span data-family-top-count>{{ $joinedCount }}</span> family joined</span>
+                <span class="family-pill d-none d-md-inline-flex"><i class="bi bi-broadcast"></i> <span data-live-total-present>{{ $liveRealtimeSnapshot['counts']['total_present'] ?? 0 }}</span> present</span>
             @endif
             @if ($hasLiveRoomAccess && $sessionStatus !== 'completed')
                 <button class="btn btn-gold btn-sm rounded-pill" data-scroll-donation><i class="bi bi-heart"></i> Donate</button>
@@ -584,7 +587,7 @@
 
                 <div class="glass timeline-card large mt-4">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h3>Session Progress</h3><small>{{ $completedSteps }} of {{ count($sessionProgress) }} complete</small>
+                        <h3>Session Progress</h3><small><span data-live-joined-count>{{ $liveRealtimeSnapshot['counts']['joined'] ?? 0 }}</span> joined / <span data-live-left-count>{{ $liveRealtimeSnapshot['counts']['left'] ?? 0 }}</span> left</small>
                     </div>
                     @foreach ($sessionProgress as $i => $row)
                         <div class="timeline-row {{ $row[1] }}"><span>{!! $row[1] === 'done' ? '&#10003;' : $i + 1 !!}</span><strong>{{ $row[0] }}<small>{{ $row[2] }}</small></strong></div>
@@ -602,10 +605,12 @@
                                 $inviteExpired = $invite->expires_at && $invite->expires_at->isPast();
                                 $inviteStatus = $invite->revoked_at ? 'Revoked' : ($inviteExpired ? 'Expired' : $invite->statusLabel());
                             @endphp
-                            <div class="family-row {{ strtolower($inviteStatus) }}" data-invite-row="{{ $invite->id }}">
+                            <div class="family-row {{ strtolower($inviteStatus) }}" data-invite-row="{{ $invite->id }}" data-family-presence-id="{{ $invite->id }}">
                                 <b>{{ substr($invite->name, 0, 1) }}</b>
                                 <strong>{{ $invite->relation }}<small>{{ $invite->name }}</small></strong>
-                                <em><i class="bi bi-check-circle"></i> <span data-invite-status>{{ $inviteStatus }}</span></em>
+                                <em><i class="bi bi-check-circle"></i> <span data-invite-status data-presence-status>{{ $inviteStatus }}</span></em>
+                                <span hidden data-presence-joined-at>{{ $invite->joined_at?->format('d M Y, h:i A') ?? 'Not joined' }}</span>
+                                <span hidden data-presence-left-at>{{ $invite->left_at?->format('d M Y, h:i A') ?? '-' }}</span>
                                 @if ($canManageFamily && !$invite->revoked_at)
                                     <button type="button" class="btn btn-ghost-gold btn-sm" data-revoke-invite="{{ route('live.family.revoke', ['type' => $sessionType, 'id' => $bookingRecord->id, 'invite' => $invite]) }}">Revoke</button>
                                 @endif
@@ -634,6 +639,11 @@
                 @if ($bookingRecord)
                     <div class="glass side-panel mt-4">
                         <h3>Booking Details</h3>
+                        <div class="coming-row"><i class="bi bi-broadcast"></i><strong>Meeting Status<small data-live-session-status>{{ $liveRealtimeSnapshot['session']['status'] ?? $topbarLabel }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row"><i class="bi bi-play-circle"></i><strong>Started<small data-live-started-at>{{ $liveRealtimeSnapshot['session']['started_at'] ?? 'Not started' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row"><i class="bi bi-stop-circle"></i><strong>Ended<small data-live-ended-at>{{ $liveRealtimeSnapshot['session']['ended_at'] ?? 'Not ended' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row" data-presence-person="user"><i class="bi bi-person"></i><strong>User<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['user']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['user']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row" data-presence-person="pandit"><i class="bi bi-person-badge"></i><strong>Pandit<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['pandit']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['pandit']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-person"></i><strong>Sankalp Name<small>{{ $sankalpName }}</small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-heart"></i><strong>Purpose<small>{{ $bookingPurpose }}</small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-box"></i><strong>Package<small>{{ $bookingPackage }}</small></strong><em class="bi bi-check-circle"></em></div>
@@ -800,14 +810,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         inviteList.prepend(row);
     };
-
-    if (familyChannel && window.Echo) {
-        window.Echo.private(familyChannel)
-            .listen('.FamilyMemberStatusChanged', function (event) {
-                setInviteStatus(event.invite);
-                setFamilyCount(event.joined_count);
-            });
-    }
 
     if (liveExitLink) {
         liveExitLink.addEventListener('click', function (event) {
@@ -1018,5 +1020,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+@if($canManageFamily && $bookingRecord)
+    @include('live-sessions.realtime', ['channelName' => 'live-session.'.$sessionType.'.'.$bookingRecord->id])
+@endif
 @endpush
 @endsection
