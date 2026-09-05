@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\Admin\Admin;
 use App\Models\Admin\Donation;
+use App\Services\PanditDisputeNotificationService;
+use App\Services\UserBookingNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -53,6 +55,13 @@ class PaymentRefund extends Model
     {
         static::creating(function (PaymentRefund $refund) {
             $refund->uuid ??= (string) Str::uuid();
+        });
+
+        static::updated(function (PaymentRefund $refund) {
+            if ($refund->wasChanged('status') && $refund->status === self::STATUS_REFUNDED) {
+                app(UserBookingNotificationService::class)->refundProcessed($refund);
+                app(PanditDisputeNotificationService::class)->refundProcessed($refund);
+            }
         });
     }
 

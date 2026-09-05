@@ -97,7 +97,12 @@
                 <span class="brand-title gold-text">BhaktiDeep</span>
             </a>
             <div class="pandit-topbar-profile">
-                <button class="pandit-icon-button" type="button" aria-label="Notifications"><i class="bi bi-bell"></i></button>
+                <a class="pandit-icon-button" href="{{ route('pandit.notifications') }}" aria-label="Notifications">
+                    <i class="bi bi-bell"></i>
+                    @if($unreadCount > 0)
+                        <span>{{ $unreadCount }}</span>
+                    @endif
+                </a>
                 <form method="POST" action="{{ route('pandit.logout') }}" class="pandit-topbar-logout">
                     @csrf
                     <button class="pandit-icon-button" type="submit" aria-label="Logout"><i class="bi bi-box-arrow-right"></i></button>

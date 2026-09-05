@@ -6,9 +6,11 @@ use App\Models\Admin\Admin;
 use App\Models\Admin\AdminActivityLog;
 use App\Models\Admin\AdminRole;
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\NotificationLog;
 use App\Models\Admin\SankalpForm;
 use App\Models\Dispute;
 use App\Models\Pandit\Pandit;
+use App\Models\Pandit\PanditNotification;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentRefund;
@@ -71,7 +73,7 @@ class AdminDisputePanelTest extends TestCase
 
     public function test_admin_can_move_open_dispute_to_under_review_and_add_note_only(): void
     {
-        [$admin, $dispute] = $this->fixture();
+        [$admin, $dispute, $booking] = $this->fixture();
 
         $this->actingAs($admin, 'admin')
             ->patch(route('admin.disputes.update', $dispute), [
@@ -89,6 +91,33 @@ class AdminDisputePanelTest extends TestCase
             'module' => 'Disputes',
             'action' => 'review_update',
         ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_under_review_'.$dispute->id,
+            'message' => 'Your report #'.$dispute->id.' is under review.',
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Report under admin review',
+            'message' => 'Report #'.$dispute->id.' is under admin review. Your payout remains on hold.',
+            'is_read' => false,
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->patch(route('admin.disputes.update', $dispute), [
+                'status' => Dispute::STATUS_UNDER_REVIEW,
+                'admin_review_note' => 'Still checking.',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(1, NotificationLog::where('message_type', 'report_under_review_'.$dispute->id)->count());
+        $this->assertSame(1, PanditNotification::where('pandit_id', $booking->pandit_id)
+            ->where('title', 'Report under admin review')
+            ->where('message', 'Report #'.$dispute->id.' is under admin review. Your payout remains on hold.')
+            ->count());
 
         $this->actingAs($admin, 'admin')
             ->patch(route('admin.disputes.update', $dispute), ['status' => Dispute::STATUS_RESOLVED])
@@ -161,6 +190,55 @@ class AdminDisputePanelTest extends TestCase
             'module' => 'Disputes',
             'action' => 'dispute_refund_user',
         ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_user_favour_'.$dispute->id,
+            'message' => 'Your report #'.$dispute->id.' was resolved in your favour. Refund has been initiated.',
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_refund_processed_'.$refund->id,
+            'message' => 'Refund Processed ₹4,500',
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Report resolved in user favour',
+            'message' => 'Report #'.$dispute->id.' was resolved in the user\'s favour. Refund ₹4,500 has been initiated to the user. Your payout for Booking #'.$booking->id.' is cancelled.',
+            'is_read' => false,
+        ]);
+        $this->assertDatabaseHas('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Refund processed',
+            'message' => 'Refund ₹4,500 was processed to the user. No payout is due for Booking #'.$booking->id.'.',
+            'is_read' => false,
+        ]);
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.notifications'))
+            ->assertOk()
+            ->assertSee('Report #'.$dispute->id.' was resolved in the user&#039;s favour. Refund ₹4,500 has been initiated to the user. Your payout for Booking #'.$booking->id.' is cancelled.', false)
+            ->assertSee('Refund ₹4,500 was processed to the user. No payout is due for Booking #'.$booking->id.'.');
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.reports.index'))
+            ->assertOk()
+            ->assertSee('#'.$dispute->id)
+            ->assertSee('HAWAN-'.$booking->id)
+            ->assertSee('Resolved in user&#039;s favour', false)
+            ->assertSee('Refund: Refunded');
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.reports.show', $dispute))
+            ->assertOk()
+            ->assertSee('#'.$dispute->id)
+            ->assertSee('HAWAN-'.$booking->id)
+            ->assertSee('Resolved in user&#039;s favour', false)
+            ->assertSee('Refund Status')
+            ->assertSee('Refunded');
 
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/payments/pay_test/refund')
             && $request['amount'] === 450000
@@ -196,6 +274,44 @@ class AdminDisputePanelTest extends TestCase
             'payment_attempt_id' => $booking->latest_payment_attempt_id,
             'status' => PanditPayout::STATUS_CANCELLED,
             'pandit_amount' => 0,
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_user_favour_'.$dispute->id,
+            'message' => 'Your report #'.$dispute->id.' was resolved in your favour. Refund has been initiated.',
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_refund_processed_'.$refund->id,
+        ]);
+        $this->assertDatabaseHas('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Report resolved in user favour',
+            'message' => 'Report #'.$dispute->id.' was resolved in the user\'s favour. Refund ₹4,500 has been initiated to the user. Your payout for Booking #'.$booking->id.' is cancelled.',
+            'is_read' => false,
+        ]);
+        $this->assertDatabaseMissing('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Refund processed',
+            'message' => 'Refund ₹4,500 was processed to the user. No payout is due for Booking #'.$booking->id.'.',
+        ]);
+
+        $refund->update(['status' => PaymentRefund::STATUS_REFUNDED, 'processed_at' => now()]);
+
+        $this->assertSame(1, NotificationLog::where('message_type', 'report_refund_processed_'.$refund->id)->count());
+        $this->assertSame(1, PanditNotification::where('pandit_id', $booking->pandit_id)
+            ->where('title', 'Refund processed')
+            ->where('message', 'Refund ₹4,500 was processed to the user. No payout is due for Booking #'.$booking->id.'.')
+            ->count());
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_refund_processed_'.$refund->id,
+            'message' => 'Refund Processed ₹4,500',
+            'delivery_status' => 'sent',
         ]);
     }
 
@@ -272,6 +388,41 @@ class AdminDisputePanelTest extends TestCase
             'module' => 'Disputes',
             'action' => 'dispute_pandit_favour',
         ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $dispute->user_id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_pandit_favour_'.$dispute->id,
+            'message' => 'Your report #'.$dispute->id.' has been reviewed and closed. No refund was issued.',
+            'delivery_status' => 'sent',
+        ]);
+        $this->assertDatabaseHas('pandit_notifications', [
+            'pandit_id' => $booking->pandit_id,
+            'title' => 'Report resolved in pandit favour',
+            'message' => 'Report #'.$dispute->id.' was resolved in your favour. No refund was issued. Your payout is now READY.',
+            'is_read' => false,
+        ]);
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.notifications'))
+            ->assertOk()
+            ->assertSee('Report #'.$dispute->id.' was resolved in your favour. No refund was issued. Your payout is now READY.');
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.reports.index'))
+            ->assertOk()
+            ->assertSee('#'.$dispute->id)
+            ->assertSee('HAWAN-'.$booking->id)
+            ->assertSee('Resolved in your favour')
+            ->assertSee('Payout: Ready');
+
+        $this->actingAs(Pandit::findOrFail($booking->pandit_id), 'pandit')
+            ->get(route('pandit.reports.show', $dispute))
+            ->assertOk()
+            ->assertSee('#'.$dispute->id)
+            ->assertSee('HAWAN-'.$booking->id)
+            ->assertSee('Resolved in your favour')
+            ->assertSee('Payout Status')
+            ->assertSee('Ready');
     }
 
     private function fixture(bool $withAttendance = true): array

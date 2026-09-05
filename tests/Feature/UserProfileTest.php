@@ -6,6 +6,7 @@ use App\Models\Admin\Deity;
 use App\Models\Admin\Diya;
 use App\Models\Admin\DiyaSession;
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\NotificationLog;
 use App\Models\Admin\PoojaSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,6 +114,102 @@ class UserProfileTest extends TestCase
             ->assertRedirect(route('home'));
 
         $this->assertGuest();
+    }
+
+    public function test_user_notifications_page_shows_all_categories_and_marks_read(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $booking = NotificationLog::create([
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'booking_confirmed',
+            'subject' => 'Booking confirmed',
+            'message' => 'Your booking has been confirmed.',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+        ]);
+        NotificationLog::create([
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'payment_verified',
+            'subject' => 'Payment update',
+            'message' => 'Payment received for your booking.',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+            'read_at' => now(),
+        ]);
+        NotificationLog::create([
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'booking_refund',
+            'subject' => 'Refund update',
+            'message' => 'Refund Processed ₹1,100',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+        ]);
+        NotificationLog::create([
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_under_review_1',
+            'subject' => 'Report update',
+            'message' => 'Your report #1 is under review.',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+        ]);
+        NotificationLog::create([
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'live_session_ready',
+            'subject' => 'Session update',
+            'message' => 'Your live session is ready.',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+        ]);
+        NotificationLog::create([
+            'user_id' => $otherUser->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'booking_confirmed',
+            'subject' => 'Other booking',
+            'message' => 'Other user notification.',
+            'delivery_status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee('View all notifications')
+            ->assertSee('Your booking has been confirmed.')
+            ->assertDontSee('Other user notification.');
+
+        $this->actingAs($user)
+            ->get(route('user.notifications.index'))
+            ->assertOk()
+            ->assertSee('Notifications')
+            ->assertSee('4 unread updates')
+            ->assertSee('Booking')
+            ->assertSee('Payment')
+            ->assertSee('Refund')
+            ->assertSee('Report')
+            ->assertSee('Session')
+            ->assertSee('Refund Processed ₹1,100')
+            ->assertDontSee('Other user notification.');
+
+        $this->actingAs($user)
+            ->post(route('user.notifications.read', ['notification' => $booking]))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Notification marked as read.');
+
+        $this->assertNotNull($booking->fresh()->read_at);
+
+        $this->actingAs($user)
+            ->post(route('user.notifications.read-all'))
+            ->assertRedirect()
+            ->assertSessionHas('success', 'All notifications marked as read.');
+
+        $this->assertSame(0, NotificationLog::where('user_id', $user->id)->whereNull('read_at')->count());
     }
 
     private function diyaFixtures(): array

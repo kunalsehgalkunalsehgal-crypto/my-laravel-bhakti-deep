@@ -1,4 +1,17 @@
 @php
+    $userNotificationCount = 0;
+    $recentUserNotifications = collect();
+
+    if (auth()->check()) {
+        $userNotificationCount = \App\Models\Admin\NotificationLog::where('user_id', auth()->id())
+            ->whereNull('read_at')
+            ->count();
+        $recentUserNotifications = \App\Models\Admin\NotificationLog::where('user_id', auth()->id())
+            ->latest()
+            ->limit(5)
+            ->get();
+    }
+
     $links = [
         ['Home', route('home'), request()->routeIs('home')],
         ['Light Diya', route('light-diya'), request()->routeIs('light-diya')],
@@ -35,6 +48,34 @@
 
                 <div class="header-actions">
                     @auth
+                        <div class="dropdown notification-menu">
+                            <button class="btn btn-outline-saffron notification-bell" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+                                <i class="bi bi-bell"></i>
+                                @if($userNotificationCount > 0)
+                                    <span>{{ $userNotificationCount }}</span>
+                                @endif
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end notification-dropdown">
+                                <div class="notification-dropdown-head">
+                                    <strong>Notifications</strong>
+                                    @if($userNotificationCount > 0)
+                                        <form method="POST" action="{{ route('user.notifications.read-all') }}">
+                                            @csrf
+                                            <button type="submit">Mark all read</button>
+                                        </form>
+                                    @endif
+                                </div>
+                                @forelse($recentUserNotifications as $notification)
+                                    <div class="notification-dropdown-item {{ $notification->read_at ? '' : 'unread' }}">
+                                        <p>{{ $notification->message }}</p>
+                                        <small>{{ $notification->created_at?->diffForHumans() }}</small>
+                                    </div>
+                                @empty
+                                    <div class="notification-dropdown-empty">No notifications yet.</div>
+                                @endforelse
+                                <a class="notification-dropdown-link" href="{{ route('user.notifications.index') }}">View all notifications</a>
+                            </div>
+                        </div>
                         <a href="{{ route('user.profile') }}" class="btn btn-outline-saffron" aria-label="User Profile">
                             <i class="bi bi-person-circle"></i> Profile
                         </a>

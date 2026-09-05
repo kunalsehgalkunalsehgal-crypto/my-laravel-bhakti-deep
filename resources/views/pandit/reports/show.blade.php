@@ -63,6 +63,26 @@
             <span>Report Status</span>
             <strong>{{ $reportStatus }}</strong>
         </div>
+        <div class="pandit-profile-item">
+            <span>Report ID</span>
+            <strong>#{{ $dispute->id }}</strong>
+        </div>
+        <div class="pandit-profile-item">
+            <span>Final Decision</span>
+            <strong>{{ $resolutionDetails['decision'] }}</strong>
+        </div>
+        @if($resolutionDetails['refund_status'])
+            <div class="pandit-profile-item">
+                <span>Refund Status</span>
+                <strong>{{ $resolutionDetails['refund_status'] }}</strong>
+            </div>
+        @endif
+        @if($resolutionDetails['payout_status'])
+            <div class="pandit-profile-item">
+                <span>Payout Status</span>
+                <strong>{{ $resolutionDetails['payout_status'] }}</strong>
+            </div>
+        @endif
         <div class="pandit-profile-item pandit-wide">
             <span>User Description</span>
             <strong style="white-space:pre-wrap">{{ $dispute->description }}</strong>

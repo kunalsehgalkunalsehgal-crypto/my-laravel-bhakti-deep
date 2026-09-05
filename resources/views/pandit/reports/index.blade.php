@@ -41,16 +41,22 @@
                     <strong>{{ $report['slot'] ?: 'Pending' }}</strong>
                 </div>
                 <div>
-                    <span>Reason</span>
-                    <strong>{{ $report['reason'] }}</strong>
+                    <span>Report ID</span>
+                    <strong>#{{ $report['id'] }}</strong>
                 </div>
                 <div>
                     <span>Status</span>
                     <strong>{{ $report['status'] }}</strong>
                 </div>
                 <div>
-                    <span>Response</span>
-                    <strong>{{ $report['response_status'] }}</strong>
+                    <span>Final Decision</span>
+                    <strong>{{ $report['final_decision'] }}</strong>
+                    @if($report['refund_status'])
+                        <small style="display:block;color:var(--muted);font-weight:600;margin-top:3px">Refund: {{ $report['refund_status'] }}</small>
+                    @endif
+                    @if($report['payout_status'])
+                        <small style="display:block;color:var(--muted);font-weight:600;margin-top:3px">Payout: {{ $report['payout_status'] }}</small>
+                    @endif
                 </div>
                 <div>
                     <span>Reported</span>

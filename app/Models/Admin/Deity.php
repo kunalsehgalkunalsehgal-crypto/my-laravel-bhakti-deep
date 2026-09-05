@@ -9,10 +9,31 @@ class Deity extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['name', 'slug', 'short_description', 'description', 'featured_image', 'seo_title', 'seo_description', 'status'];
+    protected $fillable = [
+        'name',
+        'slug',
+        'short_description',
+        'description',
+        'featured_image',
+        'temple_background_image',
+        'primary_color',
+        'secondary_color',
+        'glow_color',
+        'ambient_audio_id',
+        'particle_style',
+        'flame_style',
+        'seo_title',
+        'seo_description',
+        'status',
+    ];
 
     public function fixedDiyas()
     {
         return $this->hasMany(Diya::class, 'fixed_deity_id');
+    }
+
+    public function ambientAudio()
+    {
+        return $this->belongsTo(Audio::class, 'ambient_audio_id');
     }
 }

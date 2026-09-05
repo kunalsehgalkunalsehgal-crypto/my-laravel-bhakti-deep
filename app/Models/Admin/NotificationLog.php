@@ -8,10 +8,10 @@ class NotificationLog extends Model
 {
     protected $table = 'notifications';
 
-    protected $fillable = ['user_id', 'channel', 'message_type', 'recipient', 'subject', 'message', 'delivery_status', 'failure_reason', 'sent_at'];
+    protected $fillable = ['user_id', 'channel', 'message_type', 'recipient', 'subject', 'message', 'delivery_status', 'failure_reason', 'sent_at', 'read_at'];
 
     protected function casts(): array
     {
-        return ['sent_at' => 'datetime'];
+        return ['sent_at' => 'datetime', 'read_at' => 'datetime'];
     }
 }

@@ -7,6 +7,7 @@ use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Models\DisputeEvidence;
 use App\Models\Pandit\Pandit;
+use App\Models\PanditPayout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,7 @@ class PanditReportController extends Controller
         abort_unless($pandit, 403);
 
         $reports = Dispute::query()
-            ->with(['disputable.service', 'disputable.sankalp', 'user'])
+            ->with(['disputable.service', 'disputable.sankalp', 'disputable.panditPayouts', 'paymentRefund', 'user'])
             ->whereIn('disputable_type', [HawanSession::class, PoojaSession::class])
             ->whereHasMorph('disputable', [HawanSession::class, PoojaSession::class], function ($query) use ($pandit) {
                 $query->where('pandit_id', $pandit->id);
@@ -39,10 +40,11 @@ class PanditReportController extends Controller
     public function show(Request $request, Dispute $dispute): View
     {
         $pandit = $this->authorizedPandit($request, $dispute);
-        $dispute->load(['user', 'evidences']);
+        $dispute->load(['user', 'evidences', 'paymentRefund']);
 
         $booking = $dispute->disputable;
-        $booking?->loadMissing(['service', 'user', 'sankalp', 'pandit']);
+        $booking?->loadMissing(['service', 'user', 'sankalp', 'pandit', 'panditPayouts']);
+        $resolutionDetails = $this->resolutionDetails($dispute, $booking);
 
         return view('pandit.reports.show', [
             'pandit' => $pandit,
@@ -51,6 +53,7 @@ class PanditReportController extends Controller
             'reportType' => $booking instanceof HawanSession ? 'Hawan' : 'Pooja',
             'reportReason' => $this->reasonLabel($dispute->reason),
             'reportStatus' => Str::of($dispute->status)->replace('_', ' ')->title(),
+            'resolutionDetails' => $resolutionDetails,
             'serviceName' => $this->serviceName($dispute, $booking),
             'userEvidences' => $dispute->evidences->where('uploaded_by_type', \App\Models\User::class),
             'panditEvidences' => $dispute->evidences
@@ -169,10 +172,12 @@ class PanditReportController extends Controller
     {
         $booking = $dispute->disputable;
         $type = $booking instanceof HawanSession ? 'hawan' : 'pooja';
+        $resolutionDetails = $this->resolutionDetails($dispute, $booking);
 
         return [
             'id' => $dispute->id,
             'booking_id' => strtoupper($type).'-'.$booking?->id,
+            'booking_numeric_id' => $booking?->id,
             'label' => ucfirst($type),
             'service_name' => $this->serviceName($dispute, $booking),
             'booking_date' => $booking?->booking_date,
@@ -183,6 +188,60 @@ class PanditReportController extends Controller
             'response_status' => $dispute->pandit_responded_at ? 'Submitted' : 'Pending',
             'yajman' => $booking?->sankalp?->full_name ?? $dispute->user?->name ?? 'Not added',
             'report_url' => route('pandit.reports.show', ['dispute' => $dispute]),
+            'final_decision' => $resolutionDetails['decision'],
+            'refund_status' => $resolutionDetails['refund_status'],
+            'payout_status' => $resolutionDetails['payout_status'],
         ];
+    }
+
+    private function resolutionDetails(Dispute $dispute, $booking): array
+    {
+        if ($dispute->status !== Dispute::STATUS_RESOLVED) {
+            return [
+                'decision' => 'Pending admin decision',
+                'refund_status' => null,
+                'payout_status' => null,
+            ];
+        }
+
+        if ($dispute->resolution === Dispute::RESOLUTION_REFUND_USER) {
+            return [
+                'decision' => "Resolved in user's favour",
+                'refund_status' => $this->statusLabel($dispute->paymentRefund?->status ?? 'initiated'),
+                'payout_status' => null,
+            ];
+        }
+
+        if ($dispute->resolution === Dispute::RESOLUTION_PANDIT_FAVOUR) {
+            return [
+                'decision' => 'Resolved in your favour',
+                'refund_status' => null,
+                'payout_status' => $this->statusLabel($this->latestPayout($booking)?->status ?? PanditPayout::STATUS_READY),
+            ];
+        }
+
+        return [
+            'decision' => 'Resolved',
+            'refund_status' => null,
+            'payout_status' => null,
+        ];
+    }
+
+    private function latestPayout($booking): ?PanditPayout
+    {
+        if (!$booking) {
+            return null;
+        }
+
+        if ($booking->relationLoaded('panditPayouts')) {
+            return $booking->panditPayouts->sortByDesc('created_at')->first();
+        }
+
+        return $booking->panditPayouts()->latest()->first();
+    }
+
+    private function statusLabel(string $status): string
+    {
+        return Str::of($status)->replace('_', ' ')->title()->toString();
     }
 }

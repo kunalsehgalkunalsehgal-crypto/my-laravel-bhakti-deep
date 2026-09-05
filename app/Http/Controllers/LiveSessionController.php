@@ -12,6 +12,7 @@ use App\Models\LiveSessionInvite;
 use App\Models\Pandit\PanditNotification;
 use App\Models\VideoMeetingAttendance;
 use App\Services\PanditPayoutLedgerService;
+use App\Services\UserBookingNotificationService;
 use App\Services\VideoMeetingProviderManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -230,6 +231,7 @@ class LiveSessionController extends Controller
         }
 
         $this->notifyPanditAboutIssueReport($booking, $dispute);
+        app(UserBookingNotificationService::class)->reportSubmitted($booking, $dispute);
         app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'dispute_opened');
 
         return back()->with('success', 'Issue Reported - Status: Open');
@@ -284,12 +286,14 @@ class LiveSessionController extends Controller
         $type = $booking instanceof HawanSession ? 'Hawan' : 'Pooja';
         $serviceName = $this->bookingServiceName($booking, strtolower($type));
 
-        PanditNotification::create([
-            'pandit_id' => $booking->pandit_id,
-            'title' => 'New issue reported',
-            'message' => 'A user reported an issue for '.$type.' booking #'.$booking->id.' - '.$serviceName.'. Open Reports to respond. Report #'.$dispute->id.'.',
-            'is_read' => false,
-        ]);
+        PanditNotification::firstOrCreate(
+            [
+                'pandit_id' => $booking->pandit_id,
+                'title' => 'New issue reported',
+                'message' => 'A user reported an issue for '.$type.' booking #'.$booking->id.' - '.$serviceName.'. Open Reports to respond. Report #'.$dispute->id.'.',
+            ],
+            ['is_read' => false]
+        );
     }
 
     private function bookingServiceName(Model $booking, string $type): string

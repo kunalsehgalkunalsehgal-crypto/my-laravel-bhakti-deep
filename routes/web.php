@@ -34,6 +34,7 @@ use App\Http\Controllers\PanditReportController;
 use App\Http\Controllers\PanditSelectionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PoojaController;
+use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\VideoMeetingSdkController;
@@ -515,6 +516,9 @@ Route::middleware('auth')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
 Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
+Route::get('/notifications', [UserNotificationController::class, 'index'])->name('user.notifications.index');
+Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllRead'])->name('user.notifications.read-all');
+Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markRead'])->name('user.notifications.read');
 Route::post('/payments/bookings/{type}/{id}/retry', [PaymentController::class, 'retry'])
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('payments.bookings.retry');

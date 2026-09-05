@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\NotificationLog;
 use App\Models\Dispute;
 use App\Models\DisputeEvidence;
 use App\Models\Pandit\Pandit;
@@ -56,6 +57,13 @@ class UserReportSystemTest extends TestCase
         $this->assertSame('New issue reported', $notification->title);
         $this->assertFalse((bool) $notification->is_read);
         $this->assertStringContainsString('Report #'.$dispute->id, $notification->message);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $user->id,
+            'channel' => 'my_bookings',
+            'message_type' => 'report_submitted_'.$dispute->id,
+            'message' => 'Your issue for Booking #'.$session->id.' has been submitted. Report #'.$dispute->id.' is now under review.',
+            'delivery_status' => 'sent',
+        ]);
 
         $this->actingAs($session->pandit, 'pandit')
             ->get(route('pandit.notifications'))
@@ -86,6 +94,7 @@ class UserReportSystemTest extends TestCase
             ->assertSessionHas('success', 'Issue Reported - Status: Open');
 
         $this->assertDatabaseCount('disputes', 1);
+        $this->assertSame(0, NotificationLog::where('channel', 'my_bookings')->count());
     }
 
     public function test_invalid_proof_files_are_rejected(): void

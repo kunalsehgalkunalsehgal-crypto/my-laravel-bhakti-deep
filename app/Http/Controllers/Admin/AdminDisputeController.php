@@ -12,8 +12,10 @@ use App\Models\Pandit\Pandit;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentRefund;
 use App\Models\User;
+use App\Services\PanditDisputeNotificationService;
 use App\Services\PanditPayoutLedgerService;
 use App\Services\RazorpayPaymentService;
+use App\Services\UserBookingNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -85,6 +87,12 @@ class AdminDisputeController extends Controller
 
         if ($changes) {
             $dispute->update($changes);
+
+            if (($changes['status'] ?? null) === Dispute::STATUS_UNDER_REVIEW) {
+                app(UserBookingNotificationService::class)->reportUnderReview($dispute->fresh('user'));
+                app(PanditDisputeNotificationService::class)->reportUnderReview($dispute->fresh());
+            }
+
             $this->log('review_update', 'Dispute #'.$dispute->id.' reviewed by admin.');
         }
 
@@ -163,6 +171,14 @@ class AdminDisputeController extends Controller
                 'payment_refund_id' => $refund->id,
             ]);
 
+            app(UserBookingNotificationService::class)->disputeResolvedForUser($lockedDispute->fresh('user'));
+            app(PanditDisputeNotificationService::class)->disputeResolvedForUser($lockedDispute->fresh(), $refund);
+
+            if ($refundStatus === PaymentRefund::STATUS_REFUNDED) {
+                app(UserBookingNotificationService::class)->refundProcessed($refund, $lockedDispute->fresh('user'));
+                app(PanditDisputeNotificationService::class)->refundProcessed($refund, $lockedDispute->fresh());
+            }
+
             $this->log(
                 'dispute_refund_user',
                 'Dispute #'.$lockedDispute->id.' resolved with Razorpay refund '.$refund->gateway_refund_id.'.'
@@ -204,6 +220,9 @@ class AdminDisputeController extends Controller
             ]);
 
             app(PanditPayoutLedgerService::class)->readyForPanditFavour($booking);
+
+            app(UserBookingNotificationService::class)->disputeResolvedForPandit($lockedDispute->fresh('user'));
+            app(PanditDisputeNotificationService::class)->disputeResolvedForPandit($lockedDispute->fresh());
 
             $this->log(
                 'dispute_pandit_favour',
