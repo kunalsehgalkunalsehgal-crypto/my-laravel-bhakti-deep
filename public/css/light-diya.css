@@ -442,6 +442,95 @@
     line-height: 1.05;
 }
 
+.diya-session-page.deity-theme {
+    position: relative;
+    background:
+        radial-gradient(circle at 25% 15%, color-mix(in srgb, var(--diya-glow) 28%, transparent), transparent 34%),
+        radial-gradient(circle at 75% 12%, color-mix(in srgb, var(--diya-secondary) 18%, transparent), transparent 32%),
+        linear-gradient(180deg, #fff8e8, #fbf4df);
+}
+
+.diya-theme-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(90deg, rgba(55, 32, 22, 0.78), rgba(55, 32, 22, 0.36)),
+        var(--diya-bg-image);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.42;
+    pointer-events: none;
+}
+
+.diya-session-page > section,
+.diya-session-page > .deity-particles {
+    position: relative;
+    z-index: 1;
+}
+
+.diya-session-page .gold-text,
+.diya-session-page .ld-step-label,
+.diya-session-page .diya-countdown strong {
+    color: var(--diya-primary);
+}
+
+.diya-session-page .btn-saffron,
+.diya-session-page .diya-bowl {
+    background: linear-gradient(135deg, var(--diya-primary), var(--diya-secondary));
+}
+
+.diya-session-page .glass,
+.diya-session-page .diya-session-meta span,
+.diya-session-page .diya-detail-list div,
+.diya-ambient-box {
+    border-color: color-mix(in srgb, var(--diya-primary) 32%, transparent);
+}
+
+.diya-session-page .diya-glow-ring {
+    background: radial-gradient(circle, color-mix(in srgb, var(--diya-glow) 42%, transparent), color-mix(in srgb, var(--diya-secondary) 16%, transparent) 38%, transparent 68%);
+}
+
+.diya-session-page.is-unpaid .diya-live-card {
+    filter: grayscale(0.25);
+}
+
+.deity-particles-none .deity-particles {
+    display: none;
+}
+
+.deity-particles-golden_sparkles .deity-particles span {
+    background: var(--diya-glow);
+    box-shadow: 0 0 10px var(--diya-glow);
+}
+
+.deity-particles-flower_petals .deity-particles span {
+    width: 8px;
+    height: 12px;
+    border-radius: 8px 8px 2px 8px;
+    background: #ff9fbb;
+}
+
+.deity-particles-smoke .deity-particles span {
+    width: 10px;
+    height: 10px;
+    background: rgba(120, 120, 120, 0.28);
+    filter: blur(3px);
+}
+
+.deity-particles-snow .deity-particles span {
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.deity-particles-divine_light .deity-particles span {
+    width: 3px;
+    height: 24px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--diya-glow) 72%, white);
+    box-shadow: 0 0 16px var(--diya-glow);
+}
+
 .diya-session-meta {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -517,6 +606,31 @@
     inset: 22px;
     border-radius: inherit;
     background: rgba(255, 255, 255, 0.62);
+}
+
+.deity-flame-golden .diya-flame {
+    background: radial-gradient(circle at 50% 70%, #fffbe3 0 18%, #ffe066 34%, #c78d22 62%, rgba(255, 122, 0, 0) 72%);
+    filter: drop-shadow(0 0 22px var(--diya-glow));
+}
+
+.deity-flame-orange .diya-flame,
+.deity-flame-normal .diya-flame {
+    background: radial-gradient(circle at 50% 70%, #fff7bc 0 18%, #ffcc47 34%, #ff7a1a 62%, rgba(255, 122, 0, 0) 72%);
+}
+
+.deity-flame-blue .diya-flame {
+    background: radial-gradient(circle at 50% 70%, #eef8ff 0 18%, #8fd3ff 34%, #2575fc 62%, rgba(37, 117, 252, 0) 72%);
+    filter: drop-shadow(0 0 22px rgba(37, 117, 252, 0.8));
+}
+
+.deity-flame-soft .diya-flame {
+    opacity: 0.78;
+    filter: drop-shadow(0 0 14px var(--diya-glow));
+}
+
+.deity-flame-intense .diya-flame {
+    transform: rotate(45deg) scale(1.08);
+    filter: drop-shadow(0 0 30px var(--diya-glow));
 }
 
 .diya-flame.dimmed {

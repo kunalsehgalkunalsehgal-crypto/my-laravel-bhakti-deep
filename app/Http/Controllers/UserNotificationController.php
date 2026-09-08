@@ -61,6 +61,7 @@ class UserNotificationController extends Controller
             str_contains($text, 'report') || str_contains($text, 'dispute') || str_contains($text, 'issue') => 'Report',
             str_contains($text, 'session') || str_contains($text, 'meeting') || str_contains($text, 'live') => 'Session',
             str_contains($text, 'booking') => 'Booking',
+            str_contains($text, 'diya') => 'Diya',
             default => Str::of((string) $notification->channel)->replace('_', ' ')->title()->toString(),
         };
     }
@@ -73,6 +74,7 @@ class UserNotificationController extends Controller
             'Report' => 'bi-exclamation-triangle',
             'Session' => 'bi-camera-video',
             'Booking' => 'bi-calendar2-check',
+            'Diya' => 'bi-fire',
             default => 'bi-bell',
         };
     }

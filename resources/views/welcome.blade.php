@@ -126,7 +126,7 @@
 
                             <div class="live-card glass">
                                 <div class="live-label"><span></span> Live Diya Wall</div>
-                                <div class="live-number gold-text">23,589+</div>
+                                <div class="live-number gold-text">{{ number_format($liveDiyaCount ?? 0) }}</div>
                                 <p>Diyas glowing right now</p>
                                 <div class="live-bars">
                                     @for ($i = 0; $i < 18; $i++)
@@ -147,32 +147,32 @@
                     <div class="row g-5 align-items-center">
                         <div class="col-lg-6">
                             <div class="section-kicker"><span class="pulse-dot"></span> Live Diya Wall</div>
-                            <h2><span class="gold-text">23,589</span> diyas glowing right now</h2>
+                            <h2><span class="gold-text">{{ number_format($liveDiyaCount ?? 0) }}</span> diyas glowing right now</h2>
                             <p>Every flame carries a devotee's intention. Light yours and join a global circle of bhakti
                                 - your diya stays lit for the duration you choose.</p>
 
-                            <div class="diya-grid">
-                                @for ($i = 0; $i < 48; $i++)
-                                    {{-- <span class="{{ $i % 5 === 0 ? 'dim' : '' }}">
-animation-delay: {{ ($i * 0.15) % 3 }}s;"
-                                    </span>  --}}
-                                    <span
-                                        style="
-        animation-delay: {{ fmod($i * 0.15, 3) }}s;
-        --move-y: {{ $i % 2 === 0 ? '-3px' : '3px' }};
-        --rotate: {{ $i % 3 === 0 ? '-2deg' : '2deg' }};
-    ">
-                                        <img src="{{ asset('assets/small-deep.png') }}" alt="Glowing diya icon"> 
-                                        {{-- <video autoplay muted loop playsinline>
-                                <source src="{{ asset('assets/diya-video.mp4') }}" type="video/mp4">
-                            </video> --}}
-                                    </span>
-                                @endfor
-                            </div>
+                            @if(($liveDiyas ?? collect())->isNotEmpty())
+                                <div class="diya-grid">
+                                    @foreach ($liveDiyas as $index => $liveDiya)
+                                        <span
+                                            title="{{ $liveDiya->diya?->name ?? 'Diya' }}{{ $liveDiya->deity ? ' for '.$liveDiya->deity->name : '' }}"
+                                            style="
+                                                animation-delay: {{ fmod($index * 0.15, 3) }}s;
+                                                --move-y: {{ $index % 2 === 0 ? '-3px' : '3px' }};
+                                                --rotate: {{ $index % 3 === 0 ? '-2deg' : '2deg' }};
+                                            "
+                                        >
+                                            <img src="{{ asset('assets/small-deep.png') }}" alt="Glowing diya icon">
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="small-note">No paid diyas are currently glowing.</p>
+                            @endif
 
 
                             <div class="row g-3 mt-2">
-                                @foreach ([['bi-fire', '12,840', 'lit today'], ['bi-people', '184', 'lighting now'], ['bi-heart', '₹2.4L+', 'donated today']] as $stat)
+                                @foreach ([['bi-fire', number_format($diyaLitToday ?? 0), 'lit today'], ['bi-people', number_format($liveDiyaCount ?? 0), 'glowing now'], ['bi-heart', number_format(($liveDiyas ?? collect())->count()), 'shown here']] as $stat)
                                     <div class="col-4">
                                         <div class="stat-box">
                                             <i class="bi {{ $stat[0] }}"></i>
@@ -222,15 +222,28 @@ animation-delay: {{ ($i * 0.15) % 3 }}s;"
                                 <div class="recent-head"><span>Recent diyas</span><span><i class="bi bi-clock"></i>
                                         burns left</span></div>
                                 <div class="recent-grid">
-                                    @foreach ([['Ananya S.', 'Health', '1d'], ['Rohit K.', 'Prosperity', '12h'], ['Meera P.', 'Family', '6h'], ['Vikram J.', 'Business', '3h'], ['Sunita R.', 'Peace', '1h'], ['Devansh M.', 'Studies', '30m']] as $diya)
+                                    @forelse (($liveDiyas ?? collect()) as $diyaSession)
+                                        @php
+                                            $timeLeft = $diyaSession->end_at
+                                                ? $diyaSession->end_at->diffForHumans(null, true).' left'
+                                                : 'Live';
+                                        @endphp
                                         <div class="recent-row">
                                             <span class="small-flame"><i class="bi bi-fire"></i></span>
                                             <div>
-                                                <strong>{{ $diya[0] }}</strong><small>{{ $diya[1] }}</small>
+                                                <strong>{{ $diyaSession->diya?->name ?? 'Diya' }}</strong><small>{{ $diyaSession->deity?->name ?? 'Temple offering' }}</small>
                                             </div>
-                                            <em>{{ $diya[2] }}</em>
+                                            <em>{{ $timeLeft }}</em>
                                         </div>
-                                    @endforeach
+                                    @empty
+                                        <div class="recent-row">
+                                            <span class="small-flame"><i class="bi bi-fire"></i></span>
+                                            <div>
+                                                <strong>No live diyas</strong><small>Paid active diyas will appear here.</small>
+                                            </div>
+                                            <em>-</em>
+                                        </div>
+                                    @endforelse
                                 </div>
                             </div>
                         </div>

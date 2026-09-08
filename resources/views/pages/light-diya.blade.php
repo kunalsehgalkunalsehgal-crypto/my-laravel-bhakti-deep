@@ -1,16 +1,19 @@
 @extends('layouts.app')
 
 @section('title', 'Light a Virtual Diya - BhaktiDeep')
-@section('description', 'Choose an active diya, add deity and sankalp, complete seva payment, and watch your virtual diya glow.')
+@section('description', 'Choose an active diya, add deity, sankalp and donation amount, then continue to payment.')
 
 @push('styles')
 <link href="{{ asset('css/light-diya.css') }}" rel="stylesheet">
 @endpush
 
 @section('body')
+@include('partials.razorpay-checkout')
+
 @php
     $initialDiya = $diyas->first();
     $purposeOptions = ['Health', 'Prosperity', 'Family Peace', 'Protection', 'Career', 'Marriage', 'Child Blessing', 'Spiritual Growth'];
+    $donationOptions = [1, 11, 51, 101, 501];
 @endphp
 
 <main class="page-shell ld-page">
@@ -29,7 +32,7 @@
                     <span>Har Deep Mein </span><span class="gold-text">Bhakti</span>
                 </h1>
                 <p class="mt-4">
-                    Choose a diya from BhaktiDeep's active offerings, add your sankalp, complete seva, and watch your diya glow with mantra ambience.
+                    Choose a diya from BhaktiDeep's active offerings, add your sankalp, select a donation amount, and continue to payment.
                 </p>
                 <div class="hero-buttons mt-4">
                     <a href="#choose" class="btn btn-saffron btn-lg rounded-pill">
@@ -210,8 +213,24 @@
                         <div class="col-lg-5">
                             <div class="glass rounded-4 p-4 p-md-5 ld-summary-sticky">
                                 <div class="ld-step-label">Step 4</div>
-                                <h3 class="mt-2 ld-form-title">Payment</h3>
-                                <p class="ld-form-sub mt-1">Seva amount is locked from the selected diya record.</p>
+                                <h3 class="mt-2 ld-form-title">Donation Amount</h3>
+                                <p class="ld-form-sub mt-1">Choose the amount you want to offer before the payment step.</p>
+
+                                <input type="hidden" name="selected_amount" id="selectedAmount" value="11">
+                                <div class="row g-2 mt-3" id="donationGroup">
+                                    @foreach($donationOptions as $amount)
+                                        <div class="col-4">
+                                            <button type="button" class="ld-donation-btn w-100 {{ $amount === 11 ? 'active' : '' }}" data-amount="{{ $amount }}">₹{{ $amount }}</button>
+                                        </div>
+                                    @endforeach
+                                    <div class="col-8">
+                                        <button type="button" class="ld-donation-btn w-100" data-amount="custom">Custom Amount</button>
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-none" id="customAmountBox">
+                                    <label class="small-label d-block mb-1">Custom Amount *</label>
+                                    <input type="number" min="1" max="100000" step="1" name="custom_amount" id="customAmount" class="form-control sacred-input" placeholder="Enter amount">
+                                </div>
 
                                 <div class="ld-order-summary mt-4">
                                     <div class="ld-summary-row"><span>Diya</span><strong id="sumDiya">{{ $initialDiya->name }}</strong></div>
@@ -220,8 +239,8 @@
                                     <div class="ld-summary-row"><span>Purpose</span><strong id="sumPurpose">{{ $purposeOptions[0] }}</strong></div>
                                     <hr class="ld-divider">
                                     <div class="ld-summary-row">
-                                        <span>Total Seva</span>
-                                        <strong class="gold-text ld-total" id="sumTotal">Rs.{{ number_format((float) $initialDiya->seva_amount, 2) }}</strong>
+                                        <span>Donation</span>
+                                        <strong class="gold-text ld-total" id="sumTotal">Rs.11.00</strong>
                                     </div>
                                 </div>
 
@@ -231,11 +250,11 @@
                                 </label>
 
                                 <button type="submit" class="btn btn-saffron w-100 py-3 rounded-3 mt-4 fw-semibold" id="payButton">
-                                    <i class="bi bi-fire me-2"></i> Pay & Light My Diya
+                                    <i class="bi bi-fire me-2"></i> Continue to Test Payment
                                 </button>
                                 <p class="ld-secure-note mt-2">
                                     <i class="bi bi-shield-check text-warning"></i>
-                                    Secure payment flow. Amount verified on server.
+                                    Payment will be completed in the next step.
                                 </p>
                                 <div class="alert alert-danger mt-3 d-none" id="diyaError"></div>
                             </div>
@@ -266,13 +285,20 @@
                     </div>
                 </div>
                 <div class="col-lg-8">
-                    <div class="diya-grid">
-                        @for ($i = 0; $i < 48; $i++)
-                            <span style="animation-delay: {{ ($i * 0.15) % 3 }}s;">
-                                <img src="{{ asset('assets/small-deep.png') }}" alt="Glowing diya">
-                            </span>
-                        @endfor
-                    </div>
+                    @if($liveDiyas->isNotEmpty())
+                        <div class="diya-grid">
+                            @foreach ($liveDiyas as $index => $liveDiya)
+                                <span
+                                    title="{{ $liveDiya->diya?->name ?? 'Diya' }}{{ $liveDiya->deity ? ' for '.$liveDiya->deity->name : '' }}"
+                                    style="animation-delay: {{ ($index * 0.15) % 3 }}s;"
+                                >
+                                    <img src="{{ asset('assets/small-deep.png') }}" alt="Glowing diya">
+                                </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">No paid diyas are currently glowing.</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -283,8 +309,7 @@
 <script>
 const diyaOptions = @json($diyaOptions);
 const deities = @json($activeDeities->map(fn ($deity) => ['id' => $deity->id, 'name' => $deity->name])->values());
-const diyaBookingDraft = @json($diyaBookingDraft ?? []);
-const diyaDraftFields = [
+const diyaFormFields = [
     'diya_id',
     'deity_id',
     'full_name',
@@ -298,7 +323,9 @@ const diyaDraftFields = [
     'spouse_name',
     'family_names',
     'purpose',
-    'mannokamna'
+    'mannokamna',
+    'selected_amount',
+    'custom_amount'
 ];
 
 function formatAmount(amount) {
@@ -332,21 +359,34 @@ function clearError() {
     errorBox.classList.add('d-none');
 }
 
-function diyaFormPayload(form, includeConsent = false) {
+function diyaFormPayload(form) {
     const formData = new FormData(form);
     const payload = {};
 
-    diyaDraftFields.forEach(field => {
+    diyaFormFields.forEach(field => {
         if (formData.has(field)) {
             payload[field] = formData.get(field);
         }
     });
 
-    if (includeConsent && formData.has('consent')) {
+    if (formData.has('consent')) {
         payload.consent = formData.get('consent');
     }
 
     return payload;
+}
+
+function syncDonationUi() {
+    const selectedAmount = document.getElementById('selectedAmount')?.value || '11';
+    const customAmountBox = document.getElementById('customAmountBox');
+    const customAmount = document.getElementById('customAmount')?.value || '';
+    const amount = selectedAmount === 'custom' ? customAmount : selectedAmount;
+
+    if (customAmountBox) {
+        customAmountBox.classList.toggle('d-none', selectedAmount !== 'custom');
+    }
+
+    setText('sumTotal', formatAmount(amount));
 }
 
 function syncDiyaUi() {
@@ -369,7 +409,7 @@ function syncDiyaUi() {
     setText('heroDiyaDuration', diya.duration || 'Temple duration');
     setText('sumDiya', diya.name);
     setText('sumDuration', diya.duration || '-');
-    setText('sumTotal', formatAmount(diya.seva_amount));
+    syncDonationUi();
 
     const fixedBox = document.getElementById('fixedDeityBox');
     const selectBox = document.getElementById('deitySelectBox');
@@ -391,47 +431,6 @@ function syncDiyaUi() {
     }
 }
 
-function restoreDiyaDraft() {
-    if (!diyaBookingDraft || Object.keys(diyaBookingDraft).length === 0) {
-        syncDiyaUi();
-        return;
-    }
-
-    const selectedDiyaInput = document.getElementById('selectedDiyaId');
-    if (
-        diyaBookingDraft.diya_id
-        && selectedDiyaInput
-        && diyaOptions.some(diya => Number(diya.id) === Number(diyaBookingDraft.diya_id))
-    ) {
-        selectedDiyaInput.value = diyaBookingDraft.diya_id;
-    }
-
-    diyaDraftFields.filter(field => field !== 'diya_id').forEach(field => {
-        const input = document.querySelector(`[name="${field}"]`);
-        if (input && Object.prototype.hasOwnProperty.call(diyaBookingDraft, field)) {
-            input.value = diyaBookingDraft[field] ?? '';
-        }
-    });
-
-    if (diyaBookingDraft.purpose) {
-        let matchedPurpose = false;
-
-        document.querySelectorAll('.ld-purpose-btn').forEach(button => {
-            const isActive = button.dataset.purpose === diyaBookingDraft.purpose;
-            button.classList.toggle('active', isActive);
-            matchedPurpose = matchedPurpose || isActive;
-        });
-
-        if (!matchedPurpose) {
-            document.querySelectorAll('.ld-purpose-btn').forEach(button => button.classList.remove('active'));
-        }
-
-        setText('sumPurpose', diyaBookingDraft.purpose);
-    }
-
-    syncDiyaUi();
-}
-
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.ld-diya-card').forEach(card => {
         card.addEventListener('click', function () {
@@ -451,6 +450,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('deitySelect')?.addEventListener('change', syncDiyaUi);
+    document.getElementById('customAmount')?.addEventListener('input', syncDonationUi);
+
+    document.querySelectorAll('.ld-donation-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('.ld-donation-btn').forEach(item => item.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('selectedAmount').value = this.dataset.amount;
+            syncDonationUi();
+        });
+    });
 
     document.getElementById('diyaOfferingForm')?.addEventListener('submit', async function (event) {
         event.preventDefault();
@@ -473,44 +482,19 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-    @guest
-        const originalGuestText = payButton.innerHTML;
-        payButton.disabled = true;
-        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Saving...';
+        const selectedAmount = document.getElementById('selectedAmount').value;
+        const customAmount = document.getElementById('customAmount').value;
 
-        try {
-            const response = await fetch(@json(route('diya.draft')), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': @json(csrf_token()),
-                },
-                body: JSON.stringify(diyaFormPayload(this)),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                const message = result.message || Object.values(result.errors || {})[0]?.[0] || 'Could not save your diya details.';
-                throw new Error(message);
-            }
-
-            window.location.href = result.redirect_url || "{{ route('diya.continue') }}";
-        } catch (error) {
-            showError(error.message || 'Could not save your diya details. Please try again.');
-            payButton.disabled = false;
-            payButton.innerHTML = originalGuestText;
+        if (selectedAmount === 'custom' && (!customAmount || Number(customAmount) < 1)) {
+            showError('Please enter a valid custom donation amount.');
+            return;
         }
-
-        return;
-    @endguest
 
         const originalText = payButton.innerHTML;
         payButton.disabled = true;
-        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Lighting Diya...';
+        payButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Starting payment...';
 
-        const payload = diyaFormPayload(this, true);
+        const payload = diyaFormPayload(this);
 
         try {
             const response = await fetch(@json(route('diya.store')), {
@@ -530,7 +514,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(message);
             }
 
-            window.location.href = result.redirect_url;
+            window.startBhaktiDeepPayment(result.payment, payButton, function () {
+                payButton.disabled = false;
+                payButton.innerHTML = originalText;
+            });
         } catch (error) {
             showError(error.message || 'Diya offering failed. Please try again.');
             payButton.disabled = false;
@@ -538,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    restoreDiyaDraft();
+    syncDiyaUi();
 });
 </script>
 @endpush

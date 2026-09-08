@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Admin\DiyaSession;
+use App\Services\UserBookingNotificationService;
 use Illuminate\Console\Command;
 
 class SyncDiyaLifecycle extends Command
@@ -14,6 +15,7 @@ class SyncDiyaLifecycle extends Command
     public function handle(): int
     {
         $now = now();
+        $notifications = app(UserBookingNotificationService::class);
 
         $scheduled = DiyaSession::query()
             ->where('payment_status', 'paid')
@@ -25,7 +27,7 @@ class SyncDiyaLifecycle extends Command
                 'updated_at' => $now,
             ]);
 
-        $activated = DiyaSession::query()
+        $activatingSessions = DiyaSession::with(['user', 'diya', 'deity'])
             ->where('payment_status', 'paid')
             ->whereNotNull('start_at')
             ->where('start_at', '<=', $now)
@@ -33,21 +35,36 @@ class SyncDiyaLifecycle extends Command
                 $query->whereNull('end_at')->orWhere('end_at', '>', $now);
             })
             ->whereIn('status', [DiyaSession::STATUS_SCHEDULED, 'pending', 'confirmed'])
-            ->update([
+            ->get();
+
+        foreach ($activatingSessions as $session) {
+            $session->update([
                 'status' => DiyaSession::STATUS_ACTIVE,
                 'updated_at' => $now,
             ]);
 
-        $completed = DiyaSession::query()
+            $notifications->diyaStarted($session);
+        }
+
+        $completedSessions = DiyaSession::with(['user', 'diya', 'deity'])
             ->where('payment_status', 'paid')
             ->whereNotNull('end_at')
             ->where('end_at', '<=', $now)
             ->whereNotIn('status', [DiyaSession::STATUS_COMPLETED, 'cancelled'])
-            ->update([
+            ->get();
+
+        foreach ($completedSessions as $session) {
+            $session->update([
                 'status' => DiyaSession::STATUS_COMPLETED,
                 'completed_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            $notifications->diyaCompleted($session);
+        }
+
+        $activated = $activatingSessions->count();
+        $completed = $completedSessions->count();
 
         $this->info("Diya lifecycle synced. Scheduled: {$scheduled}, activated: {$activated}, completed: {$completed}.");
 

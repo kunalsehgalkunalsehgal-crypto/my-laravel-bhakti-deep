@@ -39,6 +39,7 @@ use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\VideoMeetingSdkController;
 use App\Models\Admin\HawanSession;
+use App\Models\Admin\DiyaSession;
 use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Models\VideoMeetingAttendance;
@@ -46,6 +47,7 @@ use App\Services\PanditBookingService;
 use App\Services\VideoMeetingProviderManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 
 
@@ -70,11 +72,31 @@ Route::get('/check-pandit-auth', function () {
 })->middleware('auth:pandit');
 
 Route::get('/', function () {
-    return view('welcome');
+    $liveDiyas = collect();
+    $liveDiyaCount = 0;
+    $diyaLitToday = 0;
+
+    if (Schema::hasTable('diya_sessions')) {
+        $liveDiyas = DiyaSession::with(['diya', 'deity'])
+            ->where('payment_status', 'paid')
+            ->currentlyGlowing()
+            ->latest()
+            ->limit(6)
+            ->get();
+
+        $liveDiyaCount = DiyaSession::where('payment_status', 'paid')
+            ->currentlyGlowing()
+            ->count();
+
+        $diyaLitToday = DiyaSession::where('payment_status', 'paid')
+            ->whereDate('start_at', today())
+            ->count();
+    }
+
+    return view('welcome', compact('liveDiyas', 'liveDiyaCount', 'diyaLitToday'));
 })->name('home');
 
-Route::get('/light-diya', [DiyaController::class, 'index'])->name('light-diya');
-Route::post('/light-diya/draft', [DiyaController::class, 'saveDraft'])->name('diya.draft');
+Route::get('/light-diya', [DiyaController::class, 'index'])->middleware('auth')->name('light-diya');
 // Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
 Route::get('/diya-session/{session}', [DiyaController::class, 'session'])->name('diya.session');
 Route::get('/personalized-pooja', [PoojaController::class, 'index'])->name('personalized-pooja');
@@ -291,6 +313,7 @@ Route::post('/contact', function () {
 })->name('contact.submit');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::redirect('/registration', '/signup')->name('registration');
+Route::post('/payments/razorpay/webhook', [PaymentController::class, 'webhook'])->name('payments.razorpay.webhook');
 
 Route::redirect('/pandit/login', '/login')->name('pandit.login');
 Route::get('/pandit/register', [AuthController::class, 'showPanditRegister'])->name('pandit.register');
@@ -520,7 +543,7 @@ Route::get('/notifications', [UserNotificationController::class, 'index'])->name
 Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllRead'])->name('user.notifications.read-all');
 Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markRead'])->name('user.notifications.read');
 Route::post('/payments/bookings/{type}/{id}/retry', [PaymentController::class, 'retry'])
-    ->whereIn('type', ['pooja', 'hawan'])
+    ->whereIn('type', ['pooja', 'hawan', 'diya'])
     ->name('payments.bookings.retry');
 Route::post('/payments/razorpay/verify', [PaymentController::class, 'verify'])->name('payments.razorpay.verify');
 Route::post('/payments/razorpay/failure', [PaymentController::class, 'failure'])->name('payments.razorpay.failure');
@@ -538,10 +561,7 @@ Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::c
     ->name('live.issue-report.store');
 Route::get('/reports/{dispute}', [UserReportController::class, 'show'])->name('user.reports.show');
 Route::get('/reports/{dispute}/evidences/{evidence}', [UserReportController::class, 'evidence'])->name('user.reports.evidence');
-Route::get('/light-diya/continue', function () {
-    return redirect()->route('light-diya');
-})->name('diya.continue');
-    Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
+Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
 
 Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
 Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');

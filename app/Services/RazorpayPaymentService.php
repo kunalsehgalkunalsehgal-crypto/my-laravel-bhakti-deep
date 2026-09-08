@@ -67,12 +67,28 @@ class RazorpayPaymentService
             'verify_url' => route('payments.razorpay.verify'),
             'failure_url' => route('payments.razorpay.failure'),
             'profile_url' => route('user.profile'),
+            'failure_message' => class_basename($session) === 'DiyaSession'
+                ? 'Payment failed. Please start the Diya payment again.'
+                : 'Payment failed. Please retry from My Profile.',
         ];
     }
 
     public function validSignature(string $orderId, string $paymentId, string $signature): bool
     {
         $expected = hash_hmac('sha256', $orderId.'|'.$paymentId, (string) config('services.razorpay.key_secret'));
+
+        return hash_equals($expected, $signature);
+    }
+
+    public function validWebhookSignature(string $payload, string $signature): bool
+    {
+        $secret = config('services.razorpay.webhook_secret') ?: config('services.razorpay.key_secret');
+
+        if (!$secret || !$signature) {
+            return false;
+        }
+
+        $expected = hash_hmac('sha256', $payload, (string) $secret);
 
         return hash_equals($expected, $signature);
     }

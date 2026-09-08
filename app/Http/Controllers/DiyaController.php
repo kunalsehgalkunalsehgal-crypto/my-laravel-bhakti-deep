@@ -8,17 +8,17 @@ use App\Models\Admin\DiyaSession;
 use App\Models\Admin\Donation;
 use App\Models\Admin\PaymentLog;
 use App\Models\Admin\SankalpForm;
+use App\Models\PaymentAttempt;
 use App\Services\PanditBookingService;
-use Carbon\Carbon;
+use App\Services\RazorpayPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DiyaController extends Controller
 {
-    private const BOOKING_DRAFT_SESSION_KEY = 'diya_booking_draft';
-
     public function index()
     {
         $diyas = collect();
@@ -37,10 +37,22 @@ class DiyaController extends Controller
                 ->get(['id', 'name']);
         }
 
+        $liveDiyas = Schema::hasTable('diya_sessions')
+            ? DiyaSession::with(['diya', 'deity'])
+                ->where('payment_status', 'paid')
+                ->currentlyGlowing()
+                ->latest()
+                ->limit(48)
+                ->get()
+            : collect();
+        $liveDiyaCount = Schema::hasTable('diya_sessions')
+            ? DiyaSession::where('payment_status', 'paid')->currentlyGlowing()->count()
+            : 0;
+
         $diyaStats = [
-            'scheduled' => Schema::hasTable('diya_sessions') ? DiyaSession::scheduled()->count() : 0,
-            'glowing' => Schema::hasTable('diya_sessions') ? DiyaSession::currentlyGlowing()->count() : 0,
-            'completed' => Schema::hasTable('diya_sessions') ? DiyaSession::completed()->count() : 0,
+            'scheduled' => Schema::hasTable('diya_sessions') ? DiyaSession::where('payment_status', 'paid')->scheduled()->count() : 0,
+            'glowing' => $liveDiyaCount,
+            'completed' => Schema::hasTable('diya_sessions') ? DiyaSession::where('payment_status', 'paid')->completed()->count() : 0,
             'available' => $diyas->count(),
         ];
 
@@ -49,19 +61,7 @@ class DiyaController extends Controller
             'activeDeities' => $activeDeities,
             'diyaOptions' => $diyas->map(fn (Diya $diya) => $diya->toOfferingArray())->values(),
             'diyaStats' => $diyaStats,
-            'diyaBookingDraft' => session(self::BOOKING_DRAFT_SESSION_KEY, []),
-        ]);
-    }
-
-    public function saveDraft(Request $request)
-    {
-        $validated = Validator::make($request->only($this->draftFields()), $this->draftRules())->validate();
-
-        session()->put(self::BOOKING_DRAFT_SESSION_KEY, $validated);
-
-        return response()->json([
-            'success' => true,
-            'redirect_url' => route('diya.continue'),
+            'liveDiyas' => $liveDiyas,
         ]);
     }
 
@@ -85,7 +85,8 @@ class DiyaController extends Controller
             'mobile' => ['required', 'string', 'max:20'],
             'purpose' => ['required', 'string', 'max:255'],
             'mannokamna' => ['nullable', 'string'],
-            'start_at' => ['nullable', 'date'],
+            'selected_amount' => ['required', Rule::in(['1', '11', '51', '101', '501', 'custom'])],
+            'custom_amount' => ['nullable', 'required_if:selected_amount,custom', 'integer', 'min:1', 'max:100000'],
             'consent' => ['accepted'],
         ]);
 
@@ -122,7 +123,13 @@ class DiyaController extends Controller
         });
 
         $validated = $validator->validate();
-        $amount = (float) $diya->seva_amount;
+        $amount = $validated['selected_amount'] === 'custom'
+            ? (float) $validated['custom_amount']
+            : (float) $validated['selected_amount'];
+
+        if (!str_starts_with((string) config('services.razorpay.key_id'), 'rzp_test_')) {
+            throw ValidationException::withMessages(['payment' => 'Razorpay test key is not configured.']);
+        }
 
         $sankalp = SankalpForm::create([
             'user_id' => auth()->id(),
@@ -144,28 +151,23 @@ class DiyaController extends Controller
                 'deity_id' => $deity->id,
                 'deity_name' => $deity->name,
                 'deity_selection_mode' => $diya->deity_selection_mode,
-                'seva_amount' => $amount,
+                'seva_amount' => (float) $diya->seva_amount,
+                'donation_amount' => $amount,
             ],
         ]);
 
         $bookingService = app(PanditBookingService::class);
         $token = $bookingService->token();
-        $startAt = isset($validated['start_at']) ? Carbon::parse($validated['start_at']) : now();
-        $endAt = $this->endAt($startAt, $diya->duration);
-        $sessionStatus = $startAt->isFuture() ? DiyaSession::STATUS_SCHEDULED : DiyaSession::STATUS_ACTIVE;
 
         $session = DiyaSession::create([
             'user_id' => auth()->id(),
             'diya_id' => $diya->id,
             'deity_id' => $deity->id,
             'sankalp_form_id' => $sankalp->id,
-            'booking_date' => $startAt->toDateString(),
+            'booking_date' => now()->toDateString(),
             'slot' => 'Instant Diya Offering',
-            'start_at' => $startAt,
-            'end_at' => $endAt,
-            'status' => $sessionStatus,
-            'payment_status' => 'paid',
-            'expires_at' => $endAt,
+            'status' => 'pending',
+            'payment_status' => 'pending',
             'live_session_token' => $token,
             'admin_note' => json_encode([
                 'diya_name' => $diya->name,
@@ -173,9 +175,9 @@ class DiyaController extends Controller
                 'deity_name' => $deity->name,
                 'deity_selection_mode' => $diya->deity_selection_mode,
                 'duration' => $diya->duration,
-                'start_at' => $startAt->toIso8601String(),
-                'end_at' => $endAt?->toIso8601String(),
-                'seva_amount' => $amount,
+                'seva_amount' => (float) $diya->seva_amount,
+                'selected_amount' => $validated['selected_amount'],
+                'donation_amount' => $amount,
                 'total_amount' => $amount,
                 'mantra_audio_id' => $diya->mantra_audio_id,
                 'mantra_audio_title' => $diya->mantraAudio?->title,
@@ -189,46 +191,70 @@ class DiyaController extends Controller
 
         $donation = Donation::create([
             'user_id' => auth()->id(),
+            'payment_purpose' => 'diya',
+            'session_type' => DiyaSession::class,
+            'session_id' => $session->id,
             'amount' => $amount,
             'currency' => 'INR',
             'donor_name' => $validated['full_name'],
             'donor_mobile' => $validated['mobile'],
-            'razorpay_order_id' => 'demo_diya_order_'.$session->id,
-            'razorpay_payment_id' => 'demo_diya_payment_'.$session->id,
-            'payment_status' => 'paid',
-            'receipt_number' => 'BDD-'.now()->format('Ymd').'-'.$session->id,
-            'paid_at' => now(),
+            'payment_status' => 'pending',
         ]);
 
-        PaymentLog::create([
-            'donation_id' => $donation->id,
+        $attempt = PaymentAttempt::create([
             'user_id' => auth()->id(),
-            'gateway' => 'demo',
-            'order_id' => $donation->razorpay_order_id,
-            'payment_id' => $donation->razorpay_payment_id,
-            'status' => 'paid',
+            'donation_id' => $donation->id,
+            'payable_type' => DiyaSession::class,
+            'payable_id' => $session->id,
+            'purpose' => PaymentAttempt::PURPOSE_DONATION,
+            'gateway' => 'none',
             'amount' => $amount,
-            'payload' => [
+            'currency' => 'INR',
+            'status' => PaymentAttempt::STATUS_PENDING,
+            'metadata' => [
                 'booking_type' => 'diya',
+                'diya_id' => $diya->id,
+                'deity_id' => $deity->id,
                 'diya_session_id' => $session->id,
                 'sankalp_form_id' => $sankalp->id,
-                'server_amount_source' => 'diyas.seva_amount',
+                'selected_amount' => $validated['selected_amount'],
+                'donation_amount' => $amount,
             ],
         ]);
 
-        session()->forget(self::BOOKING_DRAFT_SESSION_KEY);
+        $donation->update(['latest_payment_attempt_id' => $attempt->id]);
+        $session->update(['latest_payment_attempt_id' => $attempt->id]);
+
+        PaymentLog::create([
+            'donation_id' => $donation->id,
+            'payment_attempt_id' => $attempt->id,
+            'loggable_type' => DiyaSession::class,
+            'loggable_id' => $session->id,
+            'user_id' => auth()->id(),
+            'gateway' => 'none',
+            'event_type' => 'payment_hold_created',
+            'status' => 'pending',
+            'occurred_at' => now(),
+            'amount' => $amount,
+            'payload' => $attempt->metadata,
+        ]);
+
+        $payment = app(RazorpayPaymentService::class)->createOrder($attempt, $session, $request->user());
 
         return response()->json([
             'success' => true,
-            'message' => 'Diya offering created successfully.',
+            'message' => 'Diya details saved. Complete Razorpay test payment to light your diya.',
             'session_id' => $session->id,
-            'redirect_url' => $session->live_session_link,
+            'donation_id' => $donation->id,
+            'payment_attempt_id' => $attempt->id,
+            'payment' => $payment,
+            'redirect_url' => route('user.profile'),
         ]);
     }
 
     public function session(Request $request, DiyaSession $session)
     {
-        $session->load(['diya.mantraAudio.deity', 'deity', 'sankalp']);
+        $session->load(['diya.mantraAudio.deity', 'deity.ambientAudio', 'sankalp', 'latestPaymentAttempt.donation']);
 
         abort_unless(app(PanditBookingService::class)->canAccessPrivateSession($session, $request), 403);
 
@@ -238,68 +264,13 @@ class DiyaController extends Controller
             $mantraAudio = null;
         }
 
-        return view('pages.diya-session', compact('session', 'mantraAudio'));
-    }
+        $ambientAudio = $session->deity?->ambientAudio;
 
-    private function endAt(Carbon $startAt, ?string $duration): Carbon
-    {
-        $duration = strtolower(trim((string) $duration));
-
-        if (preg_match('/(\d+)\s*(hour|hours|hr|hrs)/', $duration, $matches)) {
-            return $startAt->copy()->addHours((int) $matches[1]);
+        if (!$ambientAudio?->audio_file || $ambientAudio->status !== 'active') {
+            $ambientAudio = null;
         }
 
-        if (preg_match('/(\d+)\s*(day|days)/', $duration, $matches)) {
-            return $startAt->copy()->addDays((int) $matches[1]);
-        }
-
-        if (preg_match('/(\d+)\s*(minute|minutes|min|mins)/', $duration, $matches)) {
-            return $startAt->copy()->addMinutes((int) $matches[1]);
-        }
-
-        return $startAt->copy()->addDay();
+        return view('pages.diya-session', compact('session', 'mantraAudio', 'ambientAudio'));
     }
 
-    private function draftFields(): array
-    {
-        return [
-            'diya_id',
-            'deity_id',
-            'full_name',
-            'mobile',
-            'gotra',
-            'dob',
-            'birth_time',
-            'birth_place',
-            'father_name',
-            'mother_name',
-            'spouse_name',
-            'family_names',
-            'purpose',
-            'mannokamna',
-        ];
-    }
-
-    private function draftRules(): array
-    {
-        return [
-            'diya_id' => [
-                'required',
-                Rule::exists('diyas', 'id')->where(fn ($query) => $query->where('status', 'active')->whereNull('deleted_at')),
-            ],
-            'deity_id' => ['nullable', 'integer', Rule::exists('deities', 'id')->where(fn ($query) => $query->where('status', 'active'))],
-            'full_name' => ['required', 'string', 'max:255'],
-            'mobile' => ['required', 'string', 'max:20'],
-            'gotra' => ['nullable', 'string', 'max:255'],
-            'dob' => ['nullable', 'date'],
-            'birth_time' => ['nullable', 'string', 'max:255'],
-            'birth_place' => ['nullable', 'string', 'max:255'],
-            'father_name' => ['nullable', 'string', 'max:255'],
-            'mother_name' => ['nullable', 'string', 'max:255'],
-            'spouse_name' => ['nullable', 'string', 'max:255'],
-            'family_names' => ['nullable', 'string'],
-            'purpose' => ['required', 'string', 'max:255'],
-            'mannokamna' => ['nullable', 'string'],
-        ];
-    }
 }

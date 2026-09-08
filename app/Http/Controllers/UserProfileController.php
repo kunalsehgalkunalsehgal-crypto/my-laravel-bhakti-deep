@@ -19,7 +19,7 @@ class UserProfileController extends Controller
 
         return view('pages.user-profile', [
             'user' => $user,
-            'diyaBookings' => DiyaSession::with(['diya', 'deity', 'sankalp'])
+            'diyaBookings' => DiyaSession::with(['diya', 'deity', 'sankalp', 'latestPaymentAttempt'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),

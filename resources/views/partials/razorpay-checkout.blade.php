@@ -58,7 +58,7 @@
                         razorpay_order_id: payment.order_id,
                         error: response.error || {},
                     }).catch(function () {}).finally(function () {
-                        alert('Payment failed. Please retry from My Profile.');
+                        alert(payment.failure_message || 'Payment failed. Please retry from My Profile.');
                         if (resetButton) resetButton();
                     });
                 });

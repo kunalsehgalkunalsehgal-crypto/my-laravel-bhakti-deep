@@ -18,7 +18,11 @@
 .booking-item:first-child { border-top: 0; padding-top: 0; }
 .booking-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .booking-pill { border-radius: 999px; background: rgba(232,91,33,.1); color: #9b4c14; font-size: 12px; font-weight: 700; padding: 5px 10px; }
-.booking-pay { margin-top: 10px; }
+.booking-details { display: grid; gap: 8px; margin-top: 12px; }
+.booking-details div { display: flex; justify-content: space-between; gap: 12px; border-top: 1px dashed rgba(199,141,34,.16); padding-top: 8px; }
+.booking-details small { color: var(--muted); font-weight: 700; text-transform: uppercase; }
+.booking-details b { color: var(--cream); font-size: 13px; text-align: right; overflow-wrap: anywhere; }
+.booking-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .profile-form-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .profile-form-grid .full { grid-column: 1 / -1; }
 @media (max-width: 575px) {
@@ -145,9 +149,9 @@
                                     $title = $type === 'Diya'
                                         ? ($booking->diya?->name ?? $meta['diya_name'] ?? 'Diya Offering')
                                         : ($booking->service?->name ?? $meta[strtolower($type).'_name'] ?? $type.' Booking');
-                                    $canRetryPayment = $type !== 'Diya'
-                                        && !in_array($booking->status, ['cancelled', 'cancelled_by_pandit', 'completed', 'refunded'], true)
-                                        && !in_array($booking->payment_status, ['paid', 'refunded'], true);
+                                    $canRetryPayment = !in_array($booking->status, ['cancelled', 'cancelled_by_pandit', 'completed', 'refunded'], true)
+                                        && in_array($booking->payment_status, ['pending', 'failed'], true);
+                                    $diyaAmount = $meta['donation_amount'] ?? $meta['total_amount'] ?? $booking->latestPaymentAttempt?->amount;
                                 @endphp
 
                                 <div class="booking-item">
@@ -156,19 +160,41 @@
                                     <div class="booking-meta">
                                         <em class="booking-pill">{{ ucfirst($booking->status) }}</em>
                                         <em class="booking-pill">{{ ucfirst($booking->payment_status) }}</em>
-                                        @if($type !== 'Diya' && $booking->latestPaymentAttempt)
+                                        @if($booking->latestPaymentAttempt)
                                             <em class="booking-pill">{{ ucfirst(str_replace('_', ' ', $booking->latestPaymentAttempt->status)) }}</em>
                                         @endif
                                     </div>
-                                    @if($canRetryPayment)
-                                        <button
-                                            class="btn btn-saffron btn-sm rounded-pill booking-pay"
-                                            type="button"
-                                            data-retry-payment
-                                            data-retry-url="{{ route('payments.bookings.retry', ['type' => strtolower($type), 'id' => $booking->id]) }}"
-                                        >
-                                            <i class="bi bi-arrow-clockwise"></i> Retry Payment
-                                        </button>
+
+                                    @if($type === 'Diya')
+                                        <div class="booking-details">
+                                            <div><small>Deity</small><b>{{ $booking->deity?->name ?? $meta['deity_name'] ?? '-' }}</b></div>
+                                            <div><small>Donation</small><b>{{ $diyaAmount ? 'Rs.'.number_format((float) $diyaAmount, 2) : '-' }}</b></div>
+                                            <div><small>Payment Status</small><b>{{ ucfirst($booking->payment_status ?? 'pending') }}</b></div>
+                                            <div><small>Diya Status</small><b>{{ ucfirst($booking->status ?? 'pending') }}</b></div>
+                                            <div><small>Start Time</small><b>{{ $booking->start_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
+                                            <div><small>End Time</small><b>{{ $booking->end_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
+                                        </div>
+                                    @endif
+
+                                    @if($type === 'Diya' || $canRetryPayment)
+                                        <div class="booking-actions">
+                                            @if($type === 'Diya')
+                                                <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('diya.session', $booking) }}">
+                                                    <i class="bi bi-eye"></i> View Diya
+                                                </a>
+                                            @endif
+
+                                            @if($canRetryPayment)
+                                                <button
+                                                    class="btn btn-saffron btn-sm rounded-pill"
+                                                    type="button"
+                                                    data-retry-payment
+                                                    data-retry-url="{{ route('payments.bookings.retry', ['type' => strtolower($type), 'id' => $booking->id]) }}"
+                                                >
+                                                    <i class="bi bi-arrow-clockwise"></i> Retry Payment
+                                                </button>
+                                            @endif
+                                        </div>
                                     @endif
                                 </div>
                             @empty
