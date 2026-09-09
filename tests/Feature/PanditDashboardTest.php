@@ -7,10 +7,12 @@ use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Models\Admin\SankalpForm;
 use App\Models\Pandit\Pandit;
+use App\Models\Pandit\PanditBankDetail;
 use App\Models\User;
 use App\Models\VideoMeeting;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PanditDashboardTest extends TestCase
@@ -283,6 +285,84 @@ class PanditDashboardTest extends TestCase
 
         $this->get(route('pandit.dashboard'))
             ->assertRedirect(route('login'));
+    }
+
+    public function test_pandit_bank_details_store_razorpay_route_state(): void
+    {
+        [$pandit] = $this->pandits();
+        $verifiedAt = now();
+
+        $bank = PanditBankDetail::create([
+            'pandit_id' => $pandit->id,
+            'razorpay_linked_account_id' => 'acc_'.$pandit->id,
+            'razorpay_linked_account_status' => 'activated',
+            'razorpay_payout_enabled' => true,
+            'razorpay_verified_at' => $verifiedAt,
+            'razorpay_last_error' => 'kyc_pending',
+        ]);
+
+        $this->assertTrue($bank->razorpay_payout_enabled);
+        $this->assertTrue($bank->razorpay_verified_at->isSameSecond($verifiedAt));
+        $this->assertDatabaseHas('pandit_bank_details', [
+            'pandit_id' => $pandit->id,
+            'razorpay_linked_account_id' => 'acc_'.$pandit->id,
+            'razorpay_linked_account_status' => 'activated',
+            'razorpay_payout_enabled' => 1,
+            'razorpay_last_error' => 'kyc_pending',
+        ]);
+    }
+
+    public function test_verified_pandit_can_create_razorpay_linked_account(): void
+    {
+        config(['services.razorpay.key_id' => 'rzp_test_key', 'services.razorpay.key_secret' => 'secret', 'services.razorpay.route.business_type' => 'individual', 'services.razorpay.route.category' => 'services', 'services.razorpay.route.subcategory' => 'spiritual_services']);
+        Http::fake(['https://api.razorpay.com/v2/accounts' => Http::response(['id' => 'acc_test_123', 'status' => 'activated', 'payout_enabled' => true])]);
+        [$pandit] = $this->pandits();
+        $pandit->update(['mobile' => '9876543210']);
+        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234', 'pan_number' => 'ABCDE1234F', 'razorpay_last_error' => 'old error']);
+
+        $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.razorpay-linked-account'))->assertRedirect()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('pandit_bank_details', ['pandit_id' => $pandit->id, 'razorpay_linked_account_id' => 'acc_test_123', 'razorpay_linked_account_status' => 'activated', 'razorpay_payout_enabled' => 1, 'razorpay_last_error' => null]);
+        $this->assertNotNull($pandit->bankDetail->fresh()->razorpay_verified_at);
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.razorpay.com/v2/accounts' && $request['email'] === $pandit->email && $request['type'] === 'route' && $request['legal_info']['pan'] === 'ABCDE1234F');
+    }
+
+    public function test_existing_razorpay_linked_account_is_not_created_again(): void
+    {
+        Http::fake();
+        [$pandit] = $this->pandits();
+        $pandit->update(['mobile' => '9876543210']);
+        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234', 'razorpay_linked_account_id' => 'acc_existing']);
+
+        $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.razorpay-linked-account'))->assertRedirect()->assertSessionHas('success');
+
+        Http::assertNothingSent();
+        $this->assertSame('acc_existing', $pandit->bankDetail->fresh()->razorpay_linked_account_id);
+    }
+
+    public function test_razorpay_linked_account_failure_saves_last_error(): void
+    {
+        config(['services.razorpay.key_id' => 'rzp_test_key', 'services.razorpay.key_secret' => 'secret', 'services.razorpay.route.business_type' => 'individual', 'services.razorpay.route.category' => 'services', 'services.razorpay.route.subcategory' => 'spiritual_services']);
+        Http::fake(['https://api.razorpay.com/v2/accounts' => Http::response(['error' => ['description' => 'Merchant email already exists.']], 400)]);
+        [$pandit] = $this->pandits();
+        $pandit->update(['mobile' => '9876543210']);
+        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234']);
+
+        $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.razorpay-linked-account'))->assertRedirect()->assertSessionHasErrors('razorpay');
+
+        $this->assertSame('Merchant email already exists.', $pandit->bankDetail->fresh()->razorpay_last_error);
+    }
+
+    public function test_unverified_pandit_cannot_create_razorpay_linked_account(): void
+    {
+        Http::fake();
+        [$pandit] = $this->pandits();
+        $pandit->update(['status' => 'under_review', 'mobile' => '9876543210']);
+        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234']);
+
+        $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.razorpay-linked-account'))->assertRedirect()->assertSessionHasErrors('razorpay');
+
+        Http::assertNothingSent();
     }
 
     private function pandits(): array

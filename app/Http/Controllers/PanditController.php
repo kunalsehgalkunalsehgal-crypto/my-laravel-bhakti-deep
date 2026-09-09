@@ -19,11 +19,13 @@ use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Services\PanditBookingCancellationService;
+use App\Services\RazorpayPaymentService;
 use App\Services\VideoMeetingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\ValidationException;
 
 
 use App\Events\PanditMessageSent;
@@ -484,6 +486,15 @@ class PanditController extends Controller
             'account_holder_name','bank_name','account_number','ifsc_code','upi_id','pan_number',
         ]));
         return back()->with('success', 'Bank details saved!');
+    }
+
+    public function createRazorpayLinkedAccount()
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+        if (!$pandit->bankDetail) throw ValidationException::withMessages(['razorpay' => 'Bank details are required.']);
+        app(RazorpayPaymentService::class)->createLinkedAccount($pandit, $pandit->bankDetail);
+        return back()->with('success', 'Razorpay linked account saved!');
     }
 
     // DOCUMENTS

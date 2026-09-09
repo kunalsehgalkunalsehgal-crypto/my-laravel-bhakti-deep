@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\BookingUserConfirmation;
 use App\Models\Dispute;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
+use App\Models\SessionCompletionProof;
+use App\Models\VideoMeetingAttendance;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -116,7 +119,22 @@ class PanditPayoutLedgerService
             return PanditPayout::STATUS_READY;
         }
 
-        if ($booking->status === 'completed' || $booking->completed_at) {
+        if (
+            $booking->payment_status === 'paid'
+            && $booking->status === 'completed'
+            && $booking->completed_at
+            && $booking->videoMeetingAttendances()->where('event_type', VideoMeetingAttendance::EVENT_MEETING_ENDED)->exists()
+            && $booking->completionProofs()
+                ->where('pandit_id', $booking->pandit_id)
+                ->whereNotNull('submitted_at')
+                ->where('status', '!=', SessionCompletionProof::STATUS_REJECTED)
+                ->exists()
+            && $booking->userConfirmations()
+                ->where('user_id', $booking->user_id)
+                ->whereIn('status', [BookingUserConfirmation::STATUS_CONFIRMED, BookingUserConfirmation::STATUS_AUTO_CONFIRMED])
+                ->whereNotNull('confirmed_at')
+                ->exists()
+        ) {
             return PanditPayout::STATUS_READY;
         }
 

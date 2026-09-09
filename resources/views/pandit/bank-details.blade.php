@@ -7,6 +7,7 @@
 @section('content')
 
 @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
+@if($errors->has('razorpay'))<div style="color:red;margin-bottom:12px">{{ $errors->first('razorpay') }}</div>@endif
 
 @php
     $bankRows = [
@@ -43,6 +44,9 @@
             </div>
         @endforeach
     </div>
+    @if($bank && !$bank->razorpay_linked_account_id)
+        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Create Razorpay Linked Account</button></form>
+    @endif
 </section>
 
 <section class="pandit-bank-edit pandit-panel">

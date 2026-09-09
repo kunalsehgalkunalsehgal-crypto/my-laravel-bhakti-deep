@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\PaymentAttempt;
+use App\Models\Pandit\Pandit;
+use App\Models\Pandit\PanditBankDetail;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
@@ -113,5 +115,56 @@ class RazorpayPaymentService
         }
 
         return $response->json();
+    }
+
+    public function createLinkedAccount(Pandit $pandit, PanditBankDetail $bank): PanditBankDetail
+    {
+        if ($bank->razorpay_linked_account_id) {
+            return $bank;
+        }
+
+        $phone = preg_replace('/\D+/', '', (string) $pandit->mobile);
+        $route = config('services.razorpay.route');
+
+        if ($pandit->status !== 'verified' || blank(config('services.razorpay.key_id')) || blank(config('services.razorpay.key_secret')) || blank($bank->account_holder_name) || blank($bank->account_number) || blank($bank->ifsc_code) || blank($pandit->email) || strlen($phone) < 8 || strlen($phone) > 15 || blank($route['business_type']) || blank($route['category']) || blank($route['subcategory'])) {
+            throw ValidationException::withMessages(['razorpay' => 'Verified pandit, bank details and Razorpay Route config are required.']);
+        }
+
+        $response = Http::withBasicAuth(config('services.razorpay.key_id'), config('services.razorpay.key_secret'))
+            ->asJson()
+            ->post(rtrim(config('services.razorpay.base_url'), '/').'/v2/accounts', array_filter([
+                'email' => $pandit->email,
+                'phone' => $phone,
+                'type' => 'route',
+                'legal_business_name' => $bank->account_holder_name,
+                'business_type' => $route['business_type'],
+                'contact_name' => $bank->account_holder_name,
+                'profile' => ['category' => $route['category'], 'subcategory' => $route['subcategory']],
+                'legal_info' => $bank->pan_number ? ['pan' => $bank->pan_number] : null,
+            ]));
+
+        if (!$response->successful()) {
+            $bank->update(['razorpay_last_error' => $response->json('error.description') ?: 'Razorpay linked account creation failed.']);
+            throw ValidationException::withMessages(['razorpay' => $bank->razorpay_last_error]);
+        }
+
+        $data = $response->json();
+        if (blank($data['id'] ?? null)) {
+            $bank->update(['razorpay_last_error' => 'Razorpay linked account id missing.']);
+            throw ValidationException::withMessages(['razorpay' => $bank->razorpay_last_error]);
+        }
+
+        $status = $data['status'] ?? null;
+        $enabled = (bool) ($data['payout_enabled'] ?? $data['payouts_enabled'] ?? false);
+
+        $bank->update([
+            'razorpay_linked_account_id' => $data['id'] ?? null,
+            'razorpay_linked_account_status' => $status,
+            'razorpay_payout_enabled' => $enabled,
+            'razorpay_verified_at' => $enabled || in_array($status, ['active', 'activated', 'verified'], true) ? now() : null,
+            'razorpay_last_error' => null,
+        ]);
+
+        return $bank->fresh();
     }
 }

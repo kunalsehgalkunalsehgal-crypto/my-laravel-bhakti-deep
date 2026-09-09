@@ -6,11 +6,14 @@ use App\Models\Admin\Admin;
 use App\Models\Admin\AdminRole;
 use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
+use App\Models\BookingUserConfirmation;
 use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditService;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
+use App\Models\SessionCompletionProof;
 use App\Models\User;
+use App\Models\VideoMeetingAttendance;
 use App\Services\PanditPayoutLedgerService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +27,7 @@ class PanditPayoutSystemTest extends TestCase
     public function test_admin_completing_paid_service_with_no_dispute_marks_payout_ready(): void
     {
         [$admin, $user, $session, $attempt] = $this->paidBooking();
+        $this->makeEligible($session);
 
         $this->actingAs($admin, 'admin')
             ->put(route('admin.bookings.update', ['type' => 'hawan', 'id' => $session->id]), [
@@ -50,9 +54,36 @@ class PanditPayoutSystemTest extends TestCase
         $this->assertNull($payout->provider_payout_id);
     }
 
+    public function test_completed_booking_with_meeting_ended_alone_keeps_payout_on_hold(): void
+    {
+        [$admin, $user, $session] = $this->paidBooking();
+        VideoMeetingAttendance::create([
+            'session_type' => HawanSession::class,
+            'session_id' => $session->id,
+            'event_type' => VideoMeetingAttendance::EVENT_MEETING_ENDED,
+            'provider' => 'zoom',
+            'left_at' => now(),
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->put(route('admin.bookings.update', ['type' => 'hawan', 'id' => $session->id]), [
+                'status' => 'completed',
+                'payment_status' => 'paid',
+                'admin_note' => $session->admin_note,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $payout = PanditPayout::firstOrFail();
+
+        $this->assertSame(PanditPayout::STATUS_HOLD, $payout->status);
+        $this->assertNull($payout->eligible_at);
+    }
+
     public function test_open_dispute_keeps_completed_booking_payout_on_hold(): void
     {
         [$admin, $user, $session] = $this->paidBooking();
+        $this->makeEligible($session);
 
         $this->actingAs($admin, 'admin')
             ->put(route('admin.bookings.update', ['type' => 'hawan', 'id' => $session->id]), [
@@ -81,6 +112,7 @@ class PanditPayoutSystemTest extends TestCase
     public function test_payout_sync_is_duplicate_protected(): void
     {
         [$admin, $user, $session] = $this->paidBooking(status: 'completed');
+        $this->makeEligible($session);
 
         app(PanditPayoutLedgerService::class)->syncForBooking($session);
         app(PanditPayoutLedgerService::class)->syncForBooking($session->fresh());
@@ -92,6 +124,7 @@ class PanditPayoutSystemTest extends TestCase
     public function test_admin_can_view_ready_payouts_when_provider_is_pending(): void
     {
         [$admin, $user, $session] = $this->paidBooking(status: 'completed');
+        $this->makeEligible($session);
         app(PanditPayoutLedgerService::class)->syncForBooking($session);
 
         $this->actingAs($admin, 'admin')
@@ -168,5 +201,31 @@ class PanditPayoutSystemTest extends TestCase
         $session->update(['latest_payment_attempt_id' => $attempt->id]);
 
         return [$admin, $user, $session->fresh(), $attempt];
+    }
+
+    private function makeEligible(HawanSession $session): void
+    {
+        VideoMeetingAttendance::create([
+            'session_type' => HawanSession::class,
+            'session_id' => $session->id,
+            'event_type' => VideoMeetingAttendance::EVENT_MEETING_ENDED,
+            'provider' => 'zoom',
+            'left_at' => now(),
+        ]);
+        SessionCompletionProof::create([
+            'session_type' => HawanSession::class,
+            'session_id' => $session->id,
+            'pandit_id' => $session->pandit_id,
+            'user_id' => $session->user_id,
+            'status' => SessionCompletionProof::STATUS_PENDING,
+            'submitted_at' => now(),
+        ]);
+        BookingUserConfirmation::create([
+            'session_type' => HawanSession::class,
+            'session_id' => $session->id,
+            'user_id' => $session->user_id,
+            'status' => BookingUserConfirmation::STATUS_CONFIRMED,
+            'confirmed_at' => now(),
+        ]);
     }
 }

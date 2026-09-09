@@ -126,6 +126,18 @@ class DiyaFlowTest extends TestCase
         $this->assertSame(1, PaymentLog::where('event_type', 'payment_hold_created')->count());
     }
 
+    public function test_light_diya_page_renders_deity_image_data(): void
+    {
+        [$diya, $deity] = $this->userSelectDiya();
+        $deity->update(['featured_image' => 'assets/shiv.jpg']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('light-diya'))
+            ->assertOk()
+            ->assertSee('deityPreviewImage')
+            ->assertSee('assets\/shiv.jpg', false);
+    }
+
     public function test_fixed_diya_uses_fixed_deity_even_if_request_has_other_deity(): void
     {
         $fixedDeity = Deity::create([
@@ -502,89 +514,74 @@ class DiyaFlowTest extends TestCase
     public function test_diya_session_page_uses_selected_deity_theme(): void
     {
         $user = User::factory()->create();
-        $lakshmiMantra = Audio::create([
-            'title' => 'Lakshmi Mantra',
-            'slug' => 'lakshmi-mantra',
-            'category' => 'mantra',
-            'audio_file' => 'audio/lakshmi.mp3',
-            'status' => 'active',
+
+        $deityWithAudio = function (string $name, string $slug, string $mantra, string $ambient, array $theme) {
+            $deity = Deity::create($theme + ['name' => $name, 'slug' => $slug, 'status' => 'active']);
+            $mantraAudio = Audio::create(['deity_id' => $deity->id, 'title' => $mantra, 'slug' => $slug.'-mantra', 'category' => 'mantra', 'audio_file' => 'audio/'.$slug.'-mantra.mp3', 'status' => 'active']);
+            $ambientAudio = Audio::create(['deity_id' => $deity->id, 'title' => $ambient, 'slug' => $slug.'-ambient', 'category' => 'temple_ambience', 'audio_file' => 'audio/'.$slug.'-ambient.mp3', 'status' => 'active']);
+            $deity->update(['mantra_audio_id' => $mantraAudio->id, 'ambient_audio_id' => $ambientAudio->id]);
+
+            return [$deity, $mantraAudio, $ambientAudio];
+        };
+
+        [$ganesh] = $deityWithAudio('Shree Ganesh', 'shree-ganesh', 'Ganesh Mantra', 'Temple Bells', [
+            'temple_background_image' => 'deities/theme-backgrounds/ganesh.png',
+            'primary_color' => '#f97316',
+            'secondary_color' => '#facc15',
+            'glow_color' => '#fed7aa',
+            'particle_style' => 'divine_light',
+            'flame_style' => 'orange',
         ]);
-        $lakshmiAmbient = Audio::create([
-            'title' => 'Temple Bells',
-            'slug' => 'temple-bells',
-            'category' => 'temple_ambience',
-            'audio_file' => 'audio/bells.mp3',
-            'status' => 'active',
+        [$shiv] = $deityWithAudio('Lord Shiv', 'lord-shiv', 'Shiv Mantra', 'Mountain Wind', [
+            'primary_color' => '#2563eb',
+            'secondary_color' => '#94a3b8',
+            'glow_color' => '#bfdbfe',
+            'particle_style' => 'smoke',
+            'flame_style' => 'blue',
         ]);
-        $lakshmi = Deity::create([
-            'name' => 'Maa Lakshmi',
-            'slug' => 'maa-lakshmi',
-            'temple_background_image' => 'deities/theme-backgrounds/lakshmi.png',
-            'primary_color' => '#f6c453',
-            'secondary_color' => '#b42318',
-            'glow_color' => '#fff3bf',
-            'ambient_audio_id' => $lakshmiAmbient->id,
-            'particle_style' => 'flower_petals',
-            'flame_style' => 'golden',
-            'status' => 'active',
-        ]);
-        $lakshmiMantra->update(['deity_id' => $lakshmi->id]);
-        $lakshmiDiya = Diya::create([
-            'name' => 'Lakshmi Deep',
-            'slug' => 'lakshmi-deep',
+        [, $lakshmiMantra] = $deityWithAudio('Maa Lakshmi', 'maa-lakshmi', 'Lakshmi Mantra', 'Lakshmi Ambience', []);
+
+        $selectDiya = Diya::create([
+            'name' => 'Select Deep',
+            'slug' => 'select-deep',
             'seva_amount' => 108,
             'duration' => '1 day',
             'deity_selection_mode' => Diya::MODE_USER_SELECT,
             'mantra_audio_id' => $lakshmiMantra->id,
             'status' => 'active',
         ]);
-
-        $shivAmbient = Audio::create([
-            'title' => 'Mountain Wind',
-            'slug' => 'mountain-wind',
-            'category' => 'temple_ambience',
-            'audio_file' => 'audio/wind.mp3',
-            'status' => 'active',
-        ]);
-        $shiv = Deity::create([
-            'name' => 'Lord Shiv',
-            'slug' => 'lord-shiv',
-            'primary_color' => '#2563eb',
-            'secondary_color' => '#94a3b8',
-            'glow_color' => '#bfdbfe',
-            'ambient_audio_id' => $shivAmbient->id,
-            'particle_style' => 'smoke',
-            'flame_style' => 'blue',
-            'status' => 'active',
-        ]);
-        $shivDiya = Diya::create([
-            'name' => 'Shiv Deep',
-            'slug' => 'shiv-deep',
+        $fixedDiya = Diya::create([
+            'name' => 'Fixed Shiv Deep',
+            'slug' => 'fixed-shiv-deep',
             'seva_amount' => 108,
             'duration' => '2 hours',
-            'deity_selection_mode' => Diya::MODE_USER_SELECT,
+            'deity_selection_mode' => Diya::MODE_FIXED,
+            'fixed_deity_id' => $shiv->id,
+            'mantra_audio_id' => $lakshmiMantra->id,
             'status' => 'active',
         ]);
 
-        $lakshmiSession = $this->paidDiyaSession($user, $lakshmiDiya, $lakshmi, 51);
-        $shivSession = $this->paidDiyaSession($user, $shivDiya, $shiv, 101);
+        $ganeshSession = $this->paidDiyaSession($user, $selectDiya, $ganesh, 51);
+        $shivSession = $this->paidDiyaSession($user, $selectDiya, $shiv, 101);
+        $fixedSession = $this->paidDiyaSession($user, $fixedDiya, $shiv, 108);
 
         $this->actingAs($user)
-            ->get(route('diya.session', $lakshmiSession))
+            ->get(route('diya.session', $ganeshSession))
             ->assertOk()
-            ->assertSee('deity-particles-flower_petals', false)
-            ->assertSee('deity-flame-golden', false)
-            ->assertSee('--diya-primary: #f6c453', false)
-            ->assertSee('storage/deities/theme-backgrounds/lakshmi.png', false)
-            ->assertSee('Lakshmi Deep')
-            ->assertSee('Maa Lakshmi')
+            ->assertSee('deity-particles-divine_light', false)
+            ->assertSee('deity-flame-orange', false)
+            ->assertSee('--diya-primary: #f97316', false)
+            ->assertSee('storage/deities/theme-backgrounds/ganesh.png', false)
+            ->assertSee('Select Deep')
+            ->assertSee('Shree Ganesh')
             ->assertSee('Aarav Sharma')
             ->assertSee('Family Peace')
             ->assertSee('Rs.51.00')
             ->assertSee('Payment</small>Paid', false)
             ->assertSee('Status</small>Active', false)
-            ->assertSee('Lakshmi Mantra')
-            ->assertSee('Temple Bells');
+            ->assertSee('Ganesh Mantra')
+            ->assertSee('Temple Bells')
+            ->assertDontSee('Lakshmi Mantra');
 
         $this->actingAs($user)
             ->get(route('diya.session', $shivSession))
@@ -592,10 +589,21 @@ class DiyaFlowTest extends TestCase
             ->assertSee('deity-particles-smoke', false)
             ->assertSee('deity-flame-blue', false)
             ->assertSee('--diya-primary: #2563eb', false)
-            ->assertSee('Shiv Deep')
+            ->assertSee('Select Deep')
             ->assertSee('Lord Shiv')
+            ->assertSee('Shiv Mantra')
             ->assertSee('Mountain Wind')
             ->assertSee('Rs.101.00')
+            ->assertDontSee('Lakshmi Mantra');
+
+        $this->actingAs($user)
+            ->get(route('diya.session', $fixedSession))
+            ->assertOk()
+            ->assertSee('Fixed Shiv Deep')
+            ->assertSee('Lord Shiv')
+            ->assertSee('Shiv Mantra')
+            ->assertSee('Mountain Wind')
+            ->assertSee('Rs.108.00')
             ->assertDontSee('Lakshmi Mantra');
     }
 

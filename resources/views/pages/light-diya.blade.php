@@ -143,6 +143,10 @@
                                         @endforeach
                                     </select>
                                 </div>
+
+                                <div class="ld-diya-thumb mt-3">
+                                    <img id="deityPreviewImage" src="{{ $deityFallbackImage }}" alt="Selected deity">
+                                </div>
                             </div>
 
                             <div class="glass rounded-4 p-4 p-md-5 mt-4">
@@ -308,7 +312,8 @@
 @push('scripts')
 <script>
 const diyaOptions = @json($diyaOptions);
-const deities = @json($activeDeities->map(fn ($deity) => ['id' => $deity->id, 'name' => $deity->name])->values());
+const deityFallbackImage = @json($deityFallbackImage);
+const deities = @json($deityOptions);
 const diyaFormFields = [
     'diya_id',
     'deity_id',
@@ -343,6 +348,13 @@ function selectedDiya() {
 function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
+}
+
+function setDeityPreview(deity) {
+    const image = document.getElementById('deityPreviewImage');
+    if (!image) return;
+    image.src = deity?.image_url || deityFallbackImage;
+    image.alt = deity?.name || 'Selected deity';
 }
 
 function showError(message) {
@@ -414,8 +426,10 @@ function syncDiyaUi() {
     const fixedBox = document.getElementById('fixedDeityBox');
     const selectBox = document.getElementById('deitySelectBox');
     const deitySelect = document.getElementById('deitySelect');
+    let selectedDeity = null;
 
     if (diya.deity_selection_mode === 'fixed') {
+        selectedDeity = deities.find(deity => String(deity.id) === String(diya.fixed_deity_id));
         fixedBox.style.display = 'flex';
         selectBox.style.display = 'none';
         deitySelect.value = '';
@@ -425,10 +439,12 @@ function syncDiyaUi() {
     } else {
         fixedBox.style.display = 'none';
         selectBox.style.display = 'block';
-        const selectedOption = deities.find(deity => String(deity.id) === String(deitySelect.value));
-        setText('sumDeity', selectedOption ? selectedOption.name : 'Select deity');
+        selectedDeity = deities.find(deity => String(deity.id) === String(deitySelect.value));
+        setText('sumDeity', selectedDeity ? selectedDeity.name : 'Select deity');
         setText('deityModeText', 'Choose any active deity for this diya offering.');
     }
+
+    setDeityPreview(selectedDeity);
 }
 
 document.addEventListener('DOMContentLoaded', function () {

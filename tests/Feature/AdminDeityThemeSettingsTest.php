@@ -20,7 +20,13 @@ class AdminDeityThemeSettingsTest extends TestCase
         Storage::fake('public');
 
         $admin = $this->admin();
-        $audio = Audio::create([
+        $mantra = Audio::create([
+            'title' => 'Durga Mantra',
+            'slug' => 'durga-mantra',
+            'category' => 'mantra',
+            'status' => 'active',
+        ]);
+        $ambient = Audio::create([
             'title' => 'Temple Bells',
             'slug' => 'temple-bells',
             'category' => 'temple_ambience',
@@ -32,7 +38,9 @@ class AdminDeityThemeSettingsTest extends TestCase
             ->assertOk()
             ->assertSee('Background Image')
             ->assertSee('Primary Color')
-            ->assertSee('Mantra/Music / Ambient Sound')
+            ->assertSee('Mantra/Music')
+            ->assertSee('Ambient Sound')
+            ->assertSee('Durga Mantra')
             ->assertSee('Temple Bells')
             ->assertSee('Golden Sparkles')
             ->assertSee('Intense');
@@ -48,7 +56,8 @@ class AdminDeityThemeSettingsTest extends TestCase
                 'primary_color' => '#b42318',
                 'secondary_color' => '#f6c453',
                 'glow_color' => '#ffd166',
-                'ambient_audio_id' => $audio->id,
+                'mantra_audio_id' => $mantra->id,
+                'ambient_audio_id' => $ambient->id,
                 'particle_style' => 'golden_sparkles',
                 'flame_style' => 'intense',
                 'status' => 'active',
@@ -60,7 +69,8 @@ class AdminDeityThemeSettingsTest extends TestCase
         $this->assertSame('#b42318', $deity->primary_color);
         $this->assertSame('#f6c453', $deity->secondary_color);
         $this->assertSame('#ffd166', $deity->glow_color);
-        $this->assertSame($audio->id, $deity->ambient_audio_id);
+        $this->assertSame($mantra->id, $deity->mantra_audio_id);
+        $this->assertSame($ambient->id, $deity->ambient_audio_id);
         $this->assertSame('golden_sparkles', $deity->particle_style);
         $this->assertSame('intense', $deity->flame_style);
         Storage::disk('public')->assertExists($deity->featured_image);
@@ -77,7 +87,8 @@ class AdminDeityThemeSettingsTest extends TestCase
                 'primary_color' => '#7c2d12',
                 'secondary_color' => '#f6c453',
                 'glow_color' => '#fff3bf',
-                'ambient_audio_id' => $audio->id,
+                'mantra_audio_id' => $mantra->id,
+                'ambient_audio_id' => $ambient->id,
                 'particle_style' => 'flower_petals',
                 'flame_style' => 'soft',
                 'status' => 'active',
@@ -117,6 +128,7 @@ class AdminDeityThemeSettingsTest extends TestCase
                 'primary_color' => null,
                 'secondary_color' => null,
                 'glow_color' => null,
+                'mantra_audio_id' => null,
                 'ambient_audio_id' => null,
                 'particle_style' => null,
                 'flame_style' => null,
@@ -128,6 +140,7 @@ class AdminDeityThemeSettingsTest extends TestCase
             'id' => $deity->id,
             'temple_background_image' => null,
             'primary_color' => null,
+            'mantra_audio_id' => null,
             'ambient_audio_id' => null,
         ]);
     }

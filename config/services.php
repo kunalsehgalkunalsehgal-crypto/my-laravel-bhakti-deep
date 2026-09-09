@@ -50,6 +50,11 @@ return [
         'key_secret' => env('RAZORPAY_KEY_SECRET'),
         'base_url' => env('RAZORPAY_BASE_URL', 'https://api.razorpay.com'),
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
+        'route' => [
+            'business_type' => env('RAZORPAY_ROUTE_BUSINESS_TYPE'),
+            'category' => env('RAZORPAY_ROUTE_CATEGORY'),
+            'subcategory' => env('RAZORPAY_ROUTE_SUBCATEGORY'),
+        ],
     ],
 
     'payouts' => [

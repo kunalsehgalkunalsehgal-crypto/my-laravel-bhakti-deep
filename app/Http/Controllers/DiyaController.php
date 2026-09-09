@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Admin\Audio;
 use App\Models\Admin\Deity;
 use App\Models\Admin\Diya;
 use App\Models\Admin\DiyaSession;
@@ -25,7 +26,7 @@ class DiyaController extends Controller
         $activeDeities = collect();
 
         if (Schema::hasTable('diyas')) {
-            $diyas = Diya::with(['fixedDeity', 'mantraAudio'])
+            $diyas = Diya::with('fixedDeity')
                 ->active()
                 ->latest()
                 ->get();
@@ -34,7 +35,7 @@ class DiyaController extends Controller
         if (Schema::hasTable('deities')) {
             $activeDeities = Deity::where('status', 'active')
                 ->orderBy('name')
-                ->get(['id', 'name']);
+                ->get(['id', 'name', 'featured_image']);
         }
 
         $liveDiyas = Schema::hasTable('diya_sessions')
@@ -49,6 +50,7 @@ class DiyaController extends Controller
             ? DiyaSession::where('payment_status', 'paid')->currentlyGlowing()->count()
             : 0;
 
+        $deityFallbackImage = asset('assets/temple-hero.jpg');
         $diyaStats = [
             'scheduled' => Schema::hasTable('diya_sessions') ? DiyaSession::where('payment_status', 'paid')->scheduled()->count() : 0,
             'glowing' => $liveDiyaCount,
@@ -59,6 +61,12 @@ class DiyaController extends Controller
         return view('pages.light-diya', [
             'diyas' => $diyas,
             'activeDeities' => $activeDeities,
+            'deityFallbackImage' => $deityFallbackImage,
+            'deityOptions' => $activeDeities->map(fn ($deity) => [
+                'id' => $deity->id,
+                'name' => $deity->name,
+                'image_url' => $deity->featured_image ? asset(str_starts_with($deity->featured_image, 'assets/') ? $deity->featured_image : 'storage/'.$deity->featured_image) : $deityFallbackImage,
+            ])->values(),
             'diyaOptions' => $diyas->map(fn (Diya $diya) => $diya->toOfferingArray())->values(),
             'diyaStats' => $diyaStats,
             'liveDiyas' => $liveDiyas,
@@ -126,6 +134,8 @@ class DiyaController extends Controller
         $amount = $validated['selected_amount'] === 'custom'
             ? (float) $validated['custom_amount']
             : (float) $validated['selected_amount'];
+        $mantraAudio = $this->deityAudio($deity, 'mantraAudio', ['mantra', 'aarti']);
+        $ambientAudio = $this->deityAudio($deity, 'ambientAudio', ['temple_ambience', 'hawan_ambience']);
 
         if (!str_starts_with((string) config('services.razorpay.key_id'), 'rzp_test_')) {
             throw ValidationException::withMessages(['payment' => 'Razorpay test key is not configured.']);
@@ -179,9 +189,10 @@ class DiyaController extends Controller
                 'selected_amount' => $validated['selected_amount'],
                 'donation_amount' => $amount,
                 'total_amount' => $amount,
-                'mantra_audio_id' => $diya->mantra_audio_id,
-                'mantra_audio_title' => $diya->mantraAudio?->title,
-                'mantra_ambience' => $diya->mantra_ambience,
+                'mantra_audio_id' => $mantraAudio?->id,
+                'mantra_audio_title' => $mantraAudio?->title,
+                'ambient_audio_id' => $ambientAudio?->id,
+                'ambient_audio_title' => $ambientAudio?->title,
             ]),
         ]);
 
@@ -254,23 +265,29 @@ class DiyaController extends Controller
 
     public function session(Request $request, DiyaSession $session)
     {
-        $session->load(['diya.mantraAudio.deity', 'deity.ambientAudio', 'sankalp', 'latestPaymentAttempt.donation']);
+        $session->load(['diya', 'deity.mantraAudio', 'deity.ambientAudio', 'sankalp', 'latestPaymentAttempt.donation']);
 
         abort_unless(app(PanditBookingService::class)->canAccessPrivateSession($session, $request), 403);
 
-        $mantraAudio = $session->diya?->mantraAudio;
-
-        if (!$mantraAudio?->audio_file || $mantraAudio->status !== 'active') {
-            $mantraAudio = null;
-        }
-
-        $ambientAudio = $session->deity?->ambientAudio;
-
-        if (!$ambientAudio?->audio_file || $ambientAudio->status !== 'active') {
-            $ambientAudio = null;
-        }
+        $mantraAudio = $this->deityAudio($session->deity, 'mantraAudio', ['mantra', 'aarti']);
+        $ambientAudio = $this->deityAudio($session->deity, 'ambientAudio', ['temple_ambience', 'hawan_ambience']);
 
         return view('pages.diya-session', compact('session', 'mantraAudio', 'ambientAudio'));
     }
 
+    private function deityAudio(?Deity $deity, string $relation, array $categories): ?Audio
+    {
+        $audio = $deity?->{$relation};
+
+        if ($audio?->audio_file && $audio->status === 'active' && in_array($audio->category, $categories, true)) {
+            return $audio;
+        }
+
+        return $deity ? Audio::active()
+            ->where('deity_id', $deity->id)
+            ->whereIn('category', $categories)
+            ->whereNotNull('audio_file')
+            ->orderBy('title')
+            ->first() : null;
+    }
 }

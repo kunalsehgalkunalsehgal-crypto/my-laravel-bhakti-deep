@@ -344,6 +344,7 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::post('/documents', [PanditController::class, 'updateDocuments'])->name('documents.update');
     Route::get('/bank-details', [PanditController::class, 'bankDetails'])->name('bank-details');
     Route::post('/bank-details', [PanditController::class, 'updateBankDetails'])->name('bank-details.update');
+    Route::post('/bank-details/razorpay-linked-account', [PanditController::class, 'createRazorpayLinkedAccount'])->name('bank-details.razorpay-linked-account');
     Route::get('/notifications', [PanditController::class, 'notifications'])->name('notifications');
     Route::get('/messages', [PanditController::class, 'messages'])->name('messages');
     Route::post('/messages', [PanditController::class, 'sendMessage'])->name('messages.send');

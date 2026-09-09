@@ -15,7 +15,20 @@ class PanditBankDetail extends Model
         'upi_id',
         'pan_number',
         'verification_status',
+        'razorpay_linked_account_id',
+        'razorpay_linked_account_status',
+        'razorpay_payout_enabled',
+        'razorpay_verified_at',
+        'razorpay_last_error',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'razorpay_payout_enabled' => 'boolean',
+            'razorpay_verified_at' => 'datetime',
+        ];
+    }
 
     public function pandit()
     {
