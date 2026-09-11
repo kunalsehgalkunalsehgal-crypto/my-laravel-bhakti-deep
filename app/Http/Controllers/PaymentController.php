@@ -214,7 +214,6 @@ class PaymentController extends Controller
 
         if ($type === 'hawan') {
             $ritual = Hawan::active()->whereKey($session->ritual_id)->firstOrFail();
-            $service->ensureRitualSlot($ritual, $session->slot);
             $hawanType = $session->hawan_type ?: 'special';
             [$pandit] = $service->ensurePanditCanServe($session->pandit_id, 'hawan', $service->serviceNames($ritual->name, 'hawan'), $session->booking_date->toDateString(), $session->slot, 'online', $session->pandit_service_id, $ritual->id);
             $times = $service->slotTimes($session->slot);
@@ -228,7 +227,6 @@ class PaymentController extends Controller
             }
         } else {
             $ritual = Pooja::active()->whereKey($session->ritual_id)->firstOrFail();
-            $service->ensureRitualSlot($ritual, $session->slot);
             $times = $service->slotTimes($session->slot);
             $service->ensurePanditCanServe($session->pandit_id, 'pooja', $service->serviceNames($ritual->name, 'pooja'), $session->booking_date->toDateString(), $session->slot, 'online', $session->pandit_service_id, $ritual->id);
 

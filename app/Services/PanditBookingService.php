@@ -9,6 +9,7 @@ use App\Models\Admin\PoojaSession;
 use App\Models\PaymentAttempt;
 use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditService;
+use App\Support\WeeklyBookingAvailability;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -57,11 +58,15 @@ class PanditBookingService
         return ['start' => $startTime, 'end' => $endTime];
     }
 
-    public function ensureRitualSlot(Model $ritual, string $slot): void
+    public function ensureRitualSlot(Model $ritual, string $slot, ?string $bookingDate = null): void
     {
-        $slots = $ritual->available_slots ?: [];
+        $slots = $ritual->available_slots ?: ($ritual instanceof \App\Models\Admin\Pooja ? ['7:00 AM - 8:00 AM', '12:00 PM - 1:00 PM', '6:00 PM - 7:00 PM'] : []);
 
-        if ($slots && !in_array($slot, $slots, true)) {
+        if (!$slots) {
+            return;
+        }
+
+        if (!WeeklyBookingAvailability::allows($slots, $slot, $bookingDate)) {
             throw ValidationException::withMessages(['slot' => 'Selected slot is no longer available for this service.']);
         }
     }

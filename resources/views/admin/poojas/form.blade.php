@@ -100,11 +100,7 @@
                 <input type="text" name="donation_options" value="{{ old('donation_options', is_array($record->donation_options) ? implode(', ', $record->donation_options) : $record->donation_options) }}" placeholder="101, 251, 501, 1100">
                 @error('donation_options') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
             </div>
-            <div class="full">
-                <label>Available Slots</label>
-                <textarea name="available_slots" placeholder="7:00 AM - 8:00 AM">{{ old('available_slots', $lineValue($record->available_slots)) }}</textarea>
-                @error('available_slots') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
-            </div>
+            @include('admin.partials.weekly-booking-availability')
         </div>
 
         <div class="actions" style="margin-top:28px;">

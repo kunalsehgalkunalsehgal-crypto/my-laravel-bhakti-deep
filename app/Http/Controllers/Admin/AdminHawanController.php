@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Admin\Hawan;
+use App\Support\WeeklyBookingAvailability;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -34,7 +35,7 @@ class AdminHawanController extends BaseAdminResourceController
         'included_items' => ['label' => 'Included Items', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
         'session_timeline' => ['label' => 'Session Timeline', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
         'donation_options' => ['label' => 'Donation Options', 'rules' => ['nullable', 'string']],
-        'available_slots' => ['label' => 'Available Slots', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
+        'available_slots' => ['label' => 'Available Slots', 'rules' => ['nullable', 'array']],
         'is_featured' => ['label' => 'Featured Hawan', 'type' => 'checkbox', 'rules' => ['nullable', 'boolean']],
         'status' => ['label' => 'Status', 'type' => 'select', 'options' => ['active' => 'Active', 'inactive' => 'Inactive'], 'rules' => ['required', 'in:active,inactive']],
     ];
@@ -77,9 +78,11 @@ class AdminHawanController extends BaseAdminResourceController
             $data[$field] = (float) ($data[$field] ?? 0);
         }
 
-        foreach (['benefits', 'included_items', 'available_slots'] as $field) {
+        foreach (['benefits', 'included_items'] as $field) {
             $data[$field] = $this->lines($data[$field] ?? '');
         }
+
+        $data['available_slots'] = WeeklyBookingAvailability::normalize($request->input('available_slots', []), true);
 
         $data['donation_options'] = collect(explode(',', $data['donation_options'] ?? ''))
             ->map(fn ($amount) => (int) trim($amount))

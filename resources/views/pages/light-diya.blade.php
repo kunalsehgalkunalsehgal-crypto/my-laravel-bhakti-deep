@@ -111,7 +111,7 @@
                                 <div class="ld-diya-desc mt-1">{{ $diya->short_description }}</div>
                                 <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
                                     <span class="ld-dur">{{ $diya->duration ?: 'Duration set by temple' }}</span>
-                                    <span class="ld-price-tag">Rs.{{ number_format((float) $diya->seva_amount, 2) }}</span>
+                                    {{-- <span class="ld-price-tag">Rs.{{ number_format((float) $diya->seva_amount, 2) }}</span> --}}
                                 </div>
                             </button>
                         </div>
@@ -144,9 +144,9 @@
                                     </select>
                                 </div>
 
-                                <div class="ld-diya-thumb mt-3">
+                                {{-- <div class="ld-diya-thumb mt-3">
                                     <img id="deityPreviewImage" src="{{ $deityFallbackImage }}" alt="Selected deity">
-                                </div>
+                                </div> --}}
                             </div>
 
                             <div class="glass rounded-4 p-4 p-md-5 mt-4">

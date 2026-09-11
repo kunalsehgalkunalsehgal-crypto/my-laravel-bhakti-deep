@@ -287,7 +287,7 @@ class PoojaController extends Controller
         }
 
         $bookingService = app(PanditBookingService::class);
-        $bookingService->ensureRitualSlot($pooja, $validated['slot']);
+        $bookingService->ensureRitualSlot($pooja, $validated['slot'], $validated['booking_date']);
 
         if (
             ($booking['service_type'] ?? null) !== 'pooja'

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Admin\Pooja;
+use App\Support\WeeklyBookingAvailability;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -27,7 +28,7 @@ class AdminPoojaController extends BaseAdminResourceController
         'included_items' => ['label' => 'Included Items', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
         'session_timeline' => ['label' => 'Session Timeline', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
         'donation_options' => ['label' => 'Donation Options', 'rules' => ['nullable', 'string']],
-        'available_slots' => ['label' => 'Available Slots', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
+        'available_slots' => ['label' => 'Available Slots', 'rules' => ['nullable', 'array']],
         'is_featured' => ['label' => 'Featured Pooja', 'type' => 'checkbox', 'rules' => ['nullable', 'boolean']],
         'status' => ['label' => 'Status', 'type' => 'select', 'options' => ['active' => 'Active', 'inactive' => 'Inactive'], 'rules' => ['required', 'in:active,inactive']],
     ];
@@ -68,9 +69,11 @@ class AdminPoojaController extends BaseAdminResourceController
         $data['slug'] = Str::slug($data['slug'] ?: $data['name']);
         $data['status'] = $data['status'] ?: 'active';
 
-        foreach (['benefits', 'included_items', 'available_slots'] as $field) {
+        foreach (['benefits', 'included_items'] as $field) {
             $data[$field] = $this->lines($data[$field] ?? '');
         }
+
+        $data['available_slots'] = WeeklyBookingAvailability::normalize($request->input('available_slots', []), true);
 
         $data['donation_options'] = collect(explode(',', $data['donation_options'] ?? ''))
             ->map(fn ($amount) => (int) trim($amount))

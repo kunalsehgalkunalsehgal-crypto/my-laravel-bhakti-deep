@@ -9,9 +9,11 @@ use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditService;
 use App\Services\PanditBookingService;
+use App\Support\WeeklyBookingAvailability;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PanditSelectionController extends Controller
 {
@@ -62,6 +64,7 @@ class PanditSelectionController extends Controller
         ]);
 
         $hawan = $this->findRitual($slug, $serviceType);
+        $this->ensureRitualSlot($hawan, $request->slot, $request->date);
         $slotTimes = app(PanditBookingService::class)->slotTimes($request->slot);
         $day = Carbon::parse($request->date)->format('l');
 
@@ -130,6 +133,7 @@ class PanditSelectionController extends Controller
         ]);
 
         $hawan = $this->findRitual($slug, $serviceType);
+        $this->ensureRitualSlot($hawan, $request->slot, $request->date);
         $selectedHawanType = $serviceType === 'hawan'
             ? $this->selectedHawanType($hawan, $request->input('hawan_type'))
             : null;
@@ -484,6 +488,15 @@ class PanditSelectionController extends Controller
         abort_unless($selectedType, 404);
 
         return $selectedType;
+    }
+
+    private function ensureRitualSlot(array $ritual, string $slot, string $date): void
+    {
+        $availability = $ritual['weekly_availability'] ?? $ritual['available_slots'] ?? null;
+
+        if ($availability && !WeeklyBookingAvailability::allows($availability, $slot, $date)) {
+            throw ValidationException::withMessages(['slot' => 'Selected slot is no longer available for this service.']);
+        }
     }
 
     private function activePaymentOrHold($query)

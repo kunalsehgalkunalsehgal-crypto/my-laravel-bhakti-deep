@@ -52,6 +52,16 @@
         default => 'Your diya is glowing with your sankalp and temple ambience.',
     };
     $showOffering = $isPaid;
+
+
+
+    $deityImage = null;
+
+if ($deity?->featured_image) {
+    $deityImage = str_starts_with($deity->featured_image, 'assets/')
+        ? asset($deity->featured_image)
+        : asset('storage/'.$deity->featured_image);
+}
 @endphp
 
 <main
@@ -102,13 +112,39 @@
 
             <div class="col-lg-5">
                 <div class="glass diya-live-card">
-                    <div class="diya-lamp-stage">
+                    {{-- <div class="diya-lamp-stage">
                         <div class="diya-flame {{ !$showOffering || $isCompleted || $isScheduled ? 'dimmed' : '' }}">
                             <span></span>
                         </div>
                         <div class="diya-bowl"></div>
                         <div class="diya-glow-ring"></div>
-                    </div>
+                    </div> --}}
+                    <div class="diya-lamp-stage">
+
+    @if($deityImage)
+        <img
+            src="{{ $deityImage }}"
+            alt="{{ $deity?->name }}"
+            class="diya-stage-deity"
+        >
+    @endif
+
+    @if($showOffering && $isActive)
+        <video
+            class="diya-stage-video"
+            autoplay
+            muted
+            loop
+            playsinline
+        >
+            <source
+                src="{{ asset('assets/videos/diya-glow.webm') }}"
+                type="video/webm"
+            >
+        </video>
+    @endif
+
+</div>
                     <div class="diya-countdown">
                         <span>{{ !$isPaid ? 'Payment Pending' : ($isScheduled ? 'Starts In' : ($isCompleted ? 'Completed' : 'Remaining Time')) }}</span>
                         <strong id="diyaTimer">{{ $isCompleted ? '00:00:00' : '--:--:--' }}</strong>
@@ -200,7 +236,35 @@
         </div>
     </section>
 </main>
+<style>
+    .diya-lamp-stage {
+    position: relative;
+    width: min(100%, 320px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    overflow: hidden;
+}
 
+.diya-stage-deity {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+}
+
+.diya-stage-video {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 65%;
+    height: 55%;
+    object-fit: contain;
+    z-index: 2;
+}
+</style>
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {

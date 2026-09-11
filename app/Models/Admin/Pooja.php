@@ -2,6 +2,7 @@
 
 namespace App\Models\Admin;
 
+use App\Support\WeeklyBookingAvailability;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -65,6 +66,8 @@ class Pooja extends Model
 
     public function toBookingArray(): array
     {
+        $availability = $this->available_slots ?: ['7:00 AM - 8:00 AM', '12:00 PM - 1:00 PM', '6:00 PM - 7:00 PM'];
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -79,7 +82,8 @@ class Pooja extends Model
             'included_items' => $this->included_items ?: [],
             'session_timeline' => $this->session_timeline ?: [],
             'donation_options' => $this->donation_options ?: [101, 251, 501, 1100],
-            'available_slots' => $this->available_slots ?: ['7:00 AM - 8:00 AM', '12:00 PM - 1:00 PM', '6:00 PM - 7:00 PM'],
+            'available_slots' => WeeklyBookingAvailability::allLabels($availability),
+            'weekly_availability' => WeeklyBookingAvailability::normalize($availability),
         ];
     }
 

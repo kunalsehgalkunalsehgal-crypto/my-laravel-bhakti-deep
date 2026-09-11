@@ -2,6 +2,7 @@
 
 namespace App\Models\Admin;
 
+use App\Support\WeeklyBookingAvailability;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -103,7 +104,8 @@ class Hawan extends Model
             'included_items' => $this->included_items ?: [],
             'session_timeline' => $this->session_timeline ?: [],
             'donation_options' => $this->donation_options ?: [501, 1100, 2100, 5100],
-            'available_slots' => $this->available_slots ?: [],
+            'available_slots' => WeeklyBookingAvailability::allLabels($this->available_slots ?: []),
+            'weekly_availability' => WeeklyBookingAvailability::normalize($this->available_slots ?: []),
             'types' => $enabledTypes,
         ];
     }

@@ -112,7 +112,7 @@ class HawanController extends Controller
         }
 
         $bookingService = app(PanditBookingService::class);
-        $bookingService->ensureRitualSlot($hawan, $validated['slot']);
+        $bookingService->ensureRitualSlot($hawan, $validated['slot'], $validated['booking_date']);
 
         $selectedHawanType = $hawan->enabledHawanType($validated['hawan_type']);
 

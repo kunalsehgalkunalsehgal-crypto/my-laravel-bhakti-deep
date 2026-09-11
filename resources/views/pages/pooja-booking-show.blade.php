@@ -296,20 +296,12 @@
                             <p class="hawan-step-desc">Select your preferred date and time for the pooja</p>
                             <div class="mb-4">
                                 <label class="hawan-form-label">Select Date *</label>
-                                <input type="date" class="hawan-form-control" id="poojaDate" onchange="updateSummary()" min="{{ date('Y-m-d') }}">
+                                <input type="date" class="hawan-form-control" id="poojaDate" onchange="renderAllowedSlots()" min="{{ date('Y-m-d') }}">
                             </div>
                             <div class="mb-4">
                                 <label class="hawan-form-label">Select Time Slot *</label>
-                                <div class="row g-3">
-                                    @foreach ($pooja['available_slots'] as $index => $slot)
-                                        <div class="col-md-4">
-                                            <div class="hawan-slot-card" onclick="selectSlot(this, '{{ $slot }}')">
-                                                <div class="hawan-time"><i class="bi bi-{{ $index == 0 ? 'sunrise' : ($index == 1 ? 'sun' : 'sunset') }} me-2"></i>{{ $slot }}</div>
-                                                <div class="hawan-period">{{ $index == 0 ? 'Morning' : ($index == 1 ? 'Afternoon' : 'Evening') }} Session</div>
-                                                <div class="hawan-availability"><i class="bi bi-check-circle me-1"></i>Available</div>
-                                            </div>
-                                        </div>
-                                    @endforeach
+                                <div class="row g-3" id="poojaSlotList">
+                                    <div class="col-12"><p class="hawan-step-desc mb-0">Select a date to see available slots.</p></div>
                                 </div>
                             </div>
                             <div class="d-flex gap-3">
@@ -421,7 +413,9 @@ const openReviewStep = @json($openReviewStep ?? false);
 const savedBookingDate = @json(session('pooja_booking.date'));
 const savedBookingSlot = @json(session('pooja_booking.slot'));
 const savedBookingMode = @json(session('pooja_booking.mode'));
+const weeklyAvailability = @json($pooja['weekly_availability'] ?? []);
 const draftKey = 'pooja_booking_draft_' + @json($pooja['slug']);
+const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function setText(id, value) {
     const el = document.getElementById(id);
@@ -487,6 +481,38 @@ function updateCustomDonation(el) {
         selectedDonation = parseInt(el.value) || 0;
         updateSummary();
     }
+}
+
+function slotLabel(slot) {
+    const fmt = (time) => {
+        const [h, m] = time.split(':').map(Number);
+        const hour = h % 12 || 12;
+        return hour + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+    };
+    return fmt(slot.from) + ' - ' + fmt(slot.to);
+}
+
+function renderAllowedSlots() {
+    const date = document.getElementById('poojaDate')?.value;
+    const list = document.getElementById('poojaSlotList');
+    const day = date ? weekDays[new Date(date + 'T00:00:00').getDay()] : null;
+    const dayData = day ? weeklyAvailability.days?.[day] : null;
+    const labels = weeklyAvailability.accept_new_bookings && dayData?.available ? (dayData.slots || []).map(slotLabel) : [];
+
+    if (selectedSlot && !labels.includes(selectedSlot)) selectedSlot = '';
+    list.innerHTML = labels.length ? '' : '<div class="col-12"><p class="hawan-step-desc mb-0">' + (date ? 'No slots available for this date.' : 'Select a date to see available slots.') + '</p></div>';
+    labels.forEach((slot, index) => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4';
+        col.innerHTML = `<div class="hawan-slot-card ${slot === selectedSlot ? 'hawan-selected' : ''}">
+            <div class="hawan-time"><i class="bi bi-${index === 0 ? 'sunrise' : (index === 1 ? 'sun' : 'sunset')} me-2"></i>${slot}</div>
+            <div class="hawan-period">${index === 0 ? 'Morning' : (index === 1 ? 'Afternoon' : 'Evening')} Session</div>
+            <div class="hawan-availability"><i class="bi bi-check-circle me-1"></i>Available</div>
+        </div>`;
+        col.firstElementChild.addEventListener('click', () => selectSlot(col.firstElementChild, slot));
+        list.appendChild(col);
+    });
+    updateSummary();
 }
 
 function selectSlot(el, slot) {
@@ -748,6 +774,7 @@ async function proceedToPay() {
 }
 
 restoreBookingDraft();
+renderAllowedSlots();
 if (openReviewStep) {
     nextStep(5);
     updateReviewSummary();
