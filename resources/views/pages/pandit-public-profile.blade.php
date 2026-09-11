@@ -116,8 +116,21 @@
             <div class="profile-panel">
                 <h2>Online / Offline</h2>
                 <p>Online {{ $serviceLabel }}: {{ $serviceType === 'pooja' ? ($pandit->onlineSetup?->online_pooja ? 'Yes' : 'No') : ($pandit->onlineSetup?->online_hawan ? 'Yes' : 'No') }}</p>
-                <p>Offline Service: {{ $pandit->availabilitySetting?->offline_service_available ? 'Yes' : 'No' }}</p>
-                <p>Service City: {{ $pandit->availabilitySetting?->service_city ?: $pandit->city ?: 'Not added' }}</p>
+                <p>Offline {{ $serviceLabel }}: {{ $serviceType === 'pooja' ? ($pandit->availabilitySetting?->offline_pooja ? 'Yes' : 'No') : ($pandit->availabilitySetting?->offline_hawan ? 'Yes' : 'No') }}</p>
+                <p>Service State: {{ $pandit->availabilitySetting?->service_state ?: 'Not added' }}</p>
+                <p>Service Cities: {{ collect([$pandit->availabilitySetting?->service_city])->merge($pandit->availabilitySetting?->other_service_cities ?? [])->filter()->join(', ') ?: 'Not added' }}</p>
+            </div>
+
+            <div class="profile-panel">
+                <h2>Reviews</h2>
+                @forelse($pandit->reviews as $review)
+                    <p><strong>{{ str_repeat('★', (int) $review->rating) }}</strong> {{ $review->comment ?: 'No comment' }}</p>
+                    @if($review->image_path)
+                        <p><a href="{{ asset('storage/'.$review->image_path) }}" target="_blank">View review image</a></p>
+                    @endif
+                @empty
+                    <p>No reviews yet.</p>
+                @endforelse
             </div>
 
             <div class="profile-panel">
@@ -146,8 +159,10 @@
                 <input type="hidden" name="mode" value="{{ request('mode', 'Live + Replay') }}">
                 <input type="hidden" name="hawan_type" value="{{ request('hawan_type') }}">
                 <input type="hidden" name="booking_mode" value="{{ request('booking_mode', 'online') }}">
+                <input type="hidden" name="state" value="{{ request('state') }}">
+                <input type="hidden" name="city" value="{{ request('city') }}">
                 <button class="btn btn-saffron w-100" type="submit">Select Pandit</button>
-                <a class="btn btn-ghost-gold w-100 mt-2" href="{{ route($serviceType.'.pandits', ['slug' => $hawan['slug'], 'date' => request('date'), 'slot' => request('slot'), 'mode' => request('mode', 'Live + Replay'), 'hawan_type' => request('hawan_type'), 'booking_mode' => request('booking_mode', 'online')]) }}">Back to Pandits</a>
+                <a class="btn btn-ghost-gold w-100 mt-2" href="{{ route($serviceType.'.pandits', ['slug' => $hawan['slug'], 'date' => request('date'), 'slot' => request('slot'), 'mode' => request('mode', 'Live + Replay'), 'hawan_type' => request('hawan_type'), 'booking_mode' => request('booking_mode', 'online'), 'state' => request('state'), 'city' => request('city')]) }}">Back to Pandits</a>
             </form>
         </aside>
     </section>

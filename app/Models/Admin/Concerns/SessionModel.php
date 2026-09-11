@@ -11,10 +11,12 @@ use App\Models\PanditNoShowReport;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentDispute;
+use App\Models\Review;
 use App\Models\SessionCompletionProof;
 use App\Models\VideoMeetingAttendance;
 use App\Models\VideoMeeting;
 use App\Models\User;
+use App\Models\Admin\HawanSession;
 
 trait SessionModel
 {
@@ -149,5 +151,11 @@ trait SessionModel
     public function offlineArrivalOtps()
     {
         return $this->morphMany(OfflineArrivalOtp::class, 'session', 'session_type', 'session_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'booking_id')
+            ->where('booking_type', $this instanceof HawanSession ? 'hawan' : 'pooja');
     }
 }

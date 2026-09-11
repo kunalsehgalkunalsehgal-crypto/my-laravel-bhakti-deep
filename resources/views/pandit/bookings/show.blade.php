@@ -16,6 +16,10 @@
 </div>
 
 <section class="pandit-panel">
+    @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
+    @if(session('review_otp_preview'))<div style="color:#8a6d52;margin-bottom:12px">Dev OTP: {{ session('review_otp_preview') }}</div>@endif
+    @if($errors->any())<div style="color:#b42318;margin-bottom:12px">{{ $errors->first() }}</div>@endif
+
     <div class="pandit-panel-heading">
         <div>
             <h2>Booking Details</h2>
@@ -78,6 +82,16 @@
             <strong>{{ $booking['pandit_name'] }}</strong>
         </div>
     </div>
+
+    @include('partials.review-form', [
+        'booking' => $session,
+        'bookingType' => $booking['type'],
+        'reviewBy' => 'pandit',
+        'title' => 'Review Yajman',
+        'sendOtpRoute' => route('pandit.reviews.image-otp'),
+        'verifyOtpRoute' => route('pandit.reviews.image-otp.verify'),
+        'storeRoute' => route('pandit.reviews.store'),
+    ])
 
     <div class="pandit-session-actions" style="margin-top:22px">
         @if($booking['can_accept'])

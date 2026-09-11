@@ -61,6 +61,12 @@
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
+        @if(session('review_otp_preview'))
+            <div class="alert alert-info">Dev OTP: {{ session('review_otp_preview') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="alert alert-danger">{{ $errors->first() }}</div>
+        @endif
 
         <div class="row g-4">
             <div class="col-lg-5">
@@ -174,6 +180,18 @@
                                             <div><small>Start Time</small><b>{{ $booking->start_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                             <div><small>End Time</small><b>{{ $booking->end_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                         </div>
+                                    @endif
+
+                                    @if($type !== 'Diya')
+                                        @include('partials.review-form', [
+                                            'booking' => $booking,
+                                            'bookingType' => strtolower($type),
+                                            'reviewBy' => 'user',
+                                            'title' => 'Review Pandit',
+                                            'sendOtpRoute' => route('reviews.image-otp'),
+                                            'verifyOtpRoute' => route('reviews.image-otp.verify'),
+                                            'storeRoute' => route('reviews.store'),
+                                        ])
                                     @endif
 
                                     @if($type === 'Diya' || $canRetryPayment)

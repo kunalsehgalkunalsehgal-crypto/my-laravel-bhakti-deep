@@ -148,14 +148,14 @@ class PanditController extends Controller
             default => abort(404),
         };
 
-        $session = $model::with(['user', 'service', 'sankalp', 'pandit', 'videoMeeting'])
+        $session = $model::with(['user', 'service', 'sankalp', 'pandit', 'videoMeeting', 'reviews'])
             ->whereKey($id)
             ->where('pandit_id', $pandit->id)
             ->firstOrFail();
 
         $booking = $this->formatDashboardSession($session, $type);
 
-        return view('pandit.bookings.show', compact('pandit', 'booking'));
+        return view('pandit.bookings.show', compact('pandit', 'booking', 'session'));
     }
 
     private function formatDashboardSession($session, string $type): array
@@ -205,6 +205,7 @@ class PanditController extends Controller
             'pandit_cancel_reason' => $session->pandit_cancel_reason,
             'pandit_cancelled_at' => $session->pandit_cancelled_at,
             'pandit_name' => $session->pandit?->pandit_name ?: ($session->pandit?->full_name ?: 'Not added'),
+            'reviews' => $session->reviews,
         ];
     }
 
@@ -645,12 +646,23 @@ class PanditController extends Controller
             'days.*.to' => ['nullable', 'array'],
             'days.*.from.*' => ['nullable', 'date_format:H:i'],
             'days.*.to.*' => ['nullable', 'date_format:H:i'],
+            'offline_hawan' => ['nullable', 'boolean'],
+            'offline_pooja' => ['nullable', 'boolean'],
+            'service_state' => ['nullable', 'string', 'max:255'],
+            'offline_cities' => ['nullable', 'array'],
+            'offline_cities.*' => ['nullable', 'string', 'max:255'],
         ]);
 
         $dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
         $days = $request->input('days', []);
         $normalizedSlots = [];
         $dayStatuses = [];
+        $offlineEnabled = $request->boolean('offline_hawan') || $request->boolean('offline_pooja');
+        $offlineCities = collect($request->input('offline_cities', []))->map(fn ($city) => trim((string) $city))->filter()->unique()->values();
+
+        if ($offlineEnabled && (!$request->filled('service_state') || $offlineCities->isEmpty())) {
+            return back()->withErrors(['offline' => 'State and at least one city are required for offline service.'])->withInput();
+        }
 
         foreach ($dayNames as $day) {
             $data = $days[$day] ?? [];
@@ -698,13 +710,19 @@ class PanditController extends Controller
             }
         }
 
-        DB::transaction(function () use ($pandit, $request, $dayStatuses, $normalizedSlots) {
+        DB::transaction(function () use ($pandit, $request, $dayStatuses, $normalizedSlots, $offlineEnabled, $offlineCities) {
             PanditAvailabilitySetting::updateOrCreate(
                 ['pandit_id' => $pandit->id],
                 [
                     'accept_new_bookings' => $request->boolean('accept_new_bookings'),
                     'advance_booking_days' => (int) $request->input('advance_booking_days', 0),
                     'day_statuses' => $dayStatuses,
+                    'offline_service_available' => $offlineEnabled,
+                    'offline_hawan' => $request->boolean('offline_hawan'),
+                    'offline_pooja' => $request->boolean('offline_pooja'),
+                    'service_state' => $offlineEnabled ? $request->input('service_state') : null,
+                    'service_city' => $offlineEnabled ? $offlineCities->first() : null,
+                    'other_service_cities' => $offlineEnabled ? $offlineCities->slice(1)->values()->all() : [],
                 ]
             );
 

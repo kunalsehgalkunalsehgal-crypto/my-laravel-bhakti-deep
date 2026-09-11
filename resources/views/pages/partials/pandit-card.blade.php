@@ -37,7 +37,7 @@
             <p><i class="bi bi-clock"></i> {{ $slotText ?: 'Available' }}</p>
 
             <div class="pandit-card-actions">
-                <a class="btn btn-ghost-gold" href="{{ route($serviceType.'.pandits.show', ['slug' => $hawan['slug'], 'pandit' => $pandit->id, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawan_type' => $hawanType, 'booking_mode' => $bookingMode, 'service_id' => $service?->id]) }}">View Profile</a>
+                <a class="btn btn-ghost-gold" href="{{ route($serviceType.'.pandits.show', ['slug' => $hawan['slug'], 'pandit' => $pandit->id, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawan_type' => $hawanType, 'booking_mode' => $bookingMode, 'state' => request('state'), 'city' => request('city'), 'service_id' => $service?->id]) }}">View Profile</a>
                 <form method="POST" action="{{ route($serviceType.'.pandits.select', ['slug' => $hawan['slug'], 'pandit' => $pandit->id]) }}">
                     @csrf
                     <input type="hidden" name="pandit_service_id" value="{{ $service?->id }}">
@@ -46,6 +46,8 @@
                     <input type="hidden" name="mode" value="{{ $mode }}">
                     <input type="hidden" name="hawan_type" value="{{ $hawanType }}">
                     <input type="hidden" name="booking_mode" value="{{ $bookingMode }}">
+                    <input type="hidden" name="state" value="{{ request('state') }}">
+                    <input type="hidden" name="city" value="{{ request('city') }}">
                     <button class="btn btn-saffron" type="submit">Select Pandit</button>
                 </form>
             </div>

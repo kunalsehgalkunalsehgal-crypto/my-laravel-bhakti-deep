@@ -34,6 +34,7 @@ use App\Http\Controllers\PanditReportController;
 use App\Http\Controllers\PanditSelectionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PoojaController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\UserReportController;
@@ -355,6 +356,9 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::post('/bookings/{type}/{id}/cancel', [PanditController::class, 'cancelBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.cancel');
+    Route::post('/reviews/image-otp', [ReviewController::class, 'sendImageOtp'])->name('reviews.image-otp');
+    Route::post('/reviews/image-otp/verify', [ReviewController::class, 'verifyImageOtp'])->name('reviews.image-otp.verify');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/reports', [PanditReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{dispute}', [PanditReportController::class, 'show'])->name('reports.show');
     Route::post('/reports/{dispute}/response', [PanditReportController::class, 'respond'])->name('reports.respond');
@@ -560,6 +564,9 @@ Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class
 Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::class, 'storeIssueReport'])
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.issue-report.store');
+Route::post('/reviews/image-otp', [ReviewController::class, 'sendImageOtp'])->name('reviews.image-otp');
+Route::post('/reviews/image-otp/verify', [ReviewController::class, 'verifyImageOtp'])->name('reviews.image-otp.verify');
+Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 Route::get('/reports/{dispute}', [UserReportController::class, 'show'])->name('user.reports.show');
 Route::get('/reports/{dispute}/evidences/{evidence}', [UserReportController::class, 'evidence'])->name('user.reports.evidence');
 Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');

@@ -30,6 +30,9 @@
     $selectedPlatforms = $setup?->platforms ?? [];
     $selectedDevices   = $setup?->devices ?? [];
     $selectedEquipment = $setup?->equipment ?? [];
+    $offlineHawan = (bool) old('offline_hawan', $availabilitySetting?->offline_hawan ?? false);
+    $offlinePooja = (bool) old('offline_pooja', $availabilitySetting?->offline_pooja ?? false);
+    $offlineCities = old('offline_cities', collect([$availabilitySetting?->service_city])->merge($availabilitySetting?->other_service_cities ?? [])->filter()->values()->all());
 @endphp
 
 @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
@@ -165,8 +168,41 @@
             <p>Add separate slots after checking shubh muhurat. Example: 8:00 AM - 10:00 AM, 2:00 PM - 4:00 PM</p>
         </div>
     </div>
+    
     <form class="pandit-dashboard-form" method="POST" action="{{ route('pandit.availability.save') }}" id="availabilityForm">
         @csrf
+        <div class="pandit-advance-box">
+            <h2>Offline Service Settings</h2>
+            <div class="pandit-online-form-grid">
+                <label>
+                    <input type="hidden" name="offline_hawan" value="0">
+                    <input style="width:auto" type="checkbox" name="offline_hawan" value="1" @checked($offlineHawan)> Offline Hawan
+                </label>
+                <label>
+                    <input type="hidden" name="offline_pooja" value="0">
+                    <input style="width:auto" type="checkbox" name="offline_pooja" value="1" @checked($offlinePooja)> Offline Pooja
+                </label>
+                <label>State
+                    <input type="text" name="service_state" value="{{ old('service_state', $availabilitySetting?->service_state) }}" placeholder="Punjab">
+                </label>
+            </div>
+            <h3>Cities</h3>
+            <div id="offlineCities" class="pandit-online-form-grid">
+                @forelse($offlineCities as $city)
+                    <label>City
+                        <input type="text" name="offline_cities[]" value="{{ $city }}" placeholder="Lalru">
+                        <button type="button" class="pandit-remove-offline-city">Remove</button>
+                    </label>
+                @empty
+                    <label>City
+                        <input type="text" name="offline_cities[]" placeholder="Lalru">
+                        <button type="button" class="pandit-remove-offline-city">Remove</button>
+                    </label>
+                @endforelse
+            </div>
+            <button type="button" class="pandit-add-slot-btn" id="addOfflineCity"><i class="bi bi-plus-lg"></i> Add City</button>
+        </div>
+
         <div class="pandit-availability-list">
             @foreach ($days as [$day, $available, $savedSlots])
                 <div class="pandit-availability-day">
@@ -239,6 +275,18 @@
     });
 
     document.addEventListener('click', (event) => {
+        if (event.target.closest('#addOfflineCity')) {
+            document.getElementById('offlineCities').insertAdjacentHTML('beforeend', `
+                <label>City
+                    <input type="text" name="offline_cities[]" placeholder="Lalru">
+                    <button type="button" class="pandit-remove-offline-city">Remove</button>
+                </label>
+            `);
+        }
+
+        const cityButton = event.target.closest('.pandit-remove-offline-city');
+        if (cityButton) cityButton.closest('label').remove();
+
         const removeButton = event.target.closest('.pandit-remove-slot');
         if (!removeButton) return;
 

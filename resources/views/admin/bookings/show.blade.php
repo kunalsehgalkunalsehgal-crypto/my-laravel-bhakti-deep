@@ -63,6 +63,20 @@
             </tbody></table>
         </div>
     @endif
+    @if(in_array($type, ['hawan', 'pooja'], true))
+        <div class="panel">
+            <h2>Reviews</h2>
+            @forelse($record->reviews as $review)
+                <p><strong>{{ ucfirst($review->review_by) }}:</strong> {{ str_repeat('★', (int) $review->rating) }} {{ $review->comment ?: '' }}
+                    @if($review->image_path)
+                        <a href="{{ asset('storage/'.$review->image_path) }}" target="_blank">View image</a>
+                    @endif
+                </p>
+            @empty
+                <p>No reviews submitted yet.</p>
+            @endforelse
+        </div>
+    @endif
     <form class="panel" method="POST" action="{{ route('admin.bookings.update', [$type, $record]) }}">
         @csrf @method('PUT')
         <h2>Update Session</h2>

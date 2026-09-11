@@ -58,6 +58,7 @@ class PanditSelectionController extends Controller
             'experience' => ['nullable', 'integer'],
             'qualification' => ['nullable', 'string'],
             'booking_mode' => ['nullable', 'in:online,offline'],
+            'state' => ['nullable', 'string'],
             'city' => ['nullable', 'string'],
             'sort' => ['nullable', 'in:recommended,experience,performed'],
             'view' => ['nullable', 'in:all'],
@@ -103,6 +104,7 @@ class PanditSelectionController extends Controller
             'availabilitySetting',
             'onlineSetup',
             'document',
+            'reviews' => fn ($q) => $q->where('review_by', 'user')->latest()->limit(10),
         ])
             ->where('status', 'verified')
             ->findOrFail($pandit);
@@ -129,6 +131,8 @@ class PanditSelectionController extends Controller
             'mode' => ['nullable', 'string'],
             'hawan_type' => ['nullable', 'in:samuhik,special'],
             'booking_mode' => ['nullable', 'in:online,offline'],
+            'state' => ['nullable', 'string'],
+            'city' => ['nullable', 'string'],
             'pandit_service_id' => ['nullable', 'integer'],
         ]);
 
@@ -242,12 +246,21 @@ class PanditSelectionController extends Controller
             ->when($request->input('booking_mode', 'online') === 'online', function ($q) use ($onlineColumn) {
                 $q->whereHas('onlineSetup', fn ($online) => $online->where($onlineColumn, true));
             })
-            ->when($request->input('booking_mode') === 'offline', function ($q) use ($request) {
-                $q->whereHas('availabilitySetting', function ($setting) use ($request) {
-                    $setting->where('offline_service_available', true);
+            ->when($request->input('booking_mode') === 'offline', function ($q) use ($request, $serviceType) {
+                $offlineColumn = $serviceType === 'pooja' ? 'offline_pooja' : 'offline_hawan';
+
+                $q->whereHas('availabilitySetting', function ($setting) use ($request, $offlineColumn) {
+                    $setting->where($offlineColumn, true);
+
+                    if ($request->filled('state')) {
+                        $setting->where('service_state', $request->state);
+                    }
 
                     if ($request->filled('city')) {
-                        $setting->where('service_city', $request->city);
+                        $setting->where(function ($city) use ($request) {
+                            $city->where('service_city', $request->city)
+                                ->orWhereJsonContains('other_service_cities', $request->city);
+                        });
                     }
                 });
             });

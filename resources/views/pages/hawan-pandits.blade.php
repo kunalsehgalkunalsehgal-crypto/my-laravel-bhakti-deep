@@ -69,15 +69,20 @@
             </label>
 
             <label>Online/Offline
-                <select name="booking_mode">
+                <select name="booking_mode" id="bookingModeFilter">
                     <option value="online" @selected($bookingMode === 'online')>Online</option>
                     <option value="offline" @selected($bookingMode === 'offline')>Offline</option>
                 </select>
             </label>
 
-            <label>City
-                <input type="text" name="city" value="{{ request('city') }}" placeholder="Offline city">
-            </label>
+            <span id="offlineLocationFilters" style="display:{{ $bookingMode === 'offline' ? 'contents' : 'none' }};">
+                <label>State
+                    <input type="text" name="state" value="{{ request('state') }}" placeholder="Punjab">
+                </label>
+                <label>City
+                    <input type="text" name="city" value="{{ request('city') }}" placeholder="Lalru">
+                </label>
+            </span>
 
             <label>Sort By
                 <select name="sort">
@@ -129,4 +134,9 @@
         </section>
     @endif
 </main>
+<script>
+    document.getElementById('bookingModeFilter')?.addEventListener('change', function () {
+        document.getElementById('offlineLocationFilters').style.display = this.value === 'offline' ? 'contents' : 'none';
+    });
+</script>
 @endsection

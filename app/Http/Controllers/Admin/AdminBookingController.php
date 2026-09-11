@@ -40,7 +40,12 @@ class AdminBookingController extends Controller
 
     public function show(string $type, string $id)
     {
-        $record = $this->model($type)::with(['user', 'service', 'sankalp', 'pandit', 'panditPayouts'])->findOrFail($id);
+        $relations = ['user', 'service', 'sankalp', 'pandit', 'panditPayouts'];
+        if (in_array($type, ['hawan', 'pooja'], true)) {
+            $relations[] = 'reviews';
+        }
+
+        $record = $this->model($type)::with($relations)->findOrFail($id);
 
         return view('admin.bookings.show', compact('record', 'type'));
     }

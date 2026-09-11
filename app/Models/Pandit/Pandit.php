@@ -132,4 +132,9 @@ class Pandit extends Authenticatable
     {
         return $this->hasMany(\App\Models\Admin\PoojaSession::class);
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(\App\Models\Review::class);
+    }
 }

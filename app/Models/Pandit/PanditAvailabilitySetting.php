@@ -12,6 +12,9 @@ class PanditAvailabilitySetting extends Model
         'advance_booking_days',
         'day_statuses',
         'offline_service_available',
+        'offline_hawan',
+        'offline_pooja',
+        'service_state',
         'service_city',
         'travel_radius_km',
         'other_service_cities',
@@ -21,6 +24,8 @@ class PanditAvailabilitySetting extends Model
         'accept_new_bookings' => 'boolean',
         'day_statuses' => 'array',
         'offline_service_available' => 'boolean',
+        'offline_hawan' => 'boolean',
+        'offline_pooja' => 'boolean',
         'other_service_cities' => 'array',
     ];
 
