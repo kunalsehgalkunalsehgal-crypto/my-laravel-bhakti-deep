@@ -506,6 +506,7 @@
                                 <span><small>Payment Status</small>{{ ucfirst($bookingRecord?->payment_status ?? 'pending') }}</span>
                                 <span><small>Package</small>{{ $bookingPackage }}</span>
                                 <span><small>Purpose</small>{{ $bookingPurpose }}</span>
+                                
                             </div>
                         </div>
                     </div>
@@ -688,6 +689,65 @@
                         <div class="coming-row"><i class="bi bi-phone"></i><strong>Mobile<small>{{ $bookingMobile }}</small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-receipt"></i><strong>Total Paid<small>Rs.{{ number_format($bookingTotal) }}</small></strong><em class="bi bi-check-circle"></em></div>
                     </div>
+                    @if($bookingRecord && $bookingRecord->payment_status === 'paid' && $bookingRecord->pandit)
+    @php
+        $panditInfo = $bookingRecord->pandit;
+    @endphp
+
+    <div class="glass side-panel mt-4">
+        <h3>Pandit Details</h3>
+
+        <div class="coming-row">
+            <i class="bi bi-person"></i>
+            <strong>
+                Pandit Name
+                <small>{{ $panditInfo->pandit_name ?: $panditInfo->full_name }}</small>
+            </strong>
+        </div>
+
+        <div class="coming-row">
+            <i class="bi bi-telephone"></i>
+            <strong>
+                Mobile
+                <small>{{ $panditInfo->mobile ?: '-' }}</small>
+            </strong>
+        </div>
+
+        <div class="coming-row">
+            <i class="bi bi-envelope"></i>
+            <strong>
+                Email
+                <small>{{ $panditInfo->email ?: '-' }}</small>
+            </strong>
+        </div>
+
+        <div class="coming-row">
+            <i class="bi bi-geo-alt"></i>
+            <strong>
+                Address
+                <small>{{ $panditInfo->full_address ?: '-' }}</small>
+            </strong>
+        </div>
+
+        <div class="coming-row">
+            <i class="bi bi-pin-map"></i>
+            <strong>
+                Location
+                <small>
+                    {{ collect([$panditInfo->city, $panditInfo->state])->filter()->join(', ') ?: '-' }}
+                </small>
+            </strong>
+        </div>
+
+        <div class="coming-row">
+            <i class="bi bi-award"></i>
+            <strong>
+                Experience
+                <small>{{ $panditInfo->total_experience_years ?: 0 }} years</small>
+            </strong>
+        </div>
+    </div>
+@endif
                 @endif
 
                 @if ($canReportIssue)

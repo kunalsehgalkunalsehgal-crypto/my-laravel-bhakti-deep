@@ -40,7 +40,30 @@
         <div class="pandit-profile-item">
             <span>Yajman</span>
             <strong>{{ $booking['yajman'] }}</strong>
+            
         </div>
+        @if($session->payment_status === 'paid')
+    <div class="pandit-profile-item">
+        <span>Yajman Mobile</span>
+        <strong>
+            {{ $session->sankalp?->mobile ?: ($session->user?->mobile ?: 'Not added') }}
+        </strong>
+    </div>
+
+    <div class="pandit-profile-item">
+        <span>Yajman Email</span>
+        <strong>
+            {{ $session->user?->email ?: 'Not added' }}
+        </strong>
+    </div>
+
+    <div class="pandit-profile-item pandit-wide">
+        <span>Yajman Address</span>
+        <strong>
+            {{ $session->user?->address ?: 'Not added' }}
+        </strong>
+    </div>
+@endif
         <div class="pandit-profile-item">
             <span>Gotra</span>
             <strong>{{ $booking['gotra'] ?: 'Not added' }}</strong>
