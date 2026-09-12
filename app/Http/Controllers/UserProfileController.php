@@ -23,11 +23,11 @@ class UserProfileController extends Controller
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),
-            'poojaBookings' => PoojaSession::with(['service', 'sankalp', 'latestPaymentAttempt', 'reviews'])
+            'poojaBookings' => PoojaSession::with(['service', 'sankalp', 'pandit', 'latestPaymentAttempt', 'reviews'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),
-            'hawanBookings' => HawanSession::with(['service', 'sankalp', 'latestPaymentAttempt', 'reviews'])
+            'hawanBookings' => HawanSession::with(['service', 'sankalp', 'pandit', 'latestPaymentAttempt', 'reviews'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->get(),

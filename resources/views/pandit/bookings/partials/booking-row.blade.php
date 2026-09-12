@@ -13,6 +13,10 @@
         <strong>{{ $session['slot'] ?: 'Pending' }}</strong>
     </div>
     <div>
+        <span>Mode</span>
+        <strong>{{ ucfirst($session['booking_mode']) }}</strong>
+    </div>
+    <div>
         <span>Package</span>
         <strong>{{ $session['package_name'] ?: $session['label'] }}</strong>
     </div>

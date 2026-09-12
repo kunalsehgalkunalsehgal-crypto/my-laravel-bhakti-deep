@@ -215,7 +215,7 @@ class PaymentController extends Controller
         if ($type === 'hawan') {
             $ritual = Hawan::active()->whereKey($session->ritual_id)->firstOrFail();
             $hawanType = $session->hawan_type ?: 'special';
-            [$pandit] = $service->ensurePanditCanServe($session->pandit_id, 'hawan', $service->serviceNames($ritual->name, 'hawan'), $session->booking_date->toDateString(), $session->slot, 'online', $session->pandit_service_id, $ritual->id);
+            [$pandit] = $service->ensurePanditCanServe($session->pandit_id, 'hawan', $service->serviceNames($ritual->name, 'hawan'), $session->booking_date->toDateString(), $session->slot, $session->booking_mode ?: 'online', $session->pandit_service_id, $ritual->id, $session->state, $session->city);
             $times = $service->slotTimes($session->slot);
 
             if ($service->hasBlockingHawanBooking($pandit->id, $ritual->id, $hawanType, $session->booking_date->toDateString(), $times['start'], $times['end'])) {
@@ -228,7 +228,7 @@ class PaymentController extends Controller
         } else {
             $ritual = Pooja::active()->whereKey($session->ritual_id)->firstOrFail();
             $times = $service->slotTimes($session->slot);
-            $service->ensurePanditCanServe($session->pandit_id, 'pooja', $service->serviceNames($ritual->name, 'pooja'), $session->booking_date->toDateString(), $session->slot, 'online', $session->pandit_service_id, $ritual->id);
+            $service->ensurePanditCanServe($session->pandit_id, 'pooja', $service->serviceNames($ritual->name, 'pooja'), $session->booking_date->toDateString(), $session->slot, $session->booking_mode ?: 'online', $session->pandit_service_id, $ritual->id, $session->state, $session->city);
 
             if ($service->hasOverlappingBooking($session->pandit_id, $session->booking_date->toDateString(), $times['start'], $times['end'])) {
                 throw ValidationException::withMessages(['slot' => 'This slot is no longer available. Please choose another pandit or slot.']);

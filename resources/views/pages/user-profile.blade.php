@@ -180,6 +180,15 @@
                                             <div><small>Start Time</small><b>{{ $booking->start_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                             <div><small>End Time</small><b>{{ $booking->end_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                         </div>
+                                    @else
+                                        <div class="booking-details">
+                                            <div><small>Pandit</small><b>{{ $booking->pandit?->pandit_name ?: ($booking->pandit?->full_name ?: ($meta['pandit_name'] ?? '-')) }}</b></div>
+                                            <div><small>Date and Time</small><b>{{ $booking->booking_date?->format('d M Y') ?? '-' }} {{ $booking->slot ?: '' }}</b></div>
+                                            <div><small>Mode</small><b>{{ ucfirst($booking->booking_mode ?: ($meta['booking_mode'] ?? 'online')) }}</b></div>
+                                            @if(($booking->booking_mode ?: ($meta['booking_mode'] ?? 'online')) === 'offline')
+                                                <div><small>Location</small><b>{{ collect([$booking->city ?: ($meta['city'] ?? null), $booking->state ?: ($meta['state'] ?? null)])->filter()->join(', ') ?: '-' }}</b></div>
+                                            @endif
+                                        </div>
                                     @endif
 
                                     @if($type !== 'Diya')
@@ -194,26 +203,28 @@
                                         ])
                                     @endif
 
-                                    @if($type === 'Diya' || $canRetryPayment)
-                                        <div class="booking-actions">
-                                            @if($type === 'Diya')
-                                                <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('diya.session', $booking) }}">
-                                                    <i class="bi bi-eye"></i> View Diya
-                                                </a>
-                                            @endif
+                                    <div class="booking-actions">
+                                        @if($type === 'Diya')
+                                            <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('diya.session', $booking) }}">
+                                                <i class="bi bi-eye"></i> View Diya
+                                            </a>
+                                        @else
+                                            <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('live.session', ['type' => strtolower($type), 'id' => $booking->id]) }}">
+                                                <i class="bi bi-eye"></i> View Details
+                                            </a>
+                                        @endif
 
-                                            @if($canRetryPayment)
-                                                <button
-                                                    class="btn btn-saffron btn-sm rounded-pill"
-                                                    type="button"
-                                                    data-retry-payment
-                                                    data-retry-url="{{ route('payments.bookings.retry', ['type' => strtolower($type), 'id' => $booking->id]) }}"
-                                                >
-                                                    <i class="bi bi-arrow-clockwise"></i> Retry Payment
-                                                </button>
-                                            @endif
-                                        </div>
-                                    @endif
+                                        @if($canRetryPayment)
+                                            <button
+                                                class="btn btn-saffron btn-sm rounded-pill"
+                                                type="button"
+                                                data-retry-payment
+                                                data-retry-url="{{ route('payments.bookings.retry', ['type' => strtolower($type), 'id' => $booking->id]) }}"
+                                            >
+                                                <i class="bi bi-arrow-clockwise"></i> Retry Payment
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
                             @empty
                                 <p class="text-muted mb-0">No {{ strtolower($type) }} bookings yet.</p>

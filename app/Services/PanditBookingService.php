@@ -108,7 +108,9 @@ class PanditBookingService
         string $slot,
         string $bookingMode = 'online',
         ?int $panditServiceId = null,
-        ?int $ritualId = null
+        ?int $ritualId = null,
+        ?string $state = null,
+        ?string $city = null
     ): array {
         $slotTimes = $this->slotTimes($slot);
         if (Carbon::parse($bookingDate)->startOfDay()->lt(today())) {
@@ -140,6 +142,27 @@ class PanditBookingService
 
         if ($bookingMode === 'online' && !$pandit->onlineSetup?->{$onlineColumn}) {
             throw ValidationException::withMessages(['pandit_id' => 'Selected pandit is not available online for this service.']);
+        }
+
+        if ($bookingMode === 'offline') {
+            $offlineColumn = $serviceType === 'pooja' ? 'offline_pooja' : 'offline_hawan';
+            $setting = $pandit->availabilitySetting;
+
+            if (blank($state) || blank($city)) {
+                throw ValidationException::withMessages(['city' => 'Please select state and city for offline booking.']);
+            }
+
+            if (!$setting?->{$offlineColumn}) {
+                throw ValidationException::withMessages(['pandit_id' => 'Selected pandit is not available offline for this service.']);
+            }
+
+            if (filled($state) && $setting->service_state !== $state) {
+                throw ValidationException::withMessages(['state' => 'Selected pandit does not provide service in this state.']);
+            }
+
+            if (filled($city) && $setting->service_city !== $city && !in_array($city, $setting->other_service_cities ?? [], true)) {
+                throw ValidationException::withMessages(['city' => 'Selected pandit does not provide service in this city.']);
+            }
         }
 
         $hasAvailability = $pandit->availabilitySlots

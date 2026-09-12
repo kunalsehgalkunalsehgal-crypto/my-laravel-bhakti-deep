@@ -180,6 +180,9 @@ class PanditController extends Controller
             'package_name' => $packageName,
             'booking_date' => $session->booking_date,
             'slot' => $session->slot,
+            'booking_mode' => $session->booking_mode ?: ($meta['booking_mode'] ?? 'online'),
+            'state' => $session->state ?: ($meta['state'] ?? null),
+            'city' => $session->city ?: ($meta['city'] ?? null),
             'status' => $session->status,
             'payment_status' => $session->payment_status,
             'completed_at' => $session->completed_at,
@@ -290,11 +293,11 @@ class PanditController extends Controller
         $session->update(['status' => 'confirmed']);
 
         $meeting = null;
-        if ($session->payment_status === 'paid') {
+        if ($session->payment_status === 'paid' && ($session->booking_mode ?: 'online') === 'online') {
             $meeting = app(VideoMeetingService::class)->createForSessionIfReady($session->fresh());
         }
 
-        if ($session->payment_status === 'paid' && !$meeting) {
+        if ($session->payment_status === 'paid' && ($session->booking_mode ?: 'online') === 'online' && !$meeting) {
             return back()->with('warning', ucfirst($type).' booking accepted, but the video meeting could not be created yet.');
         }
 

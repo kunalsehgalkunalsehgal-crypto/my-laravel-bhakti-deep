@@ -256,6 +256,8 @@
     $embeddedMeetingView = $embeddedMeetingView ?? null;
     $bookingSankalp = $bookingRecord?->sankalp;
     $videoMeeting = $bookingRecord?->videoMeeting;
+    $bookingMode = $bookingRecord?->booking_mode ?: 'online';
+    $isOfflineBooking = in_array($sessionType, ['pooja', 'hawan'], true) && $bookingMode === 'offline';
     $bookingMeta = [];
 
     if ($bookingRecord?->admin_note) {
@@ -265,6 +267,7 @@
     $multipleLiveSessions = false;
     $isPrivateBookedSession = in_array($sessionType, ['pooja', 'hawan'], true);
     $bookingIsReadyForMeeting = $bookingRecord
+        && !$isOfflineBooking
         && $bookingRecord->payment_status === 'paid'
         && $bookingRecord->status === 'confirmed'
         && $videoMeeting;
@@ -276,7 +279,10 @@
         ? route($canStartProviderMeeting ? 'live.session.start' : 'live.session.join', ['type' => $sessionType, 'id' => $bookingRecord->id, 'token' => request('token')])
         : null);
     $providerMeetingAction = $providerMeetingAction ?? ($canStartProviderMeeting ? 'Start '.ucfirst($sessionType) : 'Join '.ucfirst($sessionType));
-    $hasLiveRoomAccess = $sessionType === 'aarti' || (!$isPrivateBookedSession || $bookingIsReadyForMeeting);
+    $hasLiveRoomAccess = $sessionType === 'aarti'
+        || !$isPrivateBookedSession
+        || $bookingIsReadyForMeeting
+        || ($isOfflineBooking && $bookingRecord->payment_status === 'paid');
     $isPaidSession = $isPrivateBookedSession && $hasLiveRoomAccess;
     $sankalpName = $bookingSankalp?->full_name ?: $bookingRecord?->user?->name ?: 'Devotee';
     $slotTime = $bookingRecord?->slot ?: 'Today - 7:00 PM IST';
@@ -284,6 +290,8 @@
     $bookingMobile = $bookingSankalp?->mobile ?: '-';
     $bookingPurpose = $bookingSankalp?->purpose ?: '-';
     $bookingPackage = $bookingMeta['package_name'] ?? '-';
+    $bookingState = $bookingRecord?->state ?: ($bookingMeta['state'] ?? '-');
+    $bookingCity = $bookingRecord?->city ?: ($bookingMeta['city'] ?? '-');
     $bookingDakshina = (float) ($bookingMeta['dakshina'] ?? 0);
     $bookingTotal = (float) ($bookingMeta['total_amount'] ?? 0);
 
@@ -444,11 +452,11 @@
         </div>
         <div class="d-flex align-items-center gap-2 gap-md-3 live-topbar-actions">
             <span class="live-pill {{ $sessionStatus }}" data-live-session-pill><i></i> <span data-live-session-status>{{ $liveRealtimeStatus }}</span></span>
-            @if ($hasLiveRoomAccess)
+            @if ($hasLiveRoomAccess && !$isOfflineBooking)
                 <span class="family-pill d-none d-sm-inline-flex"><i class="bi bi-people"></i> <span data-family-top-count>{{ $joinedCount }}</span> family joined</span>
                 <span class="family-pill d-none d-md-inline-flex"><i class="bi bi-broadcast"></i> <span data-live-total-present>{{ $liveRealtimeSnapshot['counts']['total_present'] ?? 0 }}</span> present</span>
             @endif
-            @if ($hasLiveRoomAccess && $sessionStatus !== 'completed')
+            @if ($hasLiveRoomAccess && !$isOfflineBooking && $sessionStatus !== 'completed')
                 <button class="btn btn-gold btn-sm rounded-pill" data-scroll-donation><i class="bi bi-heart"></i> Donate</button>
             @endif
             @if ($canReportIssue)
@@ -482,7 +490,26 @@
         @else
         <div class="row g-4">
             <div class="col-lg-8">
-                @if ($embeddedMeetingView && $bookingIsReadyForMeeting && $sessionStatus !== 'completed')
+                @if ($isOfflineBooking)
+                    <div class="glass completion-card">
+                        <span><i class="bi bi-geo-alt"></i></span>
+                        <div>
+                            <h3>{{ $session['service'] }}</h3>
+                            <p>This is an offline {{ $sessionType }} booking. No Zoom meeting is needed.</p>
+                            <div class="session-meta-grid">
+                                <span><small>Pandit</small>{{ $bookingRecord?->pandit?->pandit_name ?: ($bookingRecord?->pandit?->full_name ?: '-') }}</span>
+                                <span><small>Sankalp Name</small>{{ $sankalpName }}</span>
+                                <span><small>Date and Time</small>{{ $bookingDateLabel }} - {{ $slotTime }}</span>
+                                <span><small>State</small>{{ $bookingState }}</span>
+                                <span><small>City</small>{{ $bookingCity }}</span>
+                                <span><small>Booking Status</small>{{ ucfirst(str_replace('_', ' ', $bookingRecord?->status ?? 'pending')) }}</span>
+                                <span><small>Payment Status</small>{{ ucfirst($bookingRecord?->payment_status ?? 'pending') }}</span>
+                                <span><small>Package</small>{{ $bookingPackage }}</span>
+                                <span><small>Purpose</small>{{ $bookingPurpose }}</span>
+                            </div>
+                        </div>
+                    </div>
+                @elseif ($embeddedMeetingView && $bookingIsReadyForMeeting && $sessionStatus !== 'completed')
                     @include($embeddedMeetingView)
                 @elseif ($sessionStatus === 'upcoming')
                     <div class="live-player live-session-intro">
@@ -585,18 +612,21 @@
                     </div>
                 @endif
 
-                <div class="glass timeline-card large mt-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3>Session Progress</h3><small><span data-live-joined-count>{{ $liveRealtimeSnapshot['counts']['joined'] ?? 0 }}</span> joined / <span data-live-left-count>{{ $liveRealtimeSnapshot['counts']['left'] ?? 0 }}</span> left</small>
+                @unless($isOfflineBooking)
+                    <div class="glass timeline-card large mt-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3>Session Progress</h3><small><span data-live-joined-count>{{ $liveRealtimeSnapshot['counts']['joined'] ?? 0 }}</span> joined / <span data-live-left-count>{{ $liveRealtimeSnapshot['counts']['left'] ?? 0 }}</span> left</small>
+                        </div>
+                        @foreach ($sessionProgress as $i => $row)
+                            <div class="timeline-row {{ $row[1] }}"><span>{!! $row[1] === 'done' ? '&#10003;' : $i + 1 !!}</span><strong>{{ $row[0] }}<small>{{ $row[2] }}</small></strong></div>
+                        @endforeach
                     </div>
-                    @foreach ($sessionProgress as $i => $row)
-                        <div class="timeline-row {{ $row[1] }}"><span>{!! $row[1] === 'done' ? '&#10003;' : $i + 1 !!}</span><strong>{{ $row[0] }}<small>{{ $row[2] }}</small></strong></div>
-                    @endforeach
-                </div>
+                @endunless
             </div>
 
             <aside class="col-lg-4">
-                <div class="glass side-panel">
+                @unless($isOfflineBooking)
+                    <div class="glass side-panel">
                     <div class="d-flex justify-content-between align-items-center"><h3>{{ $sessionStatus === 'completed' ? 'Family Summary' : 'Family Invites' }}</h3><span data-family-count>{{ $joinedCount }} joined</span></div>
 
                     <div data-family-list>
@@ -634,16 +664,24 @@
                             <i class="bi bi-box-arrow-left"></i> Leave Session
                         </button>
                     @endif
-                </div>
+                    </div>
+                @endunless
 
                 @if ($bookingRecord)
                     <div class="glass side-panel mt-4">
                         <h3>Booking Details</h3>
-                        <div class="coming-row"><i class="bi bi-broadcast"></i><strong>Meeting Status<small data-live-session-status>{{ $liveRealtimeSnapshot['session']['status'] ?? $topbarLabel }}</small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row"><i class="bi bi-play-circle"></i><strong>Started<small data-live-started-at>{{ $liveRealtimeSnapshot['session']['started_at'] ?? 'Not started' }}</small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row"><i class="bi bi-stop-circle"></i><strong>Ended<small data-live-ended-at>{{ $liveRealtimeSnapshot['session']['ended_at'] ?? 'Not ended' }}</small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row" data-presence-person="user"><i class="bi bi-person"></i><strong>User<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['user']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['user']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row" data-presence-person="pandit"><i class="bi bi-person-badge"></i><strong>Pandit<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['pandit']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['pandit']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
+                        @if($isOfflineBooking)
+                            <div class="coming-row"><i class="bi bi-person-badge"></i><strong>Pandit<small>{{ $bookingRecord?->pandit?->pandit_name ?: ($bookingRecord?->pandit?->full_name ?: '-') }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row"><i class="bi bi-calendar-event"></i><strong>Date and Time<small>{{ $bookingDateLabel }} - {{ $slotTime }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row"><i class="bi bi-geo-alt"></i><strong>Service Location<small>{{ collect([$bookingCity, $bookingState])->filter(fn ($value) => $value !== '-')->join(', ') ?: '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row"><i class="bi bi-check2-circle"></i><strong>Booking Status<small>{{ ucfirst(str_replace('_', ' ', $bookingRecord?->status ?? 'pending')) }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        @else
+                            <div class="coming-row"><i class="bi bi-broadcast"></i><strong>Meeting Status<small data-live-session-status>{{ $liveRealtimeSnapshot['session']['status'] ?? $topbarLabel }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row"><i class="bi bi-play-circle"></i><strong>Started<small data-live-started-at>{{ $liveRealtimeSnapshot['session']['started_at'] ?? 'Not started' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row"><i class="bi bi-stop-circle"></i><strong>Ended<small data-live-ended-at>{{ $liveRealtimeSnapshot['session']['ended_at'] ?? 'Not ended' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row" data-presence-person="user"><i class="bi bi-person"></i><strong>User<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['user']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['user']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
+                            <div class="coming-row" data-presence-person="pandit"><i class="bi bi-person-badge"></i><strong>Pandit<small><span data-presence-status>{{ $liveRealtimeSnapshot['people']['pandit']['status'] ?? 'Not Joined' }}</span> - <span data-presence-joined-at>{{ $liveRealtimeSnapshot['people']['pandit']['joined_at'] ?? 'Not joined' }}</span></small></strong><em class="bi bi-check-circle"></em></div>
+                        @endif
                         <div class="coming-row"><i class="bi bi-person"></i><strong>Sankalp Name<small>{{ $sankalpName }}</small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-heart"></i><strong>Purpose<small>{{ $bookingPurpose }}</small></strong><em class="bi bi-check-circle"></em></div>
                         <div class="coming-row"><i class="bi bi-box"></i><strong>Package<small>{{ $bookingPackage }}</small></strong><em class="bi bi-check-circle"></em></div>
@@ -700,7 +738,7 @@
                     </div>
                 @endif
 
-                @if ($canManageFamily && $sessionStatus !== 'completed')
+                @if ($canManageFamily && !$isOfflineBooking && $sessionStatus !== 'completed')
                     <div class="donation-panel mt-4" data-donation-panel data-dakshina-url="{{ route('live.dakshina.pay', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" data-csrf-token="{{ csrf_token() }}">
                         <h3><i class="bi bi-heart"></i> Dakshina</h3>
                         <p>Offer dakshina for this {{ $sessionType }} booking.</p>
@@ -717,14 +755,14 @@
                     </div>
                 @endif
 
-                @if ($sessionStatus === 'live')
+                @if (!$isOfflineBooking && $sessionStatus === 'live')
                     <div class="glass side-panel mt-4">
                         <h3>Coming Up</h3>
                         @foreach ($comingUpItems as $item)
                             <div class="coming-row"><i class="bi bi-play-circle"></i><strong>{{ $item[0] }}<small>{{ $item[1] }}</small></strong><em class="bi bi-arrow-right"></em></div>
                         @endforeach
                     </div>
-                @elseif ($sessionStatus === 'upcoming')
+                @elseif (!$isOfflineBooking && $sessionStatus === 'upcoming')
                     <div class="glass side-panel mt-4">
                         <h3>Upcoming Timeline</h3>
                         @foreach ($sessionProgress as $item)
@@ -1020,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-@if($canManageFamily && $bookingRecord)
+@if($canManageFamily && $bookingRecord && !$isOfflineBooking)
     @include('live-sessions.realtime', ['channelName' => 'live-session.'.$sessionType.'.'.$bookingRecord->id])
 @endif
 @endpush

@@ -97,6 +97,7 @@ class HawanController extends Controller
 
         $booking = session('hawan_booking', []);
         $selectedPanditId = $booking['pandit_id'] ?? null;
+        $bookingMode = $booking['booking_mode'] ?? 'online';
 
         if (!$selectedPanditId) {
             return response()->json([
@@ -139,7 +140,7 @@ class HawanController extends Controller
         $totalAmount = $packageAmount + $dakshina;
         [$holdStart, $holdEnd] = $bookingService->holdTimes();
 
-        $session = DB::transaction(function () use ($bookingService, $hawan, $validated, $selectedPanditId, $booking, $selectedHawanType, $packageName, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
+        $session = DB::transaction(function () use ($bookingService, $hawan, $validated, $selectedPanditId, $booking, $bookingMode, $selectedHawanType, $packageName, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
             Pandit::whereKey($selectedPanditId)->lockForUpdate()->firstOrFail();
 
             [$pandit, $panditService, $slotTimes] = $bookingService->ensurePanditCanServe(
@@ -148,9 +149,11 @@ class HawanController extends Controller
                 $bookingService->serviceNames($hawan->name, 'hawan'),
                 $validated['booking_date'],
                 $validated['slot'],
-                'online',
+                $bookingMode,
                 (int) ($booking['pandit_service_id'] ?? 0),
-                $hawan->id
+                $hawan->id,
+                $booking['state'] ?? null,
+                $booking['city'] ?? null
             );
 
             if ($bookingService->hasBlockingHawanBooking(
@@ -202,6 +205,9 @@ class HawanController extends Controller
             $session = HawanSession::create([
                 'user_id' => auth()->id(),
                 'service_type' => 'hawan',
+                'booking_mode' => $bookingMode,
+                'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                 'ritual_id' => $hawan->id,
                 'ritual_slug' => $hawan->slug,
                 'hawan_type' => $selectedHawanType['key'],
@@ -225,6 +231,9 @@ class HawanController extends Controller
                     'pandit_id' => $pandit->id,
                     'pandit_service_id' => $panditService->id,
                     'pandit_name' => $pandit->pandit_name ?: $pandit->full_name,
+                    'booking_mode' => $bookingMode,
+                    'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                    'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                     'hawan_type' => $selectedHawanType['key'],
                     'hawan_type_title' => $packageName,
                     'hawan_type_price' => $packageAmount,
@@ -243,6 +252,9 @@ class HawanController extends Controller
                     'hawan_name' => $hawan->name,
                     'hawan_type' => $selectedHawanType['key'],
                     'hawan_type_price' => $packageAmount,
+                    'booking_mode' => $bookingMode,
+                    'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                    'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                     'sankalp_form_id' => $sankalp->id,
                     'donor_name' => $validated['full_name'],
                     'donor_mobile' => $validated['mobile'],

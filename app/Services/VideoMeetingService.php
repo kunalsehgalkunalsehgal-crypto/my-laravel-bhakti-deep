@@ -88,6 +88,7 @@ class VideoMeetingService
     {
         return $session->status === 'confirmed'
             && $session->payment_status === 'paid'
+            && ($session->booking_mode ?: 'online') === 'online'
             && filled($session->pandit_id);
     }
 

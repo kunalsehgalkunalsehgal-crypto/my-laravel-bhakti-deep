@@ -272,6 +272,7 @@ class PoojaController extends Controller
 
         $booking = session('pooja_booking', []);
         $selectedPanditId = $booking['pandit_id'] ?? null;
+        $bookingMode = $booking['booking_mode'] ?? 'online';
 
         if (!$selectedPanditId) {
             return response()->json([
@@ -306,7 +307,7 @@ class PoojaController extends Controller
         $totalAmount = $packageAmount + $dakshina;
         [$holdStart, $holdEnd] = $bookingService->holdTimes();
 
-        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
+        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $bookingMode, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
             Pandit::whereKey($selectedPanditId)->lockForUpdate()->firstOrFail();
 
             [$pandit, $panditService, $slotTimes] = $bookingService->ensurePanditCanServe(
@@ -315,9 +316,11 @@ class PoojaController extends Controller
                 $bookingService->serviceNames($pooja->name, 'pooja'),
                 $validated['booking_date'],
                 $validated['slot'],
-                'online',
+                $bookingMode,
                 (int) ($booking['pandit_service_id'] ?? 0),
-                $pooja->id
+                $pooja->id,
+                $booking['state'] ?? null,
+                $booking['city'] ?? null
             );
 
             if ($bookingService->hasOverlappingBooking($selectedPanditId, $validated['booking_date'], $slotTimes['start'], $slotTimes['end'])) {
@@ -352,6 +355,9 @@ class PoojaController extends Controller
             $session = PoojaSession::create([
                 'user_id' => auth()->id(),
                 'service_type' => 'pooja',
+                'booking_mode' => $bookingMode,
+                'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                 'ritual_id' => $pooja->id,
                 'ritual_slug' => $pooja->slug,
                 'sankalp_form_id' => $sankalp->id,
@@ -372,6 +378,9 @@ class PoojaController extends Controller
                     'pandit_id' => $pandit->id,
                     'pandit_service_id' => $panditService->id,
                     'pandit_name' => $pandit->pandit_name ?: $pandit->full_name,
+                    'booking_mode' => $bookingMode,
+                    'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                    'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                     'package_name' => $validated['package_name'],
                     'package_amount' => $packageAmount,
                     'dakshina' => $dakshina,
@@ -387,6 +396,9 @@ class PoojaController extends Controller
                     'pooja_name' => $pooja->name,
                     'package_name' => $validated['package_name'],
                     'package_amount' => $packageAmount,
+                    'booking_mode' => $bookingMode,
+                    'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
+                    'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                     'sankalp_form_id' => $sankalp->id,
                     'donor_name' => $validated['full_name'],
                     'donor_mobile' => $validated['mobile'],

@@ -585,7 +585,6 @@ function choosePandit() {
     url.searchParams.set('date', bookingDate);
     url.searchParams.set('slot', selectedSlot);
     url.searchParams.set('mode', selectedPackage);
-    url.searchParams.set('booking_mode', 'online');
     window.location.href = url.toString();
 }
 

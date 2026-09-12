@@ -19,6 +19,19 @@
     $mode = request('mode', 'Live + Replay');
     $hawanType = request('hawan_type');
     $bookingMode = request('booking_mode', 'online');
+    $switchOnlineUrl = route($serviceType.'.pandits', [
+        'slug' => $hawan['slug'],
+        'date' => $date,
+        'slot' => $slot,
+        'mode' => $mode,
+        'hawan_type' => $hawanType,
+        'booking_mode' => 'online',
+        'language' => request('language'),
+        'experience' => request('experience'),
+        'qualification' => request('qualification'),
+        'sort' => request('sort'),
+        'view' => request('view'),
+    ]);
 @endphp
 
 <main class="page-shell pandit-select-page">
@@ -30,10 +43,13 @@
         @if(session('error'))
             <div class="alert alert-warning">{{ session('error') }}</div>
         @endif
+        @if($errors->any())
+            <div class="alert alert-warning">{{ $errors->first() }}</div>
+        @endif
     </section>
 
     <section class="container pandit-filter-bar">
-        <form method="GET" action="{{ route($serviceType.'.pandits', $hawan['slug']) }}">
+        <form method="GET" action="{{ route($serviceType.'.pandits', $hawan['slug']) }}" id="panditFilterForm">
             <input type="hidden" name="date" value="{{ $date }}">
             <input type="hidden" name="slot" value="{{ $slot }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
@@ -69,18 +85,19 @@
             </label>
 
             <label>Online/Offline
-                <select name="booking_mode" id="bookingModeFilter">
-                    <option value="online" @selected($bookingMode === 'online')>Online</option>
-                    <option value="offline" @selected($bookingMode === 'offline')>Offline</option>
-                </select>
+                <input type="hidden" name="booking_mode" id="bookingModeFilter" value="{{ $bookingMode }}">
+                <span class="d-flex gap-2 mt-1">
+                    <button type="button" class="btn btn-sm {{ $bookingMode === 'online' ? 'btn-saffron' : 'btn-ghost-gold' }}" data-booking-mode="online">Online</button>
+                    <button type="button" class="btn btn-sm {{ $bookingMode === 'offline' ? 'btn-saffron' : 'btn-ghost-gold' }}" data-booking-mode="offline">Offline</button>
+                </span>
             </label>
 
             <span id="offlineLocationFilters" style="display:{{ $bookingMode === 'offline' ? 'contents' : 'none' }};">
                 <label>State
-                    <input type="text" name="state" value="{{ request('state') }}" placeholder="Punjab">
+                    <input type="text" name="state" value="{{ request('state') }}" placeholder="Punjab" data-offline-location>
                 </label>
                 <label>City
-                    <input type="text" name="city" value="{{ request('city') }}" placeholder="Lalru">
+                    <input type="text" name="city" value="{{ request('city') }}" placeholder="Lalru" data-offline-location>
                 </label>
             </span>
 
@@ -112,8 +129,17 @@
                 <div class="col-12">
                     <div class="empty-pandit-box">
                         <i class="bi bi-calendar-x"></i>
-                        <h3>No pandit available</h3>
-                        <p>Try another date, slot, language or booking mode.</p>
+                        @if($bookingMode === 'offline')
+                            <h3>{{ request('state') && request('city') ? 'No Pandits available in this location' : 'Select State and City' }}</h3>
+                            <p>{{ request('state') && request('city') ? 'Try another city or continue with online '.strtolower($serviceLabel).'.' : 'Enter your offline service location to find matching Pandits.' }}</p>
+                            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                <a class="btn btn-ghost-gold" href="#offlineLocationFilters">Change City</a>
+                                <a class="btn btn-saffron" href="{{ $switchOnlineUrl }}">Switch to Online</a>
+                            </div>
+                        @else
+                            <h3>No pandit available</h3>
+                            <p>Try another date, slot, language or booking mode.</p>
+                        @endif
                     </div>
                 </div>
             @endforelse
@@ -135,8 +161,57 @@
     @endif
 </main>
 <script>
-    document.getElementById('bookingModeFilter')?.addEventListener('change', function () {
-        document.getElementById('offlineLocationFilters').style.display = this.value === 'offline' ? 'contents' : 'none';
+    const bookingModeFilter = document.getElementById('bookingModeFilter');
+    const offlineLocationFilters = document.getElementById('offlineLocationFilters');
+    const offlineInputs = offlineLocationFilters ? offlineLocationFilters.querySelectorAll('input') : [];
+    const panditFilterForm = document.getElementById('panditFilterForm');
+
+    function setBookingMode(mode) {
+        if (!bookingModeFilter) return;
+
+        bookingModeFilter.value = mode;
+        if (offlineLocationFilters) offlineLocationFilters.style.display = mode === 'offline' ? 'contents' : 'none';
+        offlineInputs.forEach(input => input.disabled = mode !== 'offline');
+        document.querySelectorAll('[data-booking-mode]').forEach(button => {
+            button.classList.toggle('btn-saffron', button.dataset.bookingMode === mode);
+            button.classList.toggle('btn-ghost-gold', button.dataset.bookingMode !== mode);
+        });
+    }
+
+    document.querySelectorAll('[data-booking-mode]').forEach(button => {
+        button.addEventListener('click', function () {
+            setBookingMode(this.dataset.bookingMode);
+            if (this.dataset.bookingMode === 'online' || @json($bookingMode) !== this.dataset.bookingMode) {
+                panditFilterForm?.submit();
+            }
+        });
     });
+
+    document.querySelectorAll('[data-offline-location]').forEach(input => {
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                panditFilterForm?.submit();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-pandit-select-form]').forEach(form => {
+        form.addEventListener('submit', function (event) {
+            const stateInput = document.querySelector('[name="state"]');
+            const cityInput = document.querySelector('[name="city"]');
+
+            form.querySelector('[data-select-booking-mode]').value = bookingModeFilter?.value || 'online';
+            form.querySelector('[data-select-state]').value = stateInput?.value || '';
+            form.querySelector('[data-select-city]').value = cityInput?.value || '';
+
+            if (bookingModeFilter?.value === 'offline' && (!stateInput?.value || !cityInput?.value)) {
+                event.preventDefault();
+                panditFilterForm?.submit();
+            }
+        });
+    });
+
+    setBookingMode(bookingModeFilter?.value || 'online');
 </script>
 @endsection

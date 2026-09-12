@@ -58,6 +58,20 @@
             <strong>{{ $booking['slot'] ?: 'Pending' }}</strong>
         </div>
         <div class="pandit-profile-item">
+            <span>Booking Mode</span>
+            <strong>{{ ucfirst($booking['booking_mode']) }}</strong>
+        </div>
+        @if($booking['booking_mode'] === 'offline')
+            <div class="pandit-profile-item">
+                <span>State</span>
+                <strong>{{ $booking['state'] ?: 'Not added' }}</strong>
+            </div>
+            <div class="pandit-profile-item">
+                <span>City</span>
+                <strong>{{ $booking['city'] ?: 'Not added' }}</strong>
+            </div>
+        @endif
+        <div class="pandit-profile-item">
             <span>Package / Type</span>
             <strong>{{ $booking['package_name'] ?: $booking['label'] }}</strong>
         </div>

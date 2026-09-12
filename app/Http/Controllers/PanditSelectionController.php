@@ -143,6 +143,7 @@ class PanditSelectionController extends Controller
             : null;
         $bookingService = app(PanditBookingService::class);
         $serviceNames = $this->serviceNames($hawan['name'], $serviceType);
+        $bookingMode = $request->input('booking_mode', 'online');
 
         [$matchedPandit, $panditService] = $bookingService->ensurePanditCanServe(
             $pandit,
@@ -150,9 +151,11 @@ class PanditSelectionController extends Controller
             $serviceNames,
             $request->date,
             $request->slot,
-            $request->input('booking_mode', 'online'),
+            $bookingMode,
             $request->integer('pandit_service_id') ?: null,
-            (int) ($hawan['id'] ?? 0) ?: null
+            (int) ($hawan['id'] ?? 0) ?: null,
+            $request->state,
+            $request->city
         );
 
         $matchedPandit = $this->matchingPanditsQuery($request, $serviceNames, Carbon::parse($request->date)->format('l'), $bookingService->slotTimes($request->slot), $serviceType, $hawan)
@@ -174,6 +177,9 @@ class PanditSelectionController extends Controller
             $sessionKey.'.date' => $request->date,
             $sessionKey.'.slot' => $request->slot,
             $sessionKey.'.mode' => $selectedHawanType['title'] ?? ($request->mode ?: 'Live + Replay'),
+            $sessionKey.'.booking_mode' => $bookingMode,
+            $sessionKey.'.state' => $bookingMode === 'offline' ? $request->state : null,
+            $sessionKey.'.city' => $bookingMode === 'offline' ? $request->city : null,
         ]);
 
         if ($selectedHawanType) {
@@ -249,19 +255,19 @@ class PanditSelectionController extends Controller
             ->when($request->input('booking_mode') === 'offline', function ($q) use ($request, $serviceType) {
                 $offlineColumn = $serviceType === 'pooja' ? 'offline_pooja' : 'offline_hawan';
 
+                if (!$request->filled('state') || !$request->filled('city')) {
+                    $q->whereRaw('1 = 0');
+                    return;
+                }
+
                 $q->whereHas('availabilitySetting', function ($setting) use ($request, $offlineColumn) {
                     $setting->where($offlineColumn, true);
 
-                    if ($request->filled('state')) {
-                        $setting->where('service_state', $request->state);
-                    }
-
-                    if ($request->filled('city')) {
-                        $setting->where(function ($city) use ($request) {
-                            $city->where('service_city', $request->city)
-                                ->orWhereJsonContains('other_service_cities', $request->city);
-                        });
-                    }
+                    $setting->where('service_state', $request->state);
+                    $setting->where(function ($city) use ($request) {
+                        $city->where('service_city', $request->city)
+                            ->orWhereJsonContains('other_service_cities', $request->city);
+                    });
                 });
             });
 

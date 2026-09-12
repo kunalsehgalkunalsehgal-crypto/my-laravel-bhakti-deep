@@ -8,6 +8,7 @@ use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
 use App\Models\Pandit\Pandit;
+use App\Models\Pandit\PanditAvailabilitySetting;
 use App\Models\Pandit\PanditAvailabilitySlot;
 use App\Models\Pandit\PanditOnlineSetup;
 use App\Models\Pandit\PanditService;
@@ -111,6 +112,72 @@ class VideoMeetingFlowTest extends TestCase
 
         $this->assertSame($hawanService->id, $hawanSession->pandit_service_id);
         $this->assertSame($poojaService->id, $poojaSession->pandit_service_id);
+    }
+
+    public function test_offline_hawan_does_not_create_video_meeting_after_acceptance(): void
+    {
+        $provider = new FakeVideoMeetingProvider();
+        $this->app->instance(VideoMeetingProvider::class, $provider);
+        config([
+            'services.razorpay.key_id' => 'rzp_test_key',
+            'services.razorpay.key_secret' => 'rzp_test_secret',
+        ]);
+        Http::fake([
+            'https://api.razorpay.com/v1/orders' => Http::response([
+                'id' => 'order_offline_test',
+                'amount' => 100,
+                'currency' => 'INR',
+                'status' => 'created',
+            ]),
+        ]);
+
+        [$pandit, $hawan] = $this->bookingFixtures();
+        PanditAvailabilitySetting::create([
+            'pandit_id' => $pandit->id,
+            'accept_new_bookings' => true,
+            'offline_hawan' => true,
+            'service_state' => 'Punjab',
+            'service_city' => 'Lalru',
+        ]);
+
+        $user = $this->user('offline-owner@example.test');
+        $bookingSession = $this->hawanBookingSession() + [
+            'booking_mode' => 'offline',
+            'state' => 'Punjab',
+            'city' => 'Lalru',
+        ];
+
+        $this->actingAs($user)
+            ->withSession(['hawan_booking' => $bookingSession])
+            ->postJson('/book-hawan', $this->hawanPayload($hawan, Carbon::tomorrow('Asia/Kolkata')))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $session = HawanSession::firstOrFail();
+
+        $this->assertSame('offline', $session->booking_mode);
+        $this->assertSame('Punjab', $session->state);
+        $this->assertSame('Lalru', $session->city);
+
+        $session->update(['payment_status' => 'paid', 'status' => 'scheduled']);
+
+        $this->actingAs($pandit, 'pandit')
+            ->post(route('pandit.bookings.accept', ['type' => 'hawan', 'id' => $session->id]))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('confirmed', $session->fresh()->status);
+        $this->assertSame(0, $provider->calls);
+        $this->assertDatabaseCount('video_meetings', 0);
+
+        $this->actingAs($user)
+            ->get(route('live.session', ['type' => 'hawan', 'id' => $session->id]))
+            ->assertOk()
+            ->assertSee('No Zoom meeting is needed')
+            ->assertSee('Punjab')
+            ->assertSee('Lalru')
+            ->assertDontSee('Join Hawan')
+            ->assertDontSee('Start Hawan');
     }
 
     public function test_start_and_join_routes_authorize_the_right_people(): void
