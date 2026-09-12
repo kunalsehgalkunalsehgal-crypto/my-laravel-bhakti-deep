@@ -110,9 +110,22 @@ Route::post('/live-family/{token}/meeting-sdk', [LiveSessionController::class, '
 Route::post('/live-family/{token}/leave', [LiveSessionController::class, 'leaveInvite'])->name('live.family.leave');
 Route::get('/live-sessions', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
+        // ->where('payment_status', 'paid')
+        // ->where('status', 'confirmed')
+        // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-        ->where('status', 'confirmed')
-        ->whereHas('videoMeeting');
+    ->where('status', 'confirmed')
+    ->where(function ($query) {
+        $query->where('booking_mode', 'offline')
+            ->orWhere(function ($onlineQuery) {
+                $onlineQuery
+                    ->where(function ($modeQuery) {
+                        $modeQuery->where('booking_mode', 'online')
+                            ->orWhereNull('booking_mode');
+                    })
+                    ->whereHas('videoMeeting');
+            });
+    });
 
     $hawanBookings = HawanSession::with(['sankalp', 'videoMeeting'])
         // ->where('payment_status', 'paid')
