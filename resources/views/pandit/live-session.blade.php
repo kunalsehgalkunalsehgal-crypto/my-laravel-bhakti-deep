@@ -276,6 +276,11 @@
         ? 'ended'
         : ($sessionProgress['status'] === 'Live' ? 'live' : 'waiting');
     $snapshot = \App\Support\LiveSessionSnapshot::make($bookingRecord);
+    $completionProof = $bookingRecord->completionProofs()->latest()->first();
+    $canCompleteOnline = !$completionProof
+        && ($bookingRecord->booking_mode ?: 'online') === 'online'
+        && $bookingRecord->payment_status === 'paid'
+        && $bookingRecord->status === 'confirmed';
 @endphp
 
 <section class="pandit-live-hero">
@@ -302,6 +307,9 @@
 
 <div class="pandit-live-grid">
     <div>
+        @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
+        @if($errors->any())<div style="color:#b42318;margin-bottom:12px">{{ $errors->first() }}</div>@endif
+
         <section class="pandit-live-card pandit-live-video">
             @if($embeddedMeetingView && $providerMeetingActionUrl && $sdkEndpointUrl)
                 @include($embeddedMeetingView)
@@ -319,6 +327,54 @@
                 </div>
             @endif
         </section>
+
+        @if($completionProof)
+            <section class="pandit-live-card">
+                <div class="pandit-live-card-head">
+                    <div>
+                        <h2>Completion Proof</h2>
+                        <p>Submitted {{ $completionProof->submitted_at?->format('d M Y, h:i A') ?? '' }}</p>
+                    </div>
+                    <span><i class="bi bi-check2-circle"></i></span>
+                </div>
+                <div class="pandit-live-details">
+                    @if($completionProof->file_path)
+                        <div class="pandit-live-item wide">
+                            <span>Image</span>
+                            <strong><a href="{{ asset('storage/'.$completionProof->file_path) }}" target="_blank">View completion image</a></strong>
+                        </div>
+                    @endif
+                    <div class="pandit-live-item wide">
+                        <span>Note</span>
+                        <strong>{{ $completionProof->notes ?: 'Not added' }}</strong>
+                    </div>
+                </div>
+            </section>
+        @elseif($canCompleteOnline)
+            <section class="pandit-live-card" data-completion-after-ended style="{{ $sessionProgress['status'] === 'Ended' ? '' : 'display:none' }}">
+                <div class="pandit-live-card-head">
+                    <div>
+                        <h2>Complete Session</h2>
+                        <p>Upload proof after the Zoom meeting ends.</p>
+                    </div>
+                    <span><i class="bi bi-check2-circle"></i></span>
+                </div>
+                <form method="POST" action="{{ route('pandit.bookings.complete', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" enctype="multipart/form-data" class="pandit-live-details">
+                    @csrf
+                    <label class="pandit-live-item wide">
+                        <span>Completion Image *</span>
+                        <input type="file" name="completion_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required style="width:100%;margin-top:8px">
+                    </label>
+                    <label class="pandit-live-item wide">
+                        <span>Completion Note</span>
+                        <textarea name="completion_note" rows="3" style="width:100%;margin-top:8px">{{ old('completion_note') }}</textarea>
+                    </label>
+                    <button type="submit" class="pandit-live-pill present" style="border:0">
+                        <i class="bi bi-check2-circle"></i> Complete Session
+                    </button>
+                </form>
+            </section>
+        @endif
 
         <section class="pandit-live-card">
             <div class="pandit-live-card-head">

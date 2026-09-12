@@ -253,6 +253,9 @@
     $sessionType = in_array($requestedSessionType, ['aarti', 'pooja', 'hawan', 'diya'], true) ? $requestedSessionType : 'aarti';
     $sessionId = $sessionId ?? request()->route('id') ?? 101;
     $bookingRecord = $bookingRecord ?? null;
+    if ($bookingRecord && $bookingRecord->status === 'completed' && !request()->has('status')) {
+        $sessionStatus = 'completed';
+    }
     $embeddedMeetingView = $embeddedMeetingView ?? null;
     $bookingSankalp = $bookingRecord?->sankalp;
     $videoMeeting = $bookingRecord?->videoMeeting;
@@ -282,6 +285,7 @@
     $hasLiveRoomAccess = $sessionType === 'aarti'
         || !$isPrivateBookedSession
         || $bookingIsReadyForMeeting
+        || ($bookingRecord && $bookingRecord->payment_status === 'paid' && $bookingRecord->status === 'completed')
         || ($isOfflineBooking && $bookingRecord->payment_status === 'paid');
     $isPaidSession = $isPrivateBookedSession && $hasLiveRoomAccess;
     $sankalpName = $bookingSankalp?->full_name ?: $bookingRecord?->user?->name ?: 'Devotee';
@@ -372,6 +376,15 @@
     $activeFamilyInvite = $activeFamilyInvite ?? null;
     $canManageFamily = $canManageFamily ?? false;
     $activeDispute = $activeDispute ?? null;
+    $completionProof = $bookingRecord?->completionProofs()->latest()->first();
+    $userConfirmation = $bookingRecord?->userConfirmations()->where('user_id', \Illuminate\Support\Facades\Auth::id())->latest()->first();
+    $canConfirmCompletion = $canManageFamily
+        && $completionProof
+        && $bookingRecord?->status === 'completed'
+        && !in_array($userConfirmation?->status, [
+            \App\Models\BookingUserConfirmation::STATUS_CONFIRMED,
+            \App\Models\BookingUserConfirmation::STATUS_AUTO_CONFIRMED,
+        ], true);
     $canReportIssue = $canManageFamily && $isPrivateBookedSession && in_array($sessionType, ['pooja', 'hawan'], true) && $bookingRecord;
     $disputeStatusLabel = $activeDispute ? \Illuminate\Support\Str::of($activeDispute->status)->replace('_', ' ')->title() : null;
     $reportReasons = [
@@ -748,6 +761,42 @@
         </div>
     </div>
 @endif
+                @endif
+
+                @if ($completionProof && $bookingRecord)
+                    <div class="glass side-panel mt-4">
+                        <h3>Pandit has marked this {{ ucfirst($sessionType) }} as completed</h3>
+                        @if($completionProof->file_path)
+                            <p><a class="btn btn-ghost-gold w-100" href="{{ asset('storage/'.$completionProof->file_path) }}" target="_blank"><i class="bi bi-image"></i> View Completion Image</a></p>
+                        @endif
+                        <div class="coming-row"><i class="bi bi-card-text"></i><strong>Completion Note<small>{{ $completionProof->notes ?: 'Not added' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row"><i class="bi bi-clock"></i><strong>Submitted<small>{{ $completionProof->submitted_at?->format('d M Y, h:i A') ?? '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
+
+                        @if($userConfirmation)
+                            <div class="coming-row"><i class="bi bi-info-circle"></i><strong>Confirmation Status<small>{{ ucfirst(str_replace('_', ' ', $userConfirmation->status)) }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        @endif
+
+                        @if($canConfirmCompletion)
+                            <form method="POST" action="{{ route('live.completion.confirm', ['type' => $sessionType, 'id' => $bookingRecord->id]) }}" class="mt-3">
+                                @csrf
+                                <button class="btn btn-saffron w-100" type="submit">
+                                    <i class="bi bi-check2-circle"></i> Confirm Completed
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+
+                    @if($bookingRecord->status === 'completed' && $canManageFamily)
+                        @include('partials.review-form', [
+                            'booking' => $bookingRecord,
+                            'bookingType' => $sessionType,
+                            'reviewBy' => 'user',
+                            'title' => 'Review Pandit',
+                            'sendOtpRoute' => route('reviews.image-otp'),
+                            'verifyOtpRoute' => route('reviews.image-otp.verify'),
+                            'storeRoute' => route('reviews.store'),
+                        ])
+                    @endif
                 @endif
 
                 @if ($canReportIssue)

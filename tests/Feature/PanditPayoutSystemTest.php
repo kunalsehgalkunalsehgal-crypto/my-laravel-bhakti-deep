@@ -217,6 +217,7 @@ class PanditPayoutSystemTest extends TestCase
             'session_id' => $session->id,
             'pandit_id' => $session->pandit_id,
             'user_id' => $session->user_id,
+            'file_path' => 'completion-proofs/test.jpg',
             'status' => SessionCompletionProof::STATUS_PENDING,
             'submitted_at' => now(),
         ]);

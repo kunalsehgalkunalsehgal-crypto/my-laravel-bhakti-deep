@@ -7,8 +7,10 @@ use App\Models\Admin\Donation;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PaymentLog;
 use App\Models\Admin\PoojaSession;
+use App\Models\BookingUserConfirmation;
 use App\Models\Dispute;
 use App\Models\LiveSessionInvite;
+use App\Models\SessionCompletionProof;
 use App\Models\Pandit\PanditNotification;
 use App\Models\VideoMeetingAttendance;
 use App\Services\PanditPayoutLedgerService;
@@ -180,6 +182,7 @@ class LiveSessionController extends Controller
             ->first();
 
         if ($existingDispute) {
+            $this->markCompletionDisputed($booking);
             app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'existing_dispute_open');
 
             return back()->with('success', 'Issue Reported - Status: Open');
@@ -232,9 +235,35 @@ class LiveSessionController extends Controller
 
         $this->notifyPanditAboutIssueReport($booking, $dispute);
         app(UserBookingNotificationService::class)->reportSubmitted($booking, $dispute);
+        $this->markCompletionDisputed($booking);
         app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'dispute_opened');
 
         return back()->with('success', 'Issue Reported - Status: Open');
+    }
+
+    public function confirmCompletion(string $type, string $id): RedirectResponse
+    {
+        $booking = $this->ownedReportableBooking($type, $id);
+
+        abort_unless($booking->status === 'completed' && $booking->payment_status === 'paid', 403);
+        abort_unless($booking->completionProofs()->whereNotNull('file_path')->where('status', '!=', SessionCompletionProof::STATUS_REJECTED)->exists(), 403);
+
+        BookingUserConfirmation::updateOrCreate(
+            [
+                'session_type' => $booking::class,
+                'session_id' => $booking->id,
+                'user_id' => Auth::id(),
+            ],
+            [
+                'status' => BookingUserConfirmation::STATUS_CONFIRMED,
+                'confirmed_at' => now(),
+                'metadata' => ['confirmed_by' => 'user'],
+            ]
+        );
+
+        app(PanditPayoutLedgerService::class)->syncForBooking($booking, 'user_confirmed_completion');
+
+        return back()->with('success', 'Completion confirmed successfully.');
     }
 
     public function familyInvites(Model $booking)
@@ -272,9 +301,20 @@ class LiveSessionController extends Controller
     private function bookingRecord(string $type, string $id): Model
     {
         return match ($type) {
-            'pooja' => PoojaSession::with(['sankalp', 'videoMeeting'])->findOrFail($id),
-            'hawan' => HawanSession::with(['sankalp', 'videoMeeting'])->findOrFail($id),
+            'pooja' => PoojaSession::with(['sankalp', 'videoMeeting', 'completionProofs', 'userConfirmations'])->findOrFail($id),
+            'hawan' => HawanSession::with(['sankalp', 'videoMeeting', 'completionProofs', 'userConfirmations'])->findOrFail($id),
         };
+    }
+
+    private function markCompletionDisputed(Model $booking): void
+    {
+        $booking->userConfirmations()
+            ->where('user_id', Auth::id())
+            ->where('status', BookingUserConfirmation::STATUS_PENDING)
+            ->update([
+                'status' => BookingUserConfirmation::STATUS_DISPUTED,
+                'disputed_at' => now(),
+            ]);
     }
 
     private function notifyPanditAboutIssueReport(Model $booking, Dispute $dispute): void

@@ -123,9 +123,11 @@ class PanditPayoutLedgerService
             $booking->payment_status === 'paid'
             && $booking->status === 'completed'
             && $booking->completed_at
-            && $booking->videoMeetingAttendances()->where('event_type', VideoMeetingAttendance::EVENT_MEETING_ENDED)->exists()
+            && (($booking->booking_mode ?: 'online') === 'offline'
+                || $booking->videoMeetingAttendances()->where('event_type', VideoMeetingAttendance::EVENT_MEETING_ENDED)->exists())
             && $booking->completionProofs()
                 ->where('pandit_id', $booking->pandit_id)
+                ->whereNotNull('file_path')
                 ->whereNotNull('submitted_at')
                 ->where('status', '!=', SessionCompletionProof::STATUS_REJECTED)
                 ->exists()

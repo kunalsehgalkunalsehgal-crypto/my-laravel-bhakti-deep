@@ -353,6 +353,9 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::post('/bookings/{type}/{id}/accept', [PanditController::class, 'acceptBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.accept');
+    Route::post('/bookings/{type}/{id}/complete', [PanditController::class, 'completeBooking'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('bookings.complete');
     Route::post('/bookings/{type}/{id}/cancel', [PanditController::class, 'cancelBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
         ->name('bookings.cancel');
@@ -564,6 +567,9 @@ Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class
 Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::class, 'storeIssueReport'])
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.issue-report.store');
+Route::post('/live-sessions/{type}/{id}/confirm-completion', [LiveSessionController::class, 'confirmCompletion'])
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.completion.confirm');
 Route::post('/reviews/image-otp', [ReviewController::class, 'sendImageOtp'])->name('reviews.image-otp');
 Route::post('/reviews/image-otp/verify', [ReviewController::class, 'verifyImageOtp'])->name('reviews.image-otp.verify');
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');

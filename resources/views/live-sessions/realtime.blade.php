@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
         text('[data-live-left-count]', snapshot.counts?.left ?? 0);
         text('[data-family-top-count], [data-live-family-present]', snapshot.counts?.family_present ?? 0);
         text('[data-family-count]', (snapshot.counts?.family_present ?? 0) + ' joined');
+        if (snapshot.session?.status === 'Ended') {
+            document.querySelectorAll('[data-completion-after-ended]').forEach((el) => el.style.display = '');
+        }
         row('[data-presence-person="user"]', snapshot.people?.user || {});
         row('[data-presence-person="pandit"]', snapshot.people?.pandit || {});
         (snapshot.family || []).forEach(function (item) {

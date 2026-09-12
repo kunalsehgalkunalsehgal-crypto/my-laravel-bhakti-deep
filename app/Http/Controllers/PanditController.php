@@ -17,7 +17,10 @@ use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
+use App\Models\BookingUserConfirmation;
 use App\Models\Dispute;
+use App\Models\SessionCompletionProof;
+use App\Models\VideoMeetingAttendance;
 use App\Services\PanditBookingCancellationService;
 use App\Services\RazorpayPaymentService;
 use App\Services\VideoMeetingService;
@@ -302,6 +305,74 @@ class PanditController extends Controller
         }
 
         return back()->with('success', ucfirst($type).' booking accepted successfully.');
+    }
+
+    public function completeBooking(Request $request, string $type, string $id)
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+
+        $validated = $request->validate([
+            'completion_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'completion_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $model = match ($type) {
+            'pooja' => PoojaSession::class,
+            'hawan' => HawanSession::class,
+            default => abort(404),
+        };
+
+        $session = $model::whereKey($id)
+            ->where('pandit_id', $pandit->id)
+            ->firstOrFail();
+
+        if ($session->payment_status !== 'paid' || $session->status !== 'confirmed') {
+            return back()->withErrors(['completion' => 'Only paid confirmed bookings can be completed.']);
+        }
+
+        $bookingMode = $session->booking_mode ?: 'online';
+
+        if ($bookingMode === 'online' && !$session->videoMeetingAttendances()->where('event_type', VideoMeetingAttendance::EVENT_MEETING_ENDED)->exists()) {
+            return back()->withErrors(['completion' => 'Complete Session is available after the Zoom meeting has ended.']);
+        }
+
+        $path = $request->file('completion_image')->store('completion-proofs', 'public');
+
+        SessionCompletionProof::create([
+            'session_type' => $model,
+            'session_id' => $session->id,
+            'pandit_id' => $pandit->id,
+            'user_id' => $session->user_id,
+            'proof_type' => 'completion_image',
+            'file_path' => $path,
+            'notes' => $validated['completion_note'] ?? null,
+            'status' => SessionCompletionProof::STATUS_PENDING,
+            'submitted_at' => now(),
+            'metadata' => ['booking_mode' => $bookingMode],
+        ]);
+
+        $session->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+
+        BookingUserConfirmation::updateOrCreate(
+            [
+                'session_type' => $model,
+                'session_id' => $session->id,
+                'user_id' => $session->user_id,
+            ],
+            [
+                'status' => BookingUserConfirmation::STATUS_PENDING,
+                'confirmed_at' => null,
+                'disputed_at' => null,
+                'expires_at' => now()->addHours(24),
+                'metadata' => ['completion_proof_submitted_at' => now()->toIso8601String()],
+            ]
+        );
+
+        return back()->with('success', ucfirst($type).' marked completed. Waiting for user confirmation.');
     }
 
     public function cancelBooking(Request $request, string $type, string $id)

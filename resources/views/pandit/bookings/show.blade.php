@@ -2,7 +2,16 @@
 
 @section('title', $booking['booking_id'].' - BhaktiDeep')
 
-@php $activeMenu = 'bookings'; @endphp
+@php
+    $activeMenu = 'bookings';
+    $completionProof = $session->completionProofs()->latest()->first();
+    $bookingMode = $session->booking_mode ?: 'online';
+    $meetingEnded = $session->videoMeetingAttendances()->where('event_type', \App\Models\VideoMeetingAttendance::EVENT_MEETING_ENDED)->exists();
+    $canCompleteSession = !$completionProof
+        && $session->payment_status === 'paid'
+        && $session->status === 'confirmed'
+        && ($bookingMode === 'offline' || $meetingEnded);
+@endphp
 
 @section('content')
 <div class="pandit-page-heading">
@@ -119,6 +128,40 @@
             <strong>{{ $booking['pandit_name'] }}</strong>
         </div>
     </div>
+
+    @if($completionProof)
+        <div class="pandit-profile-item pandit-wide" style="margin-top:18px">
+            <span>Completion Proof</span>
+            <strong>
+                Submitted {{ $completionProof->submitted_at?->format('d M Y, h:i A') ?? '' }}
+                @if($completionProof->file_path)
+                    - <a href="{{ asset('storage/'.$completionProof->file_path) }}" target="_blank">View image</a>
+                @endif
+                @if($completionProof->notes)
+                    <br>{{ $completionProof->notes }}
+                @endif
+            </strong>
+        </div>
+    @elseif($canCompleteSession)
+        <form method="POST" action="{{ route('pandit.bookings.complete', ['type' => $booking['type'], 'id' => $session->id]) }}" enctype="multipart/form-data" class="pandit-profile-grid" style="margin-top:18px">
+            @csrf
+            <div class="pandit-profile-item pandit-wide">
+                <span>Complete Session</span>
+                <strong>Upload completion proof to mark this {{ strtolower($booking['label']) }} completed.</strong>
+            </div>
+            <label class="pandit-profile-item pandit-wide" style="display:block">
+                <span>Completion Image *</span>
+                <input type="file" name="completion_image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required style="width:100%;margin-top:8px">
+            </label>
+            <label class="pandit-profile-item pandit-wide" style="display:block">
+                <span>Completion Note</span>
+                <textarea name="completion_note" rows="3" style="width:100%;margin-top:8px">{{ old('completion_note') }}</textarea>
+            </label>
+            <button type="submit" class="primary">
+                <i class="bi bi-check2-circle"></i> Complete Session
+            </button>
+        </form>
+    @endif
 
     @include('partials.review-form', [
         'booking' => $session,
