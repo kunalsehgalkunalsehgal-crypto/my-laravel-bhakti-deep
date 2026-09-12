@@ -41,14 +41,37 @@
                     <strong>{{ $session['slot'] ?: 'Pending' }}</strong>
                 </div>
                 <div>
+    <span>Mode</span>
+    <strong>{{ ucfirst($session['booking_mode'] ?? 'online') }}</strong>
+</div>
+                <div>
                     <span>Status</span>
                     <strong>{{ ucfirst(str_replace('_', ' ', $session['status'])) }}</strong>
                 </div>
-                <div class="pandit-booking-actions">
+                {{-- <div class="pandit-booking-actions">
                     <a href="{{ $session['url'] }}" class="primary">
                         <i class="bi bi-camera-video"></i> Open Live Room
                     </a>
-                </div>
+                </div> --}}
+                <div class="pandit-booking-actions">
+
+    @if(($session['booking_mode'] ?? 'online') === 'offline')
+
+        <a href="{{ $session['url'] }}" class="primary">
+            <i class="bi bi-geo-alt"></i>
+            View Booking Details
+        </a>
+
+    @else
+
+        <a href="{{ $session['url'] }}" class="primary">
+            <i class="bi bi-camera-video"></i>
+            Open Live Room
+        </a>
+
+    @endif
+
+</div>
             </article>
         @empty
             <div class="pandit-empty-slot">

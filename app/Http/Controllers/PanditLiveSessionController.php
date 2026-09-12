@@ -22,7 +22,18 @@ class PanditLiveSessionController extends Controller
             ->where('pandit_id', $pandit->id)
             ->where('payment_status', 'paid')
             ->where('status', 'confirmed')
-            ->whereHas('videoMeeting')
+            // ->whereHas('videoMeeting')
+            ->where(function ($query) {
+    $query->where('booking_mode', 'offline')
+        ->orWhere(function ($onlineQuery) {
+            $onlineQuery
+                ->where(function ($modeQuery) {
+                    $modeQuery->where('booking_mode', 'online')
+                        ->orWhereNull('booking_mode');
+                })
+                ->whereHas('videoMeeting');
+        });
+})
             ->latest()
             ->get()
             ->map(fn (Model $booking) => $this->liveSessionRow($booking, 'hawan'));
@@ -31,7 +42,18 @@ class PanditLiveSessionController extends Controller
             ->where('pandit_id', $pandit->id)
             ->where('payment_status', 'paid')
             ->where('status', 'confirmed')
-            ->whereHas('videoMeeting')
+            // ->whereHas('videoMeeting')
+            ->where(function ($query) {
+    $query->where('booking_mode', 'offline')
+        ->orWhere(function ($onlineQuery) {
+            $onlineQuery
+                ->where(function ($modeQuery) {
+                    $modeQuery->where('booking_mode', 'online')
+                        ->orWhereNull('booking_mode');
+                })
+                ->whereHas('videoMeeting');
+        });
+})
             ->latest()
             ->get()
             ->map(fn (Model $booking) => $this->liveSessionRow($booking, 'pooja'));
@@ -109,18 +131,51 @@ class PanditLiveSessionController extends Controller
 
     private function liveSessionRow(Model $booking, string $type): array
     {
-        return [
-            'id' => $booking->id,
-            'type' => $type,
-            'label' => Str::headline($type),
-            'booking_id' => Str::upper($type).'-'.$booking->id,
-            'service_name' => $this->serviceName($booking, $type),
-            'yajman' => $booking->sankalp?->full_name ?: $booking->user?->name ?: 'Main Devotee',
-            'booking_date' => $booking->booking_date,
-            'slot' => $booking->slot,
-            'status' => $booking->status,
-            'url' => route('pandit.live-sessions.show', ['type' => $type, 'id' => $booking->id]),
-        ];
+        // return [
+        //     'id' => $booking->id,
+        //     'type' => $type,
+        //     'label' => Str::headline($type),
+        //     'booking_id' => Str::upper($type).'-'.$booking->id,
+        //     'service_name' => $this->serviceName($booking, $type),
+        //     'yajman' => $booking->sankalp?->full_name ?: $booking->user?->name ?: 'Main Devotee',
+        //     'booking_date' => $booking->booking_date,
+        //     'slot' => $booking->slot,
+        //     'status' => $booking->status,
+        //     'url' => route('pandit.live-sessions.show', ['type' => $type, 'id' => $booking->id]),
+        // ];
+        $bookingMode = $booking->booking_mode ?: 'online';
+    $isOffline = $bookingMode === 'offline';
+
+    return [
+        'id' => $booking->id,
+        'type' => $type,
+        'label' => Str::headline($type),
+        'booking_id' => Str::upper($type).'-'.$booking->id,
+        'service_name' => $this->serviceName($booking, $type),
+
+        'yajman' => $booking->sankalp?->full_name
+            ?: $booking->user?->name
+            ?: 'Main Devotee',
+
+        'booking_date' => $booking->booking_date,
+        'slot' => $booking->slot,
+
+        'status' => $booking->status,
+
+        'booking_mode' => $bookingMode,
+        'state' => $booking->state,
+        'city' => $booking->city,
+
+        'url' => $isOffline
+            ? route('pandit.bookings.show', [
+                'type' => $type,
+                'id' => $booking->id,
+            ])
+            : route('pandit.live-sessions.show', [
+                'type' => $type,
+                'id' => $booking->id,
+            ]),
+    ];
     }
 
     private function sessionProgress(Model $booking): array

@@ -120,9 +120,16 @@
                         $packageName = $meta['package_name'] ?? '-';
                         $totalAmount = isset($meta['total_amount']) ? 'Rs.'.number_format((float) $meta['total_amount']) : '-';
                         $dateLabel = $booking->booking_date ? $booking->booking_date->format('d M Y') : '-';
-                        $canJoinMeeting = $booking->payment_status === 'paid'
-                            && $booking->status === 'confirmed'
-                            && $booking->videoMeeting;
+                        // $canJoinMeeting = $booking->payment_status === 'paid'
+                        //     && $booking->status === 'confirmed'
+                        //     && $booking->videoMeeting;
+                        $bookingMode = $booking->booking_mode ?: 'online';
+$isOffline = $bookingMode === 'offline';
+
+$canJoinMeeting = !$isOffline
+    && $booking->payment_status === 'paid'
+    && $booking->status === 'confirmed'
+    && $booking->videoMeeting;
                     @endphp
                     <article class="glass pooja-live-card">
                         <div class="pooja-live-card-head">
@@ -137,19 +144,62 @@
                             <span>Package <strong>{{ $packageName }}</strong></span>
                             <span>Date <strong>{{ $dateLabel }}</strong></span>
                             <span>Slot <strong>{{ $booking->slot ?: '-' }}</strong></span>
-                            <span>Total Paid <strong>{{ $totalAmount }}</strong></span>
+                            <span>Total Paid <strong>{{ $totalAmount }}</strong></span><span>
+    Mode
+    <strong>{{ ucfirst($bookingMode) }}</strong>
+</span>
+
+@if($isOffline)
+    <span>
+        Location
+        <strong>
+            {{ collect([$booking->city, $booking->state])->filter()->join(', ') ?: '-' }}
+        </strong>
+    </span>
+@endif
                             <span>Status <strong>{{ ucfirst($booking->status) }}</strong></span>
                         </div>
-                        @if ($canJoinMeeting)
+                        {{-- @if ($canJoinMeeting)
                             <a href="{{ route('live.session', ['type' => 'pooja', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-gold w-100">
                                 Join Pooja <i class="bi bi-arrow-right"></i>
                             </a>
-                            {{-- <a href="{{ route('live.session.join', ['type' => 'pooja', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-gold w-100">
-                                Join Pooja <i class="bi bi-arrow-right"></i>
-                            </a> --}}
+                            
                         @else
                             <span class="btn btn-ghost-gold w-100 disabled">Live link pending</span>
-                        @endif
+                        @endif --}}
+                        @if($isOffline)
+
+    <a href="{{ route('live.session', [
+        'type' => 'pooja',
+        'id' => $booking->id
+    ]) }}"
+       class="btn btn-gold w-100">
+
+        <i class="bi bi-geo-alt"></i>
+        View Details
+    </a>
+
+@elseif($canJoinMeeting)
+
+    <a href="{{ route('live.session', [
+        'type' => 'pooja',
+        'id' => $booking->id
+    ]) }}"
+       target="_blank"
+       rel="noopener"
+       class="btn btn-gold w-100">
+
+        Join Pooja
+        <i class="bi bi-arrow-right"></i>
+    </a>
+
+@else
+
+    <span class="btn btn-ghost-gold w-100 disabled">
+        Live link pending
+    </span>
+
+@endif
                     </article>
                 @endforeach
             </div>

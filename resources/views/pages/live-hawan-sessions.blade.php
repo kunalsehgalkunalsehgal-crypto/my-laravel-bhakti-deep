@@ -119,7 +119,7 @@
         @if ($hawanBookings->count())
             <div class="hawan-live-grid">
                 @foreach ($hawanBookings as $booking)
-                    @php
+                    {{-- @php
                         $meta = $booking->admin_note ? (json_decode($booking->admin_note, true) ?: []) : [];
                         $hawanName = $meta['hawan_name'] ?? $booking->service?->name ?? 'Live Hawan';
                         $packageName = $booking->hawan_type_title ?? $meta['hawan_type_title'] ?? $meta['package_name'] ?? '-';
@@ -128,7 +128,35 @@
                         $canJoinMeeting = $booking->payment_status === 'paid'
                             && $booking->status === 'confirmed'
                             && $booking->videoMeeting;
-                    @endphp
+                    @endphp --}}
+                    @php
+    $meta = $booking->admin_note ? (json_decode($booking->admin_note, true) ?: []) : [];
+
+    $hawanName = $meta['hawan_name']
+        ?? $booking->service?->name
+        ?? 'Live Hawan';
+
+    $packageName = $booking->hawan_type_title
+        ?? $meta['hawan_type_title']
+        ?? $meta['package_name']
+        ?? '-';
+
+    $totalAmount = isset($meta['total_amount'])
+        ? 'Rs.'.number_format((float) $meta['total_amount'])
+        : '-';
+
+    $dateLabel = $booking->booking_date
+        ? $booking->booking_date->format('d M Y')
+        : '-';
+
+    $bookingMode = $booking->booking_mode ?: 'online';
+    $isOffline = $bookingMode === 'offline';
+
+    $canJoinMeeting = !$isOffline
+        && $booking->payment_status === 'paid'
+        && $booking->status === 'confirmed'
+        && $booking->videoMeeting;
+@endphp
                     <article class="glass hawan-live-card">
                         <div class="hawan-live-card-head">
                             <span class="hawan-live-icon"><i class="bi bi-fire"></i></span>
@@ -144,18 +172,62 @@
                             <span>Date <strong>{{ $dateLabel }}</strong></span>
                             <span>Slot <strong>{{ $booking->slot ?: '-' }}</strong></span>
                             <span>Total Paid <strong>{{ $totalAmount }}</strong></span>
+                            <span>
+    Mode
+    <strong>{{ ucfirst($bookingMode) }}</strong>
+</span>
+
+@if($isOffline)
+    <span>
+        Location
+        <strong>
+            {{ collect([$booking->city, $booking->state])->filter()->join(', ') ?: '-' }}
+        </strong>
+    </span>
+@endif
                             <span>Status <strong>{{ ucfirst($booking->status) }}</strong></span>
                         </div>
-                        @if ($canJoinMeeting)
+                        {{-- @if ($canJoinMeeting)
                             <a href="{{ route('live.session', ['type' => 'hawan', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-saffron w-100">
                                 Join Hawan <i class="bi bi-arrow-right"></i>
                             </a>
-                            {{-- <a href="{{ route('live.session.join', ['type' => 'hawan', 'id' => $booking->id]) }}" target="_blank" rel="noopener" class="btn btn-saffron w-100">
-                                Join Hawan <i class="bi bi-arrow-right"></i>
-                            </a> --}}
+                          
                         @else
                             <span class="btn btn-ghost-gold w-100 disabled">Live link pending</span>
-                        @endif
+                        @endif --}}
+                        @if($isOffline)
+
+    <a href="{{ route('live.session', [
+        'type' => 'hawan',
+        'id' => $booking->id
+    ]) }}"
+       class="btn btn-saffron w-100">
+
+        <i class="bi bi-geo-alt"></i>
+        View Details
+    </a>
+
+@elseif($canJoinMeeting)
+
+    <a href="{{ route('live.session', [
+        'type' => 'hawan',
+        'id' => $booking->id
+    ]) }}"
+       target="_blank"
+       rel="noopener"
+       class="btn btn-saffron w-100">
+
+        Join Hawan
+        <i class="bi bi-arrow-right"></i>
+    </a>
+
+@else
+
+    <span class="btn btn-ghost-gold w-100 disabled">
+        Live link pending
+    </span>
+
+@endif
                     </article>
                 @endforeach
             </div>

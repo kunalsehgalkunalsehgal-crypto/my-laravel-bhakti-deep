@@ -115,9 +115,22 @@ Route::get('/live-sessions', function () {
         ->whereHas('videoMeeting');
 
     $hawanBookings = HawanSession::with(['sankalp', 'videoMeeting'])
+        // ->where('payment_status', 'paid')
+        // ->where('status', 'confirmed')
+        // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-        ->where('status', 'confirmed')
-        ->whereHas('videoMeeting');
+->where('status', 'confirmed')
+->where(function ($query) {
+    $query->where('booking_mode', 'offline')
+        ->orWhere(function ($onlineQuery) {
+            $onlineQuery
+                ->where(function ($modeQuery) {
+                    $modeQuery->where('booking_mode', 'online')
+                        ->orWhereNull('booking_mode');
+                })
+                ->whereHas('videoMeeting');
+        });
+});
 
     if (!Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
@@ -139,9 +152,22 @@ Route::get('/live-sessions', function () {
 })->name('live.sessions');
 Route::get('/live-sessions/pooja', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
+        // ->where('payment_status', 'paid')
+        // ->where('status', 'confirmed')
+        // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-        ->where('status', 'confirmed')
-        ->whereHas('videoMeeting');
+->where('status', 'confirmed')
+->where(function ($query) {
+    $query->where('booking_mode', 'offline')
+        ->orWhere(function ($onlineQuery) {
+            $onlineQuery
+                ->where(function ($modeQuery) {
+                    $modeQuery->where('booking_mode', 'online')
+                        ->orWhereNull('booking_mode');
+                })
+                ->whereHas('videoMeeting');
+        });
+});
 
     if (!Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
@@ -159,9 +185,22 @@ Route::get('/live-sessions/pooja', function () {
 })->name('live.sessions.pooja');
 Route::get('/live-sessions/hawan', function () {
     $hawanBookings = HawanSession::with(['sankalp', 'videoMeeting'])
+        // ->where('payment_status', 'paid')
+        // ->where('status', 'confirmed')
+        // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-        ->where('status', 'confirmed')
-        ->whereHas('videoMeeting');
+->where('status', 'confirmed')
+->where(function ($query) {
+    $query->where('booking_mode', 'offline')
+        ->orWhere(function ($onlineQuery) {
+            $onlineQuery
+                ->where(function ($modeQuery) {
+                    $modeQuery->where('booking_mode', 'online')
+                        ->orWhereNull('booking_mode');
+                })
+                ->whereHas('videoMeeting');
+        });
+});
 
     if (!Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
