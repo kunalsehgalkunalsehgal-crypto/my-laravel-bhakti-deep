@@ -49,6 +49,8 @@ use App\Services\VideoMeetingProviderManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\AartiController;
+use App\Http\Controllers\AartiDonationController;
 
 
 
@@ -102,6 +104,38 @@ Route::get('/light-diya', [DiyaController::class, 'index'])->middleware('auth')-
 Route::get('/diya-session/{session}', [DiyaController::class, 'session'])->name('diya.session');
 Route::get('/personalized-pooja', [PoojaController::class, 'index'])->name('personalized-pooja');
 Route::get('/hawan', [HawanController::class, 'index'])->name('hawan');
+
+
+
+
+// Route::get(
+//     '/aarti',
+//     [AartiController::class, 'index']
+// )->name('aarti.index');
+
+
+// Route::get(
+//     '/aarti/{slug}',
+//     [AartiController::class, 'show']
+// )->name('aarti.show');
+
+Route::get(
+    '/aarti',
+    [AartiController::class, 'index']
+)->name('aarti.index');
+
+
+Route::get(
+    '/aarti/{slug}/session',
+    [AartiController::class, 'session']
+)->name('aarti.session');
+
+
+Route::get(
+    '/aarti/{slug}',
+    [AartiController::class, 'show']
+)->name('aarti.show');
+
 Route::view('/lakshmi-pooja', 'pages.lakshmi-pooja')->name('lakshmi-pooja');
 Route::view('/how-it-works', 'pages.how-it-works')->name('how.works');
 Route::redirect('/live', '/live-sessions')->name('live');
@@ -596,6 +630,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 Route::middleware('auth')->group(function () {
+    Route::post(
+    '/aarti/{deity}/donation',
+    [AartiDonationController::class, 'create']
+)->name('aarti.donation.create');
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
 Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');

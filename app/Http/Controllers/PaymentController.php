@@ -418,8 +418,13 @@ class PaymentController extends Controller
             'paid_at' => now(),
         ]);
 
-        $this->markPayablePaid($session);
-
+        // $this->markPayablePaid($session);
+if (
+    $attempt->purpose !==
+    PaymentAttempt::PURPOSE_QUICK_DAKSHINA
+) {
+    $this->markPayablePaid($session);
+}
         if ($session instanceof DiyaSession) {
             app(UserBookingNotificationService::class)->diyaPaymentSuccessful($session->fresh(['user', 'diya', 'deity']));
         }
