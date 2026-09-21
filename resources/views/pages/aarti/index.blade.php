@@ -30,7 +30,7 @@
 .aarti-card-image {
     height: 230px;
     width: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .aarti-card-body {

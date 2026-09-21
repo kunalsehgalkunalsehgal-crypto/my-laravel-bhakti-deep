@@ -189,7 +189,7 @@
             'status' => 'Free to Join',
             'description' => 'Join live aarti with devotional audio, diya visuals, family participation and optional donation.',
             'button' => 'Join Live Aarti',
-            'url' => route('live.session', ['type' => 'aarti', 'id' => 101]),
+            'url' => route('aarti.index'),
             'buttonClass' => 'btn-gold',
         ],
         [
