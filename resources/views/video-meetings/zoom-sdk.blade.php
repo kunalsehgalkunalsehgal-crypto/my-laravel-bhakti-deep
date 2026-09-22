@@ -1,193 +1,297 @@
+{{--
+    REPLACE: resources/views/video-meetings/zoom-sdk.blade.php
+    Parent page only. No Zoom SDK scripts or Component View code belongs here.
+    Reuses live.session.client / live.family.client and the existing SDK endpoints.
+--}}
 @php
-    $sdkEndpointUrl = $sdkEndpointUrl ?? route('live.session.sdk', [
-        'type' => $sessionType,
-        'id' => $bookingRecord->id,
-        'token' => request('token'),
-        'mode' => $canStartProviderMeeting ? 'host' : 'participant',
-    ]);
-    $zoomSdkVersion = config('video_meetings.providers.zoom.meeting_sdk_cdn_version', '3.13.2');
+    $familyToken = request()->route('token');
+    $isFamily = ($activeFamilyInvite ?? null) && filled($familyToken);
+    $isHost = !$isFamily && (bool) ($canStartProviderMeeting ?? false);
+    $clientRoute = $isFamily ? 'live.family.client' : 'live.session.client';
+    $clientUrl = null;
+
+    if (\Illuminate\Support\Facades\Route::has($clientRoute)) {
+        $params = $isFamily
+            ? ['token' => $familyToken]
+            : array_filter([
+                'type' => $sessionType,
+                'id' => $bookingRecord->id,
+                'mode' => $isHost ? 'host' : 'participant',
+                'token' => request()->query('token'),
+            ], fn ($value) => $value !== null && $value !== '');
+
+        // Relative URL keeps the iframe on the current HTTPS/ngrok origin.
+        $clientUrl = route($clientRoute, $params, false);
+    }
 @endphp
 
 @once
     @push('styles')
         <style>
-            .embedded-meeting-panel {
-                overflow: hidden;
+            .bd-iframe-meeting {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
             }
 
-            .embedded-meeting-toolbar {
+            .bd-iframe-meeting [hidden] { display: none !important; }
+
+            .bd-iframe-meeting__actions {
                 display: flex;
                 flex-wrap: wrap;
                 align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                margin-bottom: 14px;
-            }
-
-            .embedded-meeting-toolbar h3 {
-                margin: 0;
-            }
-
-            .embedded-meeting-actions {
-                display: flex;
-                flex-wrap: wrap;
                 gap: 10px;
+                margin-bottom: 12px;
             }
 
-            .embedded-meeting-root {
+            .bd-iframe-meeting__stage {
+                position: relative;
                 width: 100%;
-                height: clamp(480px, 68vh, 720px);
-                min-height: 480px;
-                border: 1px solid rgba(199, 141, 34, .22);
-                border-radius: 14px;
-                background: rgba(18, 9, 4, .72);
+                max-width: 100%;
+                min-width: 0;
+                min-height: 0;
+                height: var(--bd-frame-height, 70vh);
+                box-sizing: border-box;
                 overflow: hidden;
+                border: 1px solid rgba(199, 141, 34, .25);
+                border-radius: 14px;
+                background: #101010;
+                isolation: isolate;
             }
 
-            .embedded-meeting-message {
-                margin: 12px 0 0;
-                color: var(--muted);
+            .bd-iframe-meeting__frame {
+                display: block;
+                position: static;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                height: 100%;
+                min-height: 0;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                background: #101010;
+            }
+
+            .bd-iframe-meeting__message {
+                margin: 10px 0 0;
                 font-size: 13px;
+                line-height: 1.5;
+                overflow-wrap: anywhere;
             }
 
-            .embedded-meeting-message.error {
-                color: #ffd8d8;
+            .bd-iframe-meeting__message.is-error { color: #b42318; }
+
+            /* Native fullscreen preserves this same iframe and document. */
+            .bd-iframe-meeting:fullscreen {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+                min-height: 0;
+                padding: 12px;
+                background: #fff8e8;
+            }
+
+            .bd-iframe-meeting:fullscreen .bd-iframe-meeting__actions,
+            .bd-iframe-meeting:fullscreen .bd-iframe-meeting__message {
+                flex: 0 0 auto;
+            }
+
+            .bd-iframe-meeting:fullscreen .bd-iframe-meeting__stage {
+                flex: 1 1 0;
+                height: auto;
+                min-height: 0;
+            }
+
+            @media (max-width: 575.98px) {
+                .bd-iframe-meeting__actions { gap: 8px; }
+                .bd-iframe-meeting__actions .btn { flex: 1 1 auto; }
+                .bd-iframe-meeting__stage { border-radius: 10px; }
             }
         </style>
     @endpush
 
     @push('scripts')
-        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react.min.js"></script>
-        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react-dom.min.js"></script>
-
-<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux.min.js"></script>
-<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux-thunk.min.js"></script>
-<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/lodash.min.js"></script>
-
-
-
-        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/zoom-meeting-embedded-{{ $zoomSdkVersion }}.min.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                document.querySelectorAll('[data-video-meeting-sdk]').forEach(function (panel) {
-                    const startButton = panel.querySelector('[data-sdk-start]');
-                    const message = panel.querySelector('[data-sdk-message]');
-                    const root = panel.querySelector('[data-sdk-root]');
+            (() => {
+                const initialise = () => {
+                    document.querySelectorAll('[data-bd-iframe-meeting]').forEach((panel) => {
+                        if (panel.dataset.initialised === 'true') return;
+                        panel.dataset.initialised = 'true';
 
-                    if (!startButton || !root) {
-                        return;
-                    }
+                        const frame = panel.querySelector('[data-bd-frame]');
+                        const stage = panel.querySelector('[data-bd-stage]');
+                        const openButton = panel.querySelector('[data-bd-open]');
+                        const expandButton = panel.querySelector('[data-bd-expand]');
+                        const message = panel.querySelector('[data-bd-message]');
+                        if (!frame || !stage || !openButton || !expandButton) return;
 
-                    const setMessage = function (text, isError) {
-                        if (!message) {
-                            return;
-                        }
+                        let frameLoaded = false;
+                        let meetingBusy = false;
+                        let expandedInPage = false;
+                        let resizeTimer;
+                        let readyTimer;
 
-                        message.textContent = text;
-                        message.classList.toggle('error', Boolean(isError));
-                        message.hidden = false;
-                    };
+                        const say = (text, error = false) => {
+                            message.textContent = text;
+                            message.classList.toggle('is-error', error);
+                        };
 
-                    startButton.addEventListener('click', function () {
-                        if (panel.dataset.sdkStarted === 'true') {
-                            return;
-                        }
+                        const syncHeight = () => {
+                            const visual = window.visualViewport;
+                            // Do not shrink controls just because the user pinch-zooms.
+                            const height = visual && Math.abs(visual.scale - 1) < .02
+                                ? visual.height
+                                : window.innerHeight;
+                            const actionHeight = panel.querySelector('[data-bd-actions]')
+                                .getBoundingClientRect().height;
+                            const pixels = expandedInPage
+                                ? Math.max(280, Math.floor(height - actionHeight - 56))
+                                : Math.min(740, Math.max(320, Math.floor(height * .74)));
 
-                        if (!window.ZoomMtgEmbedded) {
-                            setMessage('Meeting SDK could not load. Please use the external meeting link.', true);
-                            return;
-                        }
+                            panel.style.setProperty('--bd-frame-height', `${pixels}px`);
+                            const large = document.fullscreenElement === panel || expandedInPage;
+                            expandButton.textContent = large ? 'Normal view' : 'Bada view';
+                            expandButton.setAttribute('aria-pressed', String(large));
+                        };
 
-                        panel.dataset.sdkStarted = 'true';
-                        startButton.disabled = true;
-                        setMessage('Preparing your meeting room...', false);
+                        const scheduleHeight = () => {
+                            clearTimeout(resizeTimer);
+                            resizeTimer = setTimeout(syncHeight, 100);
+                        };
 
-                        fetch(panel.dataset.sdkEndpoint, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': panel.dataset.csrfToken,
-                            },
-                            credentials: 'same-origin',
-                        })
-                            .then(function (response) {
-                                if (!response.ok) {
-                                    throw new Error('Unable to prepare this meeting.');
+                        openButton.addEventListener('click', () => {
+                            if (frameLoaded) return;
+                            const url = new URL(frame.dataset.src, window.location.href);
+                            if (url.origin !== window.location.origin) {
+                                say('Meeting page must use the same BhaktiDeep domain.', true);
+                                return;
+                            }
+
+                            stage.hidden = false;
+                            expandButton.hidden = false;
+                            syncHeight();
+                            // Set src only on an explicit open/rejoin, NEVER on resize.
+                            frameLoaded = true;
+                            frame.src = url.href;
+                            openButton.disabled = true;
+                            say('Meeting page khul raha hai. Andar Start/Join dabao.');
+                            readyTimer = setTimeout(() => {
+                                say('Page ready na ho to "Meeting page kholen" se check karo.', true);
+                            }, 20000);
+                        });
+
+                        expandButton.addEventListener('click', async () => {
+                            if (document.fullscreenElement === panel) {
+                                await document.exitFullscreen().catch(() => {});
+                                return;
+                            }
+                            if (!expandedInPage && panel.requestFullscreen && document.fullscreenEnabled) {
+                                try {
+                                    await panel.requestFullscreen();
+                                    return;
+                                } catch (_) {
+                                    // Some mobile browsers do not allow element fullscreen.
                                 }
+                            }
+                            // In-flow fallback: no DOM move, iframe replacement or CSS transform.
+                            expandedInPage = !expandedInPage;
+                            syncHeight();
+                            if (expandedInPage) panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                        });
 
-                                return response.json();
-                            })
-                            .then(function (config) {
-                                if (config.provider !== 'zoom') {
-                                    throw new Error('This meeting provider is not available inside the page.');
-                                }
-
-                                const client = window.ZoomMtgEmbedded.createClient();
-                                const viewWidth = Math.max(root.clientWidth, 320);
-                                const viewHeight = Math.max(root.clientHeight, 480);
-
-                                return Promise.resolve(client.init({
-                                    zoomAppRoot: root,
-                                    language: 'en-US',
-                                    customize: {
-                                        video: {
-                                            isResizable: true,
-                                            viewSizes: {
-                                                default: {
-                                                    width: viewWidth,
-                                                    height: viewHeight,
-                                                },
-                                            },
-                                        },
-                                    },
-                                })).then(function () {
-                                    const joinConfig = {
-                                        sdkKey: config.sdkKey,
-                                        signature: config.signature,
-                                        meetingNumber: config.meetingNumber,
-                                        password: config.password || '',
-                                        userName: config.userName,
-                                        userEmail: config.userEmail || '',
-                                    };
-
-                                    if (config.zak) {
-                                        joinConfig.zak = config.zak;
-                                    }
-
-                                    return client.join(joinConfig);
-                                });
-                            })
-                            .then(function () {
-                                setMessage('Meeting opened inside BhaktiDeep.', false);
-                            })
-                            .catch(function (error) {
-                                panel.dataset.sdkStarted = 'false';
-                                startButton.disabled = false;
-                                setMessage((error && error.message ? error.message : 'Meeting SDK failed.') + ' Please use the external meeting link.', true);
+                        panel.querySelectorAll('[data-bd-alternative]').forEach((link) => {
+                            link.addEventListener('click', (event) => {
+                                if (!meetingBusy) return;
+                                event.preventDefault();
+                                say('Dusra meeting page kholne se pehle Zoom toolbar se Leave karo.');
                             });
+                        });
+
+                        window.addEventListener('message', (event) => {
+                            if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+                            const type = event.data?.type;
+                            if (type === 'bhaktideep:zoom-ready') {
+                                clearTimeout(readyTimer);
+                                say('Meeting frame ke andar Start/Join dabao.');
+                            } else if (type === 'bhaktideep:zoom-joining') {
+                                meetingBusy = true;
+                                say('Zoom join process chal raha hai. Waiting room aaye to host ka wait karo.');
+                            } else if (type === 'bhaktideep:zoom-joined') {
+                                meetingBusy = true;
+                                say('Meeting controls Zoom frame ke andar hain.');
+                            } else if (type === 'bhaktideep:zoom-error') {
+                                meetingBusy = false;
+                                clearTimeout(readyTimer);
+                                say('Zoom frame me error dikh raha hai. Uska code/message check karo.', true);
+                            } else if (type === 'bhaktideep:zoom-left') {
+                                clearTimeout(readyTimer);
+                                meetingBusy = false;
+                                frameLoaded = false;
+                                expandedInPage = false;
+                                if (document.fullscreenElement === panel) {
+                                    document.exitFullscreen().catch(() => {});
+                                }
+                                frame.src = 'about:blank';
+                                stage.hidden = true;
+                                expandButton.hidden = true;
+                                openButton.disabled = false;
+                                say('Meeting se bahar aa gaye. Dobara kholne ke liye button dabao.');
+                                syncHeight();
+                            }
+                        });
+
+                        window.addEventListener('resize', scheduleHeight, { passive: true });
+                        window.visualViewport?.addEventListener('resize', scheduleHeight, { passive: true });
+                        document.addEventListener('fullscreenchange', syncHeight);
+                        syncHeight();
                     });
-                });
-            });
+                };
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initialise, { once: true });
+                } else {
+                    initialise();
+                }
+            })();
         </script>
     @endpush
 @endonce
 
-<div class="glass side-panel embedded-meeting-panel mt-4"
-     data-video-meeting-sdk
-     data-sdk-endpoint="{{ $sdkEndpointUrl }}"
-     data-csrf-token="{{ csrf_token() }}">
-    <div class="embedded-meeting-toolbar">
-        <h3>{{ $providerMeetingAction }} In BhaktiDeep</h3>
-        <div class="embedded-meeting-actions">
-            <button type="button" class="btn btn-gold btn-sm" data-sdk-start>
-                <i class="bi bi-camera-video"></i> Open Here
-            </button>
-            <a href="{{ $providerMeetingActionUrl }}" target="_blank" rel="noopener" class="btn btn-ghost-gold btn-sm">
-                <i class="bi bi-box-arrow-up-right"></i> External Link
+<section class="bd-iframe-meeting" data-bd-iframe-meeting>
+    @if ($clientUrl)
+        <div class="bd-iframe-meeting__actions" data-bd-actions>
+            <button type="button" class="btn btn-gold" data-bd-open>Meeting kholen</button>
+            <button type="button" class="btn btn-ghost-gold" data-bd-expand aria-pressed="false" hidden>Bada view</button>
+            <a href="{{ $clientUrl }}" class="btn btn-ghost-gold" target="_blank" rel="noopener noreferrer" data-bd-alternative>
+                Meeting page kholen
             </a>
+            @if ($providerMeetingActionUrl ?? null)
+                <a href="{{ $providerMeetingActionUrl }}" class="btn btn-ghost-gold" target="_blank" rel="noopener noreferrer" data-bd-alternative>
+                    Open in Zoom
+                </a>
+            @endif
         </div>
-    </div>
-    <div class="embedded-meeting-root" data-sdk-root></div>
-    <p class="embedded-meeting-message" data-sdk-message hidden></p>
-</div>
+
+        <div class="bd-iframe-meeting__stage" data-bd-stage hidden>
+            <iframe
+                class="bd-iframe-meeting__frame"
+                data-bd-frame
+                data-src="{{ $clientUrl }}"
+                title="BhaktiDeep Zoom Meeting"
+                allow="camera; microphone; display-capture; autoplay; fullscreen"
+                allowfullscreen
+                referrerpolicy="no-referrer"
+            ></iframe>
+        </div>
+        <p class="bd-iframe-meeting__message" role="status" aria-live="polite" data-bd-message>
+            Zoom yahin khulega. Session details neeche rahengi.
+        </p>
+    @else
+        <p class="bd-iframe-meeting__message is-error" role="alert">
+            Meeting route missing: {{ $clientRoute }}. Existing iframe route setup check karein.
+        </p>
+    @endif
+</section>

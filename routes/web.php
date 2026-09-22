@@ -140,6 +140,13 @@ Route::view('/lakshmi-pooja', 'pages.lakshmi-pooja')->name('lakshmi-pooja');
 Route::view('/how-it-works', 'pages.how-it-works')->name('how.works');
 Route::redirect('/live', '/live-sessions')->name('live');
 Route::get('/live-family/{token}', [LiveSessionController::class, 'joinInvite'])->name('live.family.join');
+
+Route::get(
+    '/live-family/{token}/meeting-client',
+    [LiveSessionController::class, 'inviteClientView']
+)->name('live.family.client');
+
+
 Route::post('/live-family/{token}/meeting-sdk', [LiveSessionController::class, 'inviteSdkConfig'])->name('live.family.sdk');
 Route::post('/live-family/{token}/leave', [LiveSessionController::class, 'leaveInvite'])->name('live.family.leave');
 Route::get('/live-sessions', function () {
@@ -337,6 +344,22 @@ Route::get('/live-sessions/{type}/{id}/start', function (string $type, string $i
 Route::post('/live-sessions/{type}/{id}/meeting-sdk', [VideoMeetingSdkController::class, 'config'])
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.session.sdk');
+
+
+Route::get(
+    '/live-sessions/{type}/{id}/meeting-client',
+    [VideoMeetingSdkController::class, 'clientView']
+)
+    ->whereIn('type', ['pooja', 'hawan'])
+    ->name('live.session.client');
+
+
+Route::get(
+    '/zoom/meeting-exit',
+    [VideoMeetingSdkController::class, 'clientExit']
+)->name('live.session.client.exit');
+
+
 Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
     $bookingRecord = null;
 

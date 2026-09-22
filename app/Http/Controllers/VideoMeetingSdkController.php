@@ -1,7 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\View\View;
+use Illuminate\Http\Response;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\PoojaSession;
 use App\Services\PanditBookingService;
@@ -70,6 +71,13 @@ class VideoMeetingSdkController extends Controller
                     $this->displayName($bookingRecord, $isHost),
                     $this->displayEmail($bookingRecord, $isHost)
                 );
+                if ($participantType === VideoMeetingAttendance::PARTICIPANT_PANDIT) {
+    $payload['customerKey'] = 'p-'.$participantId.'-s-'.$bookingRecord->id;
+} elseif ($participantType === VideoMeetingAttendance::PARTICIPANT_USER) {
+    $payload['customerKey'] = 'u-'.$participantId.'-s-'.$bookingRecord->id;
+} else {
+    $payload['customerKey'] = 'g-s-'.$bookingRecord->id;
+}
         } catch (Throwable $exception) {
             Log::warning('Unable to prepare embedded video meeting.', [
                 'provider' => $bookingRecord->videoMeeting->provider,
@@ -85,6 +93,171 @@ class VideoMeetingSdkController extends Controller
 
         return response()->json($payload);
     }
+
+
+
+public function clientView(
+    Request $request,
+    string $type,
+    string $id,
+    PanditBookingService $bookingService
+): View {
+    $bookingRecord = $this->bookingRecord($type, $id);
+
+    abort_unless(
+        $bookingService->canAccessPrivateSession(
+            $bookingRecord,
+            $request
+        ),
+        403
+    );
+
+    abort_unless(
+        $bookingRecord->payment_status === 'paid'
+        && $bookingRecord->status === 'confirmed'
+        && $bookingRecord->videoMeeting
+        && filled(
+            $bookingRecord->videoMeeting->external_meeting_id
+        ),
+        403
+    );
+
+    $isAssignedPandit =
+        Auth::guard('pandit')->check()
+        && (int) Auth::guard('pandit')->id()
+            === (int) $bookingRecord->pandit_id;
+
+    $isHost =
+        $request->query('mode') === 'host';
+
+    /*
+     * Koi normal user host mode
+     * force nahi kar sakta.
+     */
+    abort_if(
+        $isHost && !$isAssignedPandit,
+        403
+    );
+
+
+    $params = [
+        'type' => $type,
+        'id' => $bookingRecord->id,
+
+        'mode' => $isHost
+            ? 'host'
+            : 'participant',
+    ];
+
+
+    /*
+     * Agar existing private-session token
+     * use ho raha hai to preserve karo.
+     */
+    if ($request->filled('token')) {
+        $params['token'] =
+            $request->query('token');
+    }
+
+
+    return view(
+        'video-meetings.zoom-client',
+        [
+            /*
+             * Ye existing config()
+             * method hi use karega.
+             */
+            'sdkEndpointUrl' =>
+                route(
+                    'live.session.sdk',
+                    $params
+                ),
+
+            'leaveUrl' =>
+                route(
+                    'live.session.client.exit'
+                ),
+
+            'zoomSdkVersion' =>
+                config(
+                    'video_meetings.providers.zoom.meeting_sdk_cdn_version'
+                ),
+        ]
+    );
+}
+
+
+public function clientExit(): Response
+{
+    $html = <<<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <style>
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        p {
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+
+<div>
+    <h3>You left the meeting</h3>
+    <p>Returning to BhaktiDeep...</p>
+</div>
+
+<script>
+    try {
+        window.parent.postMessage(
+            {
+                type: 'bhaktideep:zoom-left'
+            },
+            window.location.origin
+        );
+    } catch (error) {
+        console.warn(error);
+    }
+</script>
+
+</body>
+</html>
+HTML;
+
+    return response(
+        $html,
+        200,
+        [
+            'Content-Type' =>
+                'text/html; charset=UTF-8'
+        ]
+    );
+}
+
+
 
     private function bookingRecord(string $type, string $id): Model
     {

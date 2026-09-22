@@ -4,12 +4,29 @@
 
 @push('styles')
 <style>
-    .pandit-live-grid {
+    /* .pandit-live-grid {
         display: grid;
         grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
         gap: 20px;
         align-items: start;
-    }
+    } */
+     .pandit-live-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        1fr;
+
+    gap:
+        20px;
+
+    align-items:
+        start;
+
+    min-width:
+        0;
+
+}
 
     .pandit-live-hero,
     .pandit-live-card {
@@ -266,6 +283,93 @@
             padding: 22px;
         }
     }
+
+
+
+
+
+
+
+
+    .pandit-bottom-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap:
+        20px;
+
+    align-items:
+        start;
+
+}
+
+
+.pandit-bottom-grid > * {
+
+    min-width:
+        0;
+
+    margin-bottom:
+        0 !important;
+
+}
+
+
+.pandit-live-video {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+}
+
+
+/* Tablet */
+
+@media (
+    max-width:
+        1199.98px
+) {
+
+    .pandit-bottom-grid {
+
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+    }
+
+}
+
+
+/* Mobile */
+
+@media (
+    max-width:
+        767.98px
+) {
+
+    .pandit-bottom-grid {
+
+        grid-template-columns:
+            1fr;
+
+        gap:
+            14px;
+
+    }
+
+}
 </style>
 @endpush
 
@@ -412,7 +516,7 @@
         </section>
     </div>
 
-    <aside>
+    <aside  class="pandit-bottom-grid">
         <section class="pandit-live-card">
             <div class="pandit-live-card-head">
                 <div>

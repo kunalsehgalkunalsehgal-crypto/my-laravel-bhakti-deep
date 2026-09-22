@@ -5,6 +5,101 @@
 
 @push('styles')
 <style>
+
+/*
+|--------------------------------------------------------------------------
+| ZOOM TOP + CARDS BELOW
+|--------------------------------------------------------------------------
+*/
+
+.live-page {
+    overflow-x: hidden;
+}
+
+
+.live-page .container {
+    min-width: 0;
+}
+
+
+.live-bottom-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 20px;
+
+    align-items: start;
+
+}
+
+
+.live-bottom-grid > * {
+
+    min-width: 0;
+
+    margin-top: 0 !important;
+
+}
+
+
+/* Tablet */
+
+@media (
+    max-width:
+        1199.98px
+) {
+
+    .live-bottom-grid {
+
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+    }
+
+}
+
+
+/* Mobile */
+
+@media (
+    max-width:
+        767.98px
+) {
+
+    .live-bottom-grid {
+
+        grid-template-columns:
+            1fr;
+
+        gap: 14px;
+
+    }
+
+
+    .live-page
+    .container {
+
+        max-width: 100%;
+
+        padding-left:
+            12px;
+
+        padding-right:
+            12px;
+
+    }
+
+}
+
     .live-session-intro {
         min-height: clamp(300px, 42vw, 520px);
         padding: clamp(22px, 4vw, 46px);
@@ -502,7 +597,8 @@
             </div>
         @else
         <div class="row g-4">
-            <div class="col-lg-8">
+            <div class="col-12">
+            {{-- <div class="col-lg-8"> --}}
                 @if ($isOfflineBooking)
                     <div class="glass completion-card">
                         <span><i class="bi bi-geo-alt"></i></span>
@@ -638,7 +734,8 @@
                 @endunless
             </div>
 
-            <aside class="col-lg-4">
+<aside class="col-12 live-bottom-grid">    
+            {{-- <aside class="col-lg-4"> --}}
                 @unless($isOfflineBooking)
                     <div class="glass side-panel">
                     <div class="d-flex justify-content-between align-items-center"><h3>{{ $sessionStatus === 'completed' ? 'Family Summary' : 'Family Invites' }}</h3><span data-family-count>{{ $joinedCount }} joined</span></div>

@@ -90,6 +90,70 @@ class LiveSessionController extends Controller
         ]);
     }
 
+
+
+public function inviteClientView(
+    string $token
+): View {
+
+    $invite =
+        $this->validInvite($token);
+
+    $booking =
+        $invite->booking;
+
+
+    abort_unless(
+        $booking,
+        404
+    );
+
+
+    $booking->load(
+        'videoMeeting'
+    );
+
+
+    abort_unless(
+        $this->bookingReady($booking),
+        403
+    );
+
+
+    return view(
+        'video-meetings.zoom-client',
+        [
+
+            /*
+             * Family ke liye existing
+             * family SDK endpoint.
+             */
+            'sdkEndpointUrl' =>
+                route(
+                    'live.family.sdk',
+                    [
+                        'token' =>
+                            $token
+                    ]
+                ),
+
+
+            'leaveUrl' =>
+                route(
+                    'live.session.client.exit'
+                ),
+
+
+            'zoomSdkVersion' =>
+                config(
+                    'video_meetings.providers.zoom.meeting_sdk_cdn_version'
+                ),
+
+        ]
+    );
+}
+
+
     public function leaveInvite(string $token): JsonResponse
     {
         $invite = LiveSessionInvite::where('token_hash', hash('sha256', $token))->firstOrFail();

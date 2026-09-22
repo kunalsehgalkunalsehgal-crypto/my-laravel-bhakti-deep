@@ -1,0 +1,3335 @@
+{{-- @php
+    $sdkEndpointUrl = $sdkEndpointUrl ?? route('live.session.sdk', [
+        'type' => $sessionType,
+        'id' => $bookingRecord->id,
+        'token' => request('token'),
+        'mode' => $canStartProviderMeeting ? 'host' : 'participant',
+    ]);
+    $zoomSdkVersion = config('video_meetings.providers.zoom.meeting_sdk_cdn_version', '3.13.2');
+@endphp
+
+@once
+    @push('styles')
+        <style>
+            .embedded-meeting-panel {
+                overflow: hidden;
+            }
+
+            .embedded-meeting-toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 14px;
+            }
+
+            .embedded-meeting-toolbar h3 {
+                margin: 0;
+            }
+
+            .embedded-meeting-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .embedded-meeting-root {
+                width: 100%;
+                height: clamp(480px, 68vh, 720px);
+                min-height: 480px;
+                border: 1px solid rgba(199, 141, 34, .22);
+                border-radius: 14px;
+                background: rgba(18, 9, 4, .72);
+                overflow: hidden;
+            }
+
+            .embedded-meeting-message {
+                margin: 12px 0 0;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            .embedded-meeting-message.error {
+                color: #ffd8d8;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react.min.js"></script>
+        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react-dom.min.js"></script>
+
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux.min.js"></script>
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux-thunk.min.js"></script>
+<script src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/lodash.min.js"></script>
+
+
+
+        <script src="https://source.zoom.us/{{ $zoomSdkVersion }}/zoom-meeting-embedded-{{ $zoomSdkVersion }}.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('[data-video-meeting-sdk]').forEach(function (panel) {
+                    const startButton = panel.querySelector('[data-sdk-start]');
+                    const message = panel.querySelector('[data-sdk-message]');
+                    const root = panel.querySelector('[data-sdk-root]');
+
+                    if (!startButton || !root) {
+                        return;
+                    }
+
+                    const setMessage = function (text, isError) {
+                        if (!message) {
+                            return;
+                        }
+
+                        message.textContent = text;
+                        message.classList.toggle('error', Boolean(isError));
+                        message.hidden = false;
+                    };
+
+                    startButton.addEventListener('click', function () {
+                        if (panel.dataset.sdkStarted === 'true') {
+                            return;
+                        }
+
+                        if (!window.ZoomMtgEmbedded) {
+                            setMessage('Meeting SDK could not load. Please use the external meeting link.', true);
+                            return;
+                        }
+
+                        panel.dataset.sdkStarted = 'true';
+                        startButton.disabled = true;
+                        setMessage('Preparing your meeting room...', false);
+
+                        fetch(panel.dataset.sdkEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': panel.dataset.csrfToken,
+                            },
+                            credentials: 'same-origin',
+                        })
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('Unable to prepare this meeting.');
+                                }
+
+                                return response.json();
+                            })
+                            .then(function (config) {
+                                if (config.provider !== 'zoom') {
+                                    throw new Error('This meeting provider is not available inside the page.');
+                                }
+
+                                const client = window.ZoomMtgEmbedded.createClient();
+                                const viewWidth = Math.max(root.clientWidth, 320);
+                                const viewHeight = Math.max(root.clientHeight, 480);
+
+                                return Promise.resolve(client.init({
+                                    zoomAppRoot: root,
+                                    language: 'en-US',
+                                    customize: {
+                                        video: {
+                                            isResizable: true,
+                                            viewSizes: {
+                                                default: {
+                                                    width: viewWidth,
+                                                    height: viewHeight,
+                                                },
+                                            },
+                                        },
+                                    },
+                                })).then(function () {
+                                    const joinConfig = {
+                                        sdkKey: config.sdkKey,
+                                        signature: config.signature,
+                                        meetingNumber: config.meetingNumber,
+                                        password: config.password || '',
+                                        userName: config.userName,
+                                        userEmail: config.userEmail || '',
+                                    };
+
+                                    if (config.zak) {
+                                        joinConfig.zak = config.zak;
+                                    }
+
+                                    return client.join(joinConfig);
+                                });
+                            })
+                            .then(function () {
+                                setMessage('Meeting opened inside BhaktiDeep.', false);
+                            })
+                            .catch(function (error) {
+                                panel.dataset.sdkStarted = 'false';
+                                startButton.disabled = false;
+                                setMessage((error && error.message ? error.message : 'Meeting SDK failed.') + ' Please use the external meeting link.', true);
+                            });
+                    });
+                });
+            });
+        </script>
+    @endpush
+@endonce
+
+<div class="glass side-panel embedded-meeting-panel mt-4"
+     data-video-meeting-sdk
+     data-sdk-endpoint="{{ $sdkEndpointUrl }}"
+     data-csrf-token="{{ csrf_token() }}">
+    <div class="embedded-meeting-toolbar">
+        <h3>{{ $providerMeetingAction }} In BhaktiDeep</h3>
+        <div class="embedded-meeting-actions">
+            <button type="button" class="btn btn-gold btn-sm" data-sdk-start>
+                <i class="bi bi-camera-video"></i> Open Here
+            </button>
+            <a href="{{ $providerMeetingActionUrl }}" target="_blank" rel="noopener" class="btn btn-ghost-gold btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i> External Link
+            </a>
+        </div>
+    </div>
+    <div class="embedded-meeting-root" data-sdk-root></div>
+    <p class="embedded-meeting-message" data-sdk-message hidden></p>
+</div> --}}
+@php
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXISTING SDK ENDPOINT
+    |--------------------------------------------------------------------------
+    */
+
+    $sdkEndpointUrl =
+        $sdkEndpointUrl ??
+        route('live.session.sdk', [
+            'type' => $sessionType,
+
+            'id' => $bookingRecord->id,
+
+            'token' => request('token'),
+
+            'mode' => $canStartProviderMeeting ?? false ? 'host' : 'participant',
+        ]);
+
+    $zoomSdkVersion = config('video_meetings.providers.zoom.meeting_sdk_cdn_version', '6.2.0');
+
+    /*
+    |--------------------------------------------------------------------------
+    | FAMILY MEMBER?
+    |--------------------------------------------------------------------------
+    */
+
+    $familyToken = request()->route('token');
+
+    $isFamilyMember = isset($activeFamilyInvite) && $activeFamilyInvite && $familyToken;
+
+    /*
+    |--------------------------------------------------------------------------
+    | CLIENT VIEW URL
+    |--------------------------------------------------------------------------
+    */
+
+    if ($isFamilyMember) {
+        $mobileClientUrl = route('live.family.client', [
+            'token' => $familyToken,
+        ]);
+    } else {
+        $mobileParams = [
+            'type' => $sessionType,
+
+            'id' => $bookingRecord->id,
+
+            'mode' => $canStartProviderMeeting ?? false ? 'host' : 'participant',
+        ];
+
+        if (request()->filled('token')) {
+            $mobileParams['token'] = request('token');
+        }
+
+        $mobileClientUrl = route('live.session.client', $mobileParams);
+    }
+
+    $meetingButtonText = $canStartProviderMeeting ?? false ? 'Start Meeting' : 'Join Meeting';
+@endphp
+
+
+
+@once
+
+
+    @push('styles')
+        <style>
+            /*
+                    |--------------------------------------------------------------------------
+                    | MAIN ZOOM SHELL
+                    |--------------------------------------------------------------------------
+                    */
+
+            .bd-zoom-shell {
+
+                width: 100%;
+
+                min-width: 0;
+
+            }
+
+
+            .bd-zoom-desktop,
+            .bd-zoom-mobile {
+
+                display: none;
+
+            }
+
+
+            /*
+                     * JS page load par
+                     * ek mode choose karega.
+                     */
+            .bd-zoom-shell[data-zoom-mode="desktop"] .bd-zoom-desktop {
+
+                display: block;
+
+            }
+
+
+            .bd-zoom-shell[data-zoom-mode="mobile"] .bd-zoom-mobile {
+
+                display: block;
+
+            }
+
+
+            /*
+                    |--------------------------------------------------------------------------
+                    | ACTIONS
+                    |--------------------------------------------------------------------------
+                    */
+
+            .bd-zoom-actions {
+
+                display: flex;
+
+                align-items: center;
+
+                flex-wrap: wrap;
+
+                gap: 10px;
+
+                margin-bottom: 14px;
+
+            }
+
+
+            /*
+                    |--------------------------------------------------------------------------
+                    | DESKTOP COMPONENT VIEW
+                    |--------------------------------------------------------------------------
+                    */
+.bd-zoom-root {
+    width: 100%;
+    min-width: 0;
+
+    /* Zoom video + bottom controls dono ke liye space */
+    min-height: 680px;
+    height: auto;
+
+    position: relative;
+
+    /* IMPORTANT: toolbar cut nahi hogi */
+    overflow: visible;
+
+    border-radius: 16px;
+    background: #0b0b0b;
+}
+
+@media (max-width: 1366px) {
+    .bd-zoom-root {
+        min-height: 650px;
+    }
+}
+            /* .bd-zoom-root {
+
+                width: 100%;
+
+                min-width: 0;
+
+                height:
+                    min(72vh,
+                        760px);
+
+                min-height:
+                    520px;
+
+                overflow:
+                    hidden;
+
+                border-radius:
+                    16px;
+
+                background:
+                    #0b0b0b;
+
+            } */
+
+
+            /*
+                    |--------------------------------------------------------------------------
+                    | MOBILE CLIENT VIEW IFRAME
+                    |--------------------------------------------------------------------------
+                    */
+
+            .bd-mobile-zoom-wrap {
+
+                width: 100%;
+
+                min-width: 0;
+
+                overflow: hidden;
+
+                border-radius:
+                    14px;
+
+                background:
+                    #000;
+
+            }
+
+
+            .bd-mobile-zoom-frame {
+
+                display: block;
+
+                width: 100%;
+
+                height:
+                    72dvh;
+
+                min-height:
+                    500px;
+
+                border: 0;
+
+                background:
+                    #000;
+
+            }
+
+
+            .bd-zoom-message {
+
+                margin:
+                    12px 0 0;
+
+                font-size:
+                    13px;
+
+            }
+
+
+            .bd-zoom-message.error {
+
+                color:
+                    #dc3545;
+
+            }
+
+
+            /*
+                    |--------------------------------------------------------------------------
+                    | MOBILE
+                    |--------------------------------------------------------------------------
+                    */
+
+            @media (max-width: 575.98px) {
+
+                .bd-mobile-zoom-wrap {
+
+                    border-radius:
+                        10px;
+
+                }
+
+
+                .bd-mobile-zoom-frame {
+
+                    height:
+                        68dvh;
+
+                    min-height:
+                        430px;
+
+                }
+
+
+                .bd-zoom-actions .btn {
+
+                    flex:
+                        1 1 auto;
+
+                }
+
+            }
+        </style>
+    @endpush
+
+
+
+    @push('scripts')
+        <script>
+            document.addEventListener(
+                'DOMContentLoaded',
+                function() {
+
+
+                    document
+                        .querySelectorAll(
+                            '[data-video-meeting-sdk]'
+                        )
+                        .forEach(
+                            function(
+                                panel
+                            ) {
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | DEVICE DETECTION
+                                |--------------------------------------------------------------------------
+                                |
+                                | Important:
+                                | Active meeting ke beech
+                                | view switch nahi karenge.
+                                |
+                                */
+
+
+                                const userAgent =
+                                    navigator.userAgent ||
+                                    '';
+
+
+                                const isIOS =
+
+                                    /iPhone|iPad|iPod/i
+                                    .test(
+                                        userAgent
+                                    )
+
+                                    ||
+
+                                    (navigator.platform ===
+                                        'MacIntel'
+
+                                        &&
+
+                                        navigator
+                                        .maxTouchPoints >
+                                        1);
+
+
+                                const isAndroid =
+
+                                    /Android/i
+                                    .test(
+                                        userAgent
+                                    );
+
+
+                                /*
+                                 * Touch tablet:
+                                 * iPad Pro landscape etc.
+                                 */
+                                const isTouchTablet =
+
+                                    navigator
+                                    .maxTouchPoints >
+                                    1
+
+                                    &&
+
+                                    window.innerWidth <=
+                                    1366;
+
+
+                                const smallScreen =
+
+                                    window
+                                    .matchMedia(
+                                        '(max-width: 1199.98px)'
+                                    )
+                                    .matches;
+
+
+                                const useClientView =
+
+                                    isIOS ||
+                                    isAndroid ||
+                                    isTouchTablet ||
+                                    smallScreen;
+
+
+                                /*
+                                 * Decide ONCE.
+                                 */
+                                panel.dataset.zoomMode =
+
+                                    useClientView ?
+                                    'mobile' :
+                                    'desktop';
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | MOBILE / TABLET
+                                |--------------------------------------------------------------------------
+                                */
+
+                                if (
+                                    useClientView
+                                ) {
+
+
+                                    const button =
+                                        panel
+                                        .querySelector(
+                                            '[data-mobile-zoom-start]'
+                                        );
+
+
+                                    const frame =
+                                        panel
+                                        .querySelector(
+                                            '[data-mobile-zoom-frame]'
+                                        );
+
+
+                                    const message =
+                                        panel
+                                        .querySelector(
+                                            '[data-mobile-zoom-message]'
+                                        );
+
+
+                                    if (
+                                        !button ||
+                                        !frame
+                                    ) {
+
+                                        return;
+
+                                    }
+
+
+                                    button
+                                        .addEventListener(
+                                            'click',
+                                            function() {
+
+
+                                                /*
+                                                 * Load iframe only
+                                                 * after user click.
+                                                 */
+                                                if (
+                                                    !frame.src
+                                                ) {
+
+                                                    frame.src =
+                                                        frame.dataset.src;
+
+                                                }
+
+
+                                                frame
+                                                    .closest(
+                                                        '[data-mobile-zoom-wrap]'
+                                                    )
+                                                    ?.removeAttribute(
+                                                        'hidden'
+                                                    );
+
+
+                                                button.style.display =
+                                                    'none';
+
+
+                                                if (
+                                                    message
+                                                ) {
+
+                                                    message.textContent =
+                                                        'Opening Zoom meeting...';
+
+                                                }
+
+                                            }
+                                        );
+
+
+                                    return;
+
+                                }
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | DESKTOP COMPONENT VIEW
+                                |--------------------------------------------------------------------------
+                                */
+
+                                const startButton =
+                                    panel
+                                    .querySelector(
+                                        '[data-desktop-zoom-start]'
+                                    );
+
+
+                                const root =
+                                    panel
+                                    .querySelector(
+                                        '[data-sdk-root]'
+                                    );
+
+
+                                const message =
+                                    panel
+                                    .querySelector(
+                                        '[data-desktop-zoom-message]'
+                                    );
+
+
+                                if (
+                                    !startButton ||
+                                    !root
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                let client =
+                                    null;
+
+
+                                let resizeObserver =
+                                    null;
+
+
+                                let resizeTimer =
+                                    null;
+
+
+
+                                const setMessage =
+                                    function(
+                                        text,
+                                        error = false
+                                    ) {
+
+                                        if (
+                                            !message
+                                        ) {
+
+                                            return;
+
+                                        }
+
+
+                                        message.textContent =
+                                            text;
+
+
+                                        message
+                                            .classList
+                                            .toggle(
+                                                'error',
+                                                error
+                                            );
+
+
+                                        message.hidden =
+                                            false;
+
+                                    };
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | LOAD SCRIPT
+                                |--------------------------------------------------------------------------
+                                */
+
+                                const loadScript =
+                                    function(
+                                        src
+                                    ) {
+
+
+                                        return new Promise(
+                                            function(
+                                                resolve,
+                                                reject
+                                            ) {
+
+
+                                                const existing =
+                                                    document
+                                                    .querySelector(
+                                                        'script[src="' +
+                                                        src +
+                                                        '"]'
+                                                    );
+
+
+                                                if (
+                                                    existing
+                                                ) {
+
+                                                    resolve();
+
+                                                    return;
+
+                                                }
+
+
+                                                const script =
+                                                    document
+                                                    .createElement(
+                                                        'script'
+                                                    );
+
+
+                                                script.src =
+                                                    src;
+
+
+                                                script.onload =
+                                                    resolve;
+
+
+                                                script.onerror =
+                                                    function() {
+
+                                                        reject(
+                                                            new Error(
+                                                                'Zoom SDK script load nahi hua.'
+                                                            )
+                                                        );
+
+                                                    };
+
+
+                                                document.body
+                                                    .appendChild(
+                                                        script
+                                                    );
+
+                                            }
+                                        );
+
+                                    };
+
+
+
+                                const loadDesktopSDK =
+                                    async function() {
+
+
+                                        const base =
+                                            'https://source.zoom.us/' +
+                                            @json($zoomSdkVersion);
+
+
+                                        await loadScript(
+                                            base +
+                                            '/lib/vendor/react.min.js'
+                                        );
+
+
+                                        await loadScript(
+                                            base +
+                                            '/lib/vendor/react-dom.min.js'
+                                        );
+
+
+                                        await loadScript(
+                                            base +
+                                            '/lib/vendor/redux.min.js'
+                                        );
+
+
+                                        await loadScript(
+                                            base +
+                                            '/lib/vendor/redux-thunk.min.js'
+                                        );
+
+
+                                        await loadScript(
+                                            base +
+                                            '/lib/vendor/lodash.min.js'
+                                        );
+
+
+                                        await loadScript(
+                                            base +
+                                            '/zoom-meeting-embedded-' +
+                                            @json($zoomSdkVersion) +
+                                            '.min.js'
+                                        );
+
+                                    };
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | SIZE
+                                |--------------------------------------------------------------------------
+                                */
+
+                                const getSize =
+                                    function() {
+
+
+                                        const width =
+                                            Math.max(
+                                                720,
+                                                Math.floor(
+                                                    root
+                                                    .getBoundingClientRect()
+                                                    .width
+                                                )
+                                            );
+
+
+                                        const height =
+                                            Math.min(
+
+                                                720,
+
+                                                Math.max(
+
+                                                    411,
+
+                                                    Math.round(
+                                                        width *
+                                                        9 /
+                                                        16
+                                                    )
+
+                                                )
+
+                                            );
+
+
+                                        return {
+
+                                            width: width,
+
+                                            height: height,
+
+                                        };
+
+                                    };
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | RESIZE ZOOM
+                                |--------------------------------------------------------------------------
+                                */
+
+                                const resizeZoom =
+                                    function() {
+
+
+                                        if (
+                                            !client ||
+                                            typeof client
+                                            .updateVideoOptions !==
+                                            'function'
+                                        ) {
+
+                                            return;
+
+                                        }
+
+
+                                        clearTimeout(
+                                            resizeTimer
+                                        );
+
+
+                                        resizeTimer =
+                                            setTimeout(
+                                                function() {
+
+
+                                                    const size =
+                                                        getSize();
+
+
+                                                    Promise
+                                                        .resolve(
+                                                            client
+                                                            .updateVideoOptions({
+
+                                                                viewSizes: {
+
+                                                                    default: {
+
+                                                                        width: size.width,
+
+                                                                        height: size.height,
+
+                                                                    },
+
+                                                                },
+
+                                                            })
+                                                        )
+                                                        .catch(
+                                                            function(
+                                                                error
+                                                            ) {
+
+                                                                console.warn(
+                                                                    'Zoom resize:',
+                                                                    error
+                                                                );
+
+                                                            }
+                                                        );
+
+                                                },
+                                                150
+                                            );
+
+                                    };
+
+
+
+                                /*
+                                |--------------------------------------------------------------------------
+                                | START DESKTOP MEETING
+                                |--------------------------------------------------------------------------
+                                */
+
+                                startButton
+                                    .addEventListener(
+                                        'click',
+                                        async function() {
+
+
+                                            if (
+                                                panel
+                                                .dataset
+                                                .sdkStarted ===
+                                                'true'
+                                            ) {
+
+                                                return;
+
+                                            }
+
+
+                                            panel
+                                                .dataset
+                                                .sdkStarted =
+                                                'true';
+
+
+                                            startButton
+                                                .disabled =
+                                                true;
+
+
+                                            setMessage(
+                                                'Preparing Zoom meeting...'
+                                            );
+
+
+                                            try {
+
+
+                                                /*
+                                                 * Load SDK only on
+                                                 * desktop.
+                                                 */
+                                                await loadDesktopSDK();
+
+
+                                                if (
+                                                    !window
+                                                    .ZoomMtgEmbedded
+                                                ) {
+
+                                                    throw new Error(
+                                                        'Zoom Component View load nahi hua.'
+                                                    );
+
+                                                }
+
+
+                                                /*
+                                                |--------------------------------------------------------------------------
+                                                | GET SIGNATURE
+                                                |--------------------------------------------------------------------------
+                                                */
+
+                                                const response =
+                                                    await fetch(
+                                                        panel
+                                                        .dataset
+                                                        .sdkEndpoint, {
+
+                                                            method: 'POST',
+
+                                                            headers: {
+
+                                                                'Accept': 'application/json',
+
+                                                                'Content-Type': 'application/json',
+
+                                                                'X-CSRF-TOKEN': panel
+                                                                    .dataset
+                                                                    .csrfToken,
+
+                                                            },
+
+                                                            credentials: 'same-origin',
+
+                                                        }
+                                                    );
+
+
+                                                if (
+                                                    !response.ok
+                                                ) {
+
+                                                    const body =
+                                                        await response
+                                                        .json()
+                                                        .catch(
+                                                            () => ({})
+                                                        );
+
+
+                                                    throw new Error(
+
+                                                        body.message ||
+                                                        'Meeting prepare nahi hui.'
+
+                                                    );
+
+                                                }
+
+
+                                                const config =
+                                                    await response
+                                                    .json();
+
+
+                                                if (
+                                                    config.provider !==
+                                                    'zoom'
+                                                ) {
+
+                                                    throw new Error(
+                                                        'Zoom provider available nahi hai.'
+                                                    );
+
+                                                }
+
+
+
+                                                /*
+                                                |--------------------------------------------------------------------------
+                                                | CREATE CLIENT
+                                                |--------------------------------------------------------------------------
+                                                */
+
+                                                client =
+                                                    window
+                                                    .ZoomMtgEmbedded
+                                                    .createClient();
+
+
+                                                const size =
+                                                    getSize();
+
+
+
+                                                /*
+                                                |--------------------------------------------------------------------------
+                                                | INIT
+                                                |--------------------------------------------------------------------------
+                                                */
+
+                                                await client.init({
+
+                                                    zoomAppRoot: root,
+
+
+                                                    language: 'en-US',
+
+
+                                                    patchJsMedia: true,
+
+
+                                                    customize: {
+
+                                                        video: {
+
+                                                            /*
+                                                             * USER RESIZE OFF
+                                                             */
+                                                            isResizable: true,
+
+
+                                                            /*
+                                                             * DRAG OFF
+                                                             */
+                                                            popper: {
+
+                                                                disableDraggable: false,
+
+                                                            },
+
+
+                                                            viewSizes: {
+
+                                                                default: {
+
+                                                                    width: size.width,
+
+                                                                    height: size.height,
+
+                                                                },
+
+                                                            },
+
+                                                        },
+
+                                                    },
+
+                                                });
+
+
+
+                                                /*
+                                                |--------------------------------------------------------------------------
+                                                | PROGRAMMATIC RESPONSIVE RESIZE
+                                                |--------------------------------------------------------------------------
+                                                */
+
+                                                if (
+                                                    typeof ResizeObserver !==
+                                                    'undefined'
+                                                ) {
+
+
+                                                    resizeObserver =
+                                                        new ResizeObserver(
+                                                            function() {
+
+                                                                resizeZoom();
+
+                                                            }
+                                                        );
+
+
+                                                    resizeObserver
+                                                        .observe(
+                                                            root
+                                                        );
+
+                                                }
+
+
+
+                                                /*
+                                                |--------------------------------------------------------------------------
+                                                | JOIN
+                                                |--------------------------------------------------------------------------
+                                                */
+
+                                                const joinConfig = {
+
+                                                    signature: config.signature,
+
+
+                                                    meetingNumber: config.meetingNumber,
+
+
+                                                    password: config.password ||
+                                                        '',
+
+
+                                                    userName: config.userName,
+
+
+                                                    userEmail: config.userEmail ||
+                                                        '',
+
+                                                };
+
+
+                                                /*
+                                                 * Only host Pandit.
+                                                 */
+                                                if (
+                                                    config.zak
+                                                ) {
+
+                                                    joinConfig.zak =
+                                                        config.zak;
+
+                                                }
+
+
+                                                await client.join(
+                                                    joinConfig
+                                                );
+
+
+                                                setMessage(
+                                                    'Zoom meeting BhaktiDeep ke andar chal rahi hai.'
+                                                );
+
+
+                                            } catch (
+                                                error
+                                            ) {
+
+
+                                                console.error(
+                                                    'Zoom Error:',
+                                                    error
+                                                );
+
+
+                                                panel
+                                                    .dataset
+                                                    .sdkStarted =
+                                                    'false';
+
+
+                                                startButton
+                                                    .disabled =
+                                                    false;
+
+
+                                                if (
+                                                    resizeObserver
+                                                ) {
+
+                                                    resizeObserver
+                                                        .disconnect();
+
+                                                }
+
+
+                                                setMessage(
+
+                                                    error?.message ||
+                                                    'Zoom meeting open nahi hui.',
+
+                                                    true
+
+                                                );
+
+                                            }
+
+                                        }
+                                    );
+
+                            }
+                        );
+
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | MOBILE IFRAME LEFT MEETING
+                    |--------------------------------------------------------------------------
+                    */
+
+                    window
+                        .addEventListener(
+                            'message',
+                            function(
+                                event
+                            ) {
+
+
+                                if (
+                                    event.origin !==
+                                    window.location.origin
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                if (
+                                    event.data?.type !==
+                                    'bhaktideep:zoom-left'
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                document
+                                    .querySelectorAll(
+                                        '[data-video-meeting-sdk]'
+                                    )
+                                    .forEach(
+                                        function(
+                                            panel
+                                        ) {
+
+
+                                            const frame =
+                                                panel
+                                                .querySelector(
+                                                    '[data-mobile-zoom-frame]'
+                                                );
+
+
+                                            const button =
+                                                panel
+                                                .querySelector(
+                                                    '[data-mobile-zoom-start]'
+                                                );
+
+
+                                            const wrapper =
+                                                panel
+                                                .querySelector(
+                                                    '[data-mobile-zoom-wrap]'
+                                                );
+
+
+                                            const message =
+                                                panel
+                                                .querySelector(
+                                                    '[data-mobile-zoom-message]'
+                                                );
+
+
+                                            if (
+                                                frame
+                                            ) {
+
+                                                frame.src =
+                                                    '';
+
+                                            }
+
+
+                                            if (
+                                                wrapper
+                                            ) {
+
+                                                wrapper.hidden =
+                                                    true;
+
+                                            }
+
+
+                                            if (
+                                                button
+                                            ) {
+
+                                                button.style.display =
+                                                    '';
+
+                                            }
+
+
+                                            if (
+                                                message
+                                            ) {
+
+                                                message.textContent =
+                                                    'You left the Zoom meeting.';
+
+                                            }
+
+                                        }
+                                    );
+
+                            }
+                        );
+
+                }
+            );
+        </script>
+    @endpush
+@endonce
+
+
+
+<div class="bd-zoom-shell" data-video-meeting-sdk data-sdk-endpoint="{{ $sdkEndpointUrl }}"
+    data-csrf-token="{{ csrf_token() }}">
+
+
+    <!--
+    |--------------------------------------------------------------------------
+    | DESKTOP
+    |--------------------------------------------------------------------------
+    -->
+
+    <div class="bd-zoom-desktop">
+
+
+        <div class="bd-zoom-actions">
+
+
+            <button type="button" class="btn btn-gold" data-desktop-zoom-start>
+
+                <i class="bi bi-camera-video">
+                </i>
+
+                {{ $meetingButtonText }}
+
+            </button>
+
+
+            @if ($providerMeetingActionUrl ?? null)
+                <a href="{{ $providerMeetingActionUrl }}" target="_blank" rel="noopener" class="btn btn-ghost-gold">
+
+                    <i class="bi bi-box-arrow-up-right">
+                    </i>
+
+                    Open in Zoom
+
+                </a>
+            @endif
+
+
+        </div>
+
+
+        <div class="bd-zoom-root" data-sdk-root></div>
+
+
+        <p class="bd-zoom-message" data-desktop-zoom-message hidden></p>
+
+
+    </div>
+
+
+
+    <!--
+    |--------------------------------------------------------------------------
+    | TABLET / MOBILE
+    |--------------------------------------------------------------------------
+    -->
+
+    <div class="bd-zoom-mobile">
+
+
+        <div class="bd-zoom-actions">
+
+
+            <button type="button" class="btn btn-gold w-100" data-mobile-zoom-start>
+
+                <i class="bi bi-camera-video">
+                </i>
+
+                {{ $meetingButtonText }}
+
+            </button>
+
+
+        </div>
+
+
+        <div class="bd-mobile-zoom-wrap" data-mobile-zoom-wrap hidden>
+
+
+            <iframe class="bd-mobile-zoom-frame" data-mobile-zoom-frame data-src="{{ $mobileClientUrl }}"
+                title="BhaktiDeep Zoom Meeting"
+                allow="
+                    camera;
+                    microphone;
+                    display-capture;
+                    fullscreen;
+                    autoplay
+                "
+                allowfullscreen referrerpolicy="same-origin"></iframe>
+
+
+        </div>
+
+
+        <p class="bd-zoom-message" data-mobile-zoom-message></p>
+
+
+    </div>
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+zoom sdk ka purana code
+{{-- 
+|--------------------------------------------------------------------------
+| BhaktiDeep Zoom SDK - Clean Hybrid Version
+|--------------------------------------------------------------------------
+|
+| CHANGELOG VS GITHUB MAIN / OLD FILE
+|
+| 1. Removed the old commented Zoom implementation.
+| 2. SDK fallback updated from 3.13.2 to 6.2.0.
+| 3. Desktop/Laptop keeps Zoom Component View inside BhaktiDeep.
+| 4. Tablet/Mobile can use the Client View iframe when the client routes exist.
+| 5. Gallery width runaway FIX:
+|       - ResizeObserver removed.
+|       - Zoom width is always read from the stable BhaktiDeep shell.
+|       - updateVideoOptions runs only on actual window resize.
+|       - Gallery/Speaker switching cannot create a resize feedback loop.
+| 6. Manual resize stays ON: isResizable = true.
+| 7. Dragging stays OFF: disableDraggable = true.
+| 8. Zoom root is taller than the video canvas so Mic/Camera/Share/End controls
+|    have enough vertical space and are not clipped.
+| 9. Existing Laravel SDK endpoint, host ZAK, external Zoom fallback and booking
+|    flow are preserved.
+|
+| NOTE:
+| Mobile Client View needs these route names to exist:
+|   - live.session.client
+|   - live.family.client
+|
+| If those routes are not present yet, this file safely falls back to the
+| desktop Component View instead of throwing RouteNotFoundException.
+|--------------------------------------------------------------------------
+--}}
+
+@php
+    $isHostMode = (bool) ($canStartProviderMeeting ?? false);
+
+    $sdkEndpointUrl = $sdkEndpointUrl ?? route(
+        'live.session.sdk',
+        array_filter([
+            'type' => $sessionType,
+            'id' => $bookingRecord->id,
+            'token' => request('token'),
+            'mode' => $isHostMode ? 'host' : 'participant',
+        ], fn ($value) => $value !== null && $value !== '')
+    );
+
+    $zoomSdkVersion = config(
+        'video_meetings.providers.zoom.meeting_sdk_cdn_version',
+        '6.2.0'
+    );
+
+    $familyToken = request()->route('token');
+
+    $isFamilyMember = isset($activeFamilyInvite)
+        && $activeFamilyInvite
+        && filled($familyToken);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Optional Tablet/Mobile Client View URL
+    |--------------------------------------------------------------------------
+    |
+    | GitHub main may not have these routes yet. Route::has() prevents this
+    | Blade from crashing until the mobile Client View setup is completed.
+    |
+    */
+    $mobileClientUrl = null;
+
+    if (
+        $isFamilyMember
+        && \Illuminate\Support\Facades\Route::has('live.family.client')
+    ) {
+        $mobileClientUrl = route('live.family.client', [
+            'token' => $familyToken,
+        ]);
+    } elseif (
+        !$isFamilyMember
+        && \Illuminate\Support\Facades\Route::has('live.session.client')
+    ) {
+        $mobileParams = [
+            'type' => $sessionType,
+            'id' => $bookingRecord->id,
+            'mode' => $isHostMode ? 'host' : 'participant',
+        ];
+
+        if (request()->filled('token')) {
+            $mobileParams['token'] = request('token');
+        }
+
+        $mobileClientUrl = route(
+            'live.session.client',
+            $mobileParams
+        );
+    }
+
+    $meetingButtonText = $isHostMode
+        ? 'Start Meeting'
+        : 'Join Meeting';
+@endphp
+
+
+@once
+    @push('styles')
+        <style>
+            /*
+            |--------------------------------------------------------------------------
+            | Main shell
+            |--------------------------------------------------------------------------
+            */
+
+            .bd-zoom-shell {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+                position: relative;
+            }
+
+            .bd-zoom-desktop,
+            .bd-zoom-mobile {
+                display: none;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .bd-zoom-shell[data-zoom-mode="desktop"] .bd-zoom-desktop {
+                display: block;
+            }
+
+            .bd-zoom-shell[data-zoom-mode="mobile"] .bd-zoom-mobile {
+                display: block;
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Action bar
+            |--------------------------------------------------------------------------
+            */
+
+            .bd-zoom-actions {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Desktop Component View
+            |--------------------------------------------------------------------------
+            |
+            | IMPORTANT:
+            | This shell is width-locked to the BhaktiDeep container.
+            | Zoom switching to Gallery/Speaker cannot increase this width.
+            |
+            */
+
+            .bd-zoom-width-lock {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                box-sizing: border-box;
+                position: relative;
+            }
+
+            .bd-zoom-root {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+
+                /*
+                 * Root is deliberately taller than the video canvas.
+                 * Extra vertical room is for Zoom's bottom toolbar.
+                 */
+                height: clamp(700px, 78vh, 820px);
+                min-height: 700px;
+
+                position: relative;
+                box-sizing: border-box;
+
+                /*
+                 * Do not clip Zoom's bottom toolbar/popovers vertically.
+                 * Horizontal width is constrained by width/max-width above.
+                 */
+                overflow: visible;
+
+                border: 1px solid rgba(199, 141, 34, .22);
+                border-radius: 16px;
+                background: #0b0b0b;
+            }
+
+            @media (max-width: 1366px) {
+                .bd-zoom-root {
+                    height: 700px;
+                    min-height: 700px;
+                }
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mobile / Tablet Client View iframe
+            |--------------------------------------------------------------------------
+            */
+
+            .bd-mobile-zoom-wrap {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                overflow: hidden;
+                border-radius: 14px;
+                background: #000;
+            }
+
+            .bd-mobile-zoom-frame {
+                display: block;
+                width: 100%;
+                max-width: 100%;
+                height: 72dvh;
+                min-height: 500px;
+                border: 0;
+                background: #000;
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Messages
+            |--------------------------------------------------------------------------
+            */
+
+            .bd-zoom-message {
+                margin: 12px 0 0;
+                font-size: 13px;
+            }
+
+            .bd-zoom-message.error {
+                color: #dc3545;
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mobile
+            |--------------------------------------------------------------------------
+            */
+
+            @media (max-width: 575.98px) {
+                .bd-mobile-zoom-wrap {
+                    border-radius: 10px;
+                }
+
+                .bd-mobile-zoom-frame {
+                    height: 68dvh;
+                    min-height: 430px;
+                }
+
+                .bd-zoom-actions .btn {
+                    flex: 1 1 auto;
+                }
+            }
+        </style>
+    @endpush
+
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                document
+                    .querySelectorAll('[data-video-meeting-sdk]')
+                    .forEach(function (panel) {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Device / view selection
+                        |--------------------------------------------------------------------------
+                        |
+                        | Decide once. Never swap Component View <-> Client View while
+                        | an active meeting is running.
+                        |
+                        */
+
+                        const userAgent = navigator.userAgent || '';
+
+                        const isIOS =
+                            /iPhone|iPad|iPod/i.test(userAgent)
+                            || (
+                                navigator.platform === 'MacIntel'
+                                && navigator.maxTouchPoints > 1
+                            );
+
+                        const isAndroid =
+                            /Android/i.test(userAgent);
+
+                        const coarsePointer =
+                            window.matchMedia('(pointer: coarse)').matches;
+
+                        const smallScreen =
+                            window.matchMedia('(max-width: 991.98px)').matches;
+
+                        const tabletTouchDevice =
+                            coarsePointer
+                            && window.innerWidth <= 1366;
+
+                        const mobileClientUrl =
+                            panel.dataset.mobileClientUrl || '';
+
+                        /*
+                         * Only use Client View when its route actually exists.
+                         * Otherwise safely fall back to Component View.
+                         */
+                        const useClientView =
+                            Boolean(mobileClientUrl)
+                            && (
+                                isIOS
+                                || isAndroid
+                                || smallScreen
+                                || tabletTouchDevice
+                            );
+
+                        panel.dataset.zoomMode =
+                            useClientView ? 'mobile' : 'desktop';
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Tablet / Mobile Client View
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (useClientView) {
+                            const button =
+                                panel.querySelector('[data-mobile-zoom-start]');
+
+                            const frame =
+                                panel.querySelector('[data-mobile-zoom-frame]');
+
+                            const wrapper =
+                                panel.querySelector('[data-mobile-zoom-wrap]');
+
+                            const message =
+                                panel.querySelector('[data-mobile-zoom-message]');
+
+                            if (!button || !frame || !wrapper) {
+                                return;
+                            }
+
+                            button.addEventListener('click', function () {
+                                /*
+                                 * Load once, only after a user gesture.
+                                 */
+                                if (!frame.getAttribute('src')) {
+                                    frame.src = mobileClientUrl;
+                                }
+
+                                wrapper.hidden = false;
+                                button.style.display = 'none';
+
+                                if (message) {
+                                    message.textContent =
+                                        'Opening Zoom meeting...';
+                                }
+                            });
+
+                            return;
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Desktop Component View
+                        |--------------------------------------------------------------------------
+                        */
+
+                        const startButton =
+                            panel.querySelector('[data-desktop-zoom-start]');
+
+                        const root =
+                            panel.querySelector('[data-sdk-root]');
+
+                        const widthLock =
+                            panel.querySelector('[data-zoom-width-lock]');
+
+                        const message =
+                            panel.querySelector('[data-desktop-zoom-message]');
+
+                        if (!startButton || !root || !widthLock) {
+                            return;
+                        }
+
+                        let client = null;
+                        let resizeTimer = null;
+                        let resizeListener = null;
+
+                        const setMessage = function (
+                            text,
+                            isError = false
+                        ) {
+                            if (!message) {
+                                return;
+                            }
+
+                            message.textContent = text;
+
+                            message.classList.toggle(
+                                'error',
+                                Boolean(isError)
+                            );
+
+                            message.hidden = false;
+                        };
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Dynamic script loader
+                        |--------------------------------------------------------------------------
+                        */
+
+                        const loadScript = function (src) {
+                            return new Promise(function (
+                                resolve,
+                                reject
+                            ) {
+                                const existing =
+                                    document.querySelector(
+                                        'script[src="' + src + '"]'
+                                    );
+
+                                if (existing) {
+                                    if (
+                                        existing.dataset.bdLoaded === 'true'
+                                        || existing.readyState === 'complete'
+                                    ) {
+                                        resolve();
+                                        return;
+                                    }
+
+                                    existing.addEventListener(
+                                        'load',
+                                        resolve,
+                                        { once: true }
+                                    );
+
+                                    existing.addEventListener(
+                                        'error',
+                                        reject,
+                                        { once: true }
+                                    );
+
+                                    return;
+                                }
+
+                                const script =
+                                    document.createElement('script');
+
+                                script.src = src;
+
+                                script.onload = function () {
+                                    script.dataset.bdLoaded = 'true';
+                                    resolve();
+                                };
+
+                                script.onerror = function () {
+                                    reject(
+                                        new Error(
+                                            'Zoom SDK script failed to load.'
+                                        )
+                                    );
+                                };
+
+                                document.body.appendChild(script);
+                            });
+                        };
+
+
+                        const loadDesktopSDK = async function () {
+                            const version =
+                                @json($zoomSdkVersion);
+
+                            const base =
+                                'https://source.zoom.us/' + version;
+
+                            await loadScript(
+                                base + '/lib/vendor/react.min.js'
+                            );
+
+                            await loadScript(
+                                base + '/lib/vendor/react-dom.min.js'
+                            );
+
+                            await loadScript(
+                                base + '/lib/vendor/redux.min.js'
+                            );
+
+                            await loadScript(
+                                base + '/lib/vendor/redux-thunk.min.js'
+                            );
+
+                            await loadScript(
+                                base + '/lib/vendor/lodash.min.js'
+                            );
+
+                            await loadScript(
+                                base
+                                + '/zoom-meeting-embedded-'
+                                + version
+                                + '.min.js'
+                            );
+                        };
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | STABLE Zoom size
+                        |--------------------------------------------------------------------------
+                        |
+                        | THIS FIXES THE GALLERY WIDTH RUNAWAY.
+                        |
+                        | Old behavior:
+                        | Gallery grows -> ResizeObserver fires -> new larger width is sent
+                        | to Zoom -> Gallery grows again -> observer fires again...
+                        |
+                        | New behavior:
+                        | - No ResizeObserver.
+                        | - Width comes only from this stable BhaktiDeep shell.
+                        | - Gallery/Speaker view changes cannot trigger a width update.
+                        | - updateVideoOptions only runs when the BROWSER WINDOW resizes.
+                        |
+                        */
+
+                        const getStableZoomSize = function () {
+                            const rect =
+                                widthLock.getBoundingClientRect();
+
+                            const availableWidth =
+                                Math.floor(rect.width);
+
+                            /*
+                             * Component View is desktop-only here.
+                             * Keep it inside the BhaktiDeep shell.
+                             */
+                            const width =
+                                Math.min(
+                                    1440,
+                                    Math.max(
+                                        720,
+                                        availableWidth
+                                    )
+                                );
+
+                            /*
+                             * Reserve ~100px vertically for Zoom controls.
+                             * Do not give the whole root height to video.
+                             */
+                            const rootHeight =
+                                Math.max(
+                                    700,
+                                    Math.floor(
+                                        root.getBoundingClientRect().height
+                                        || 700
+                                    )
+                                );
+
+                            const maxVideoHeight =
+                                Math.max(
+                                    411,
+                                    rootHeight - 105
+                                );
+
+                            const naturalHeight =
+                                Math.round(
+                                    width * 9 / 16
+                                );
+
+                            const height =
+                                Math.min(
+                                    590,
+                                    maxVideoHeight,
+                                    Math.max(
+                                        411,
+                                        naturalHeight
+                                    )
+                                );
+
+                            return {
+                                width: width,
+                                height: height,
+                            };
+                        };
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Browser-window resize only
+                        |--------------------------------------------------------------------------
+                        |
+                        | IMPORTANT:
+                        | No ResizeObserver is used here. This prevents Gallery View
+                        | from triggering the feedback loop that kept increasing width.
+                        |
+                        */
+
+                        const resizeZoomForWindow = function () {
+                            if (
+                                !client
+                                || typeof client.updateVideoOptions !== 'function'
+                            ) {
+                                return;
+                            }
+
+                            clearTimeout(resizeTimer);
+
+                            resizeTimer =
+                                setTimeout(function () {
+                                    const size =
+                                        getStableZoomSize();
+
+                                    Promise
+                                        .resolve(
+                                            client.updateVideoOptions({
+                                                viewSizes: {
+                                                    default: {
+                                                        width: size.width,
+                                                        height: size.height,
+                                                    },
+
+                                                    ribbon: {
+                                                        width: 300,
+                                                        height: Math.min(
+                                                            520,
+                                                            size.height
+                                                        ),
+                                                    },
+                                                },
+                                            })
+                                        )
+                                        .catch(function (error) {
+                                            console.warn(
+                                                'Zoom window resize:',
+                                                error
+                                            );
+                                        });
+                                }, 180);
+                        };
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Start desktop meeting
+                        |--------------------------------------------------------------------------
+                        */
+
+                        startButton.addEventListener(
+                            'click',
+                            async function () {
+                                if (
+                                    panel.dataset.sdkStarted === 'true'
+                                ) {
+                                    return;
+                                }
+
+                                panel.dataset.sdkStarted = 'true';
+                                startButton.disabled = true;
+
+                                setMessage(
+                                    'Preparing Zoom meeting...'
+                                );
+
+                                try {
+                                    await loadDesktopSDK();
+
+                                    if (!window.ZoomMtgEmbedded) {
+                                        throw new Error(
+                                            'Zoom Component View could not load.'
+                                        );
+                                    }
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | Fetch Laravel SDK config
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    const response =
+                                        await fetch(
+                                            panel.dataset.sdkEndpoint,
+                                            {
+                                                method: 'POST',
+
+                                                headers: {
+                                                    'Accept':
+                                                        'application/json',
+
+                                                    'Content-Type':
+                                                        'application/json',
+
+                                                    'X-CSRF-TOKEN':
+                                                        panel.dataset.csrfToken,
+                                                },
+
+                                                credentials:
+                                                    'same-origin',
+                                            }
+                                        );
+
+                                    if (!response.ok) {
+                                        const body =
+                                            await response
+                                                .json()
+                                                .catch(
+                                                    () => ({})
+                                                );
+
+                                        throw new Error(
+                                            body.message
+                                            || 'Unable to prepare meeting.'
+                                        );
+                                    }
+
+                                    const config =
+                                        await response.json();
+
+                                    if (
+                                        config.provider !== 'zoom'
+                                    ) {
+                                        throw new Error(
+                                            'Zoom provider unavailable.'
+                                        );
+                                    }
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | Create Component View client
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    client =
+                                        window.ZoomMtgEmbedded
+                                            .createClient();
+
+                                    const size =
+                                        getStableZoomSize();
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | Init
+                                    |--------------------------------------------------------------------------
+                                    |
+                                    | We DO NOT force Gallery here.
+                                    |
+                                    | User can choose Ribbon / Speaker / Gallery.
+                                    | Gallery will keep the SAME width because there is no
+                                    | ResizeObserver feedback loop anymore.
+                                    |
+                                    */
+
+                                    await client.init({
+                                        zoomAppRoot: root,
+
+                                        language: 'en-US',
+
+                                        patchJsMedia: true,
+
+                                        customize: {
+                                            video: {
+                                                /*
+                                                 * Manual resize stays available.
+                                                 */
+                                                isResizable: true,
+
+                                                /*
+                                                 * Complete Zoom video window cannot be
+                                                 * dragged around BhaktiDeep.
+                                                 */
+                                                popper: {
+                                                    disableDraggable: true,
+                                                },
+
+                                                viewSizes: {
+                                                    /*
+                                                     * Gallery / Speaker
+                                                     */
+                                                    default: {
+                                                        width: size.width,
+                                                        height: size.height,
+                                                    },
+
+                                                    /*
+                                                     * Ribbon is intentionally narrow.
+                                                     */
+                                                    ribbon: {
+                                                        width: 300,
+                                                        height: Math.min(
+                                                            520,
+                                                            size.height
+                                                        ),
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    });
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | Join
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    const joinConfig = {
+                                        signature:
+                                            config.signature,
+
+                                        meetingNumber:
+                                            config.meetingNumber,
+
+                                        password:
+                                            config.password || '',
+
+                                        userName:
+                                            config.userName,
+
+                                        userEmail:
+                                            config.userEmail || '',
+                                    };
+
+                                    if (config.zak) {
+                                        joinConfig.zak =
+                                            config.zak;
+                                    }
+
+                                    await client.join(
+                                        joinConfig
+                                    );
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | Safe responsive update
+                                    |--------------------------------------------------------------------------
+                                    |
+                                    | Only actual browser resizing can trigger this.
+                                    | Gallery/Speaker/Ribbon switching cannot.
+                                    |
+                                    */
+
+                                    resizeListener =
+                                        resizeZoomForWindow;
+
+                                    window.addEventListener(
+                                        'resize',
+                                        resizeListener,
+                                        { passive: true }
+                                    );
+
+
+                                    setMessage(
+                                        'Zoom meeting is running inside BhaktiDeep.'
+                                    );
+
+                                } catch (error) {
+                                    console.error(
+                                        'Zoom Error:',
+                                        error
+                                    );
+
+                                    panel.dataset.sdkStarted =
+                                        'false';
+
+                                    startButton.disabled =
+                                        false;
+
+                                    if (resizeListener) {
+                                        window.removeEventListener(
+                                            'resize',
+                                            resizeListener
+                                        );
+
+                                        resizeListener =
+                                            null;
+                                    }
+
+                                    setMessage(
+                                        error?.message
+                                        || 'Unable to open Zoom meeting.',
+                                        true
+                                    );
+                                }
+                            }
+                        );
+                    });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Mobile Client View leave event
+                |--------------------------------------------------------------------------
+                */
+
+                window.addEventListener(
+                    'message',
+                    function (event) {
+                        if (
+                            event.origin !==
+                            window.location.origin
+                        ) {
+                            return;
+                        }
+
+                        if (
+                            event.data?.type !==
+                            'bhaktideep:zoom-left'
+                        ) {
+                            return;
+                        }
+
+                        document
+                            .querySelectorAll(
+                                '[data-video-meeting-sdk]'
+                            )
+                            .forEach(function (panel) {
+                                const frame =
+                                    panel.querySelector(
+                                        '[data-mobile-zoom-frame]'
+                                    );
+
+                                const wrapper =
+                                    panel.querySelector(
+                                        '[data-mobile-zoom-wrap]'
+                                    );
+
+                                const button =
+                                    panel.querySelector(
+                                        '[data-mobile-zoom-start]'
+                                    );
+
+                                const message =
+                                    panel.querySelector(
+                                        '[data-mobile-zoom-message]'
+                                    );
+
+                                if (frame) {
+                                    frame.src =
+                                        'about:blank';
+                                }
+
+                                if (wrapper) {
+                                    wrapper.hidden =
+                                        true;
+                                }
+
+                                if (button) {
+                                    button.style.display =
+                                        '';
+                                }
+
+                                if (message) {
+                                    message.textContent =
+                                        'You left the Zoom meeting.';
+                                }
+                            });
+                    }
+                );
+            });
+        </script>
+    @endpush
+@endonce
+
+
+<div
+    class="bd-zoom-shell"
+
+    data-video-meeting-sdk
+
+    data-sdk-endpoint="{{ $sdkEndpointUrl }}"
+
+    data-mobile-client-url="{{ $mobileClientUrl ?? '' }}"
+
+    data-csrf-token="{{ csrf_token() }}"
+>
+
+    {{--
+    |--------------------------------------------------------------------------
+    | Desktop Component View
+    |--------------------------------------------------------------------------
+    --}}
+
+    <div class="bd-zoom-desktop">
+
+        <div class="bd-zoom-actions">
+
+            <button
+                type="button"
+                class="btn btn-gold"
+                data-desktop-zoom-start
+            >
+                <i class="bi bi-camera-video"></i>
+
+                {{ $meetingButtonText }}
+            </button>
+
+
+            @if($providerMeetingActionUrl ?? null)
+                <a
+                    href="{{ $providerMeetingActionUrl }}"
+
+                    target="_blank"
+
+                    rel="noopener"
+
+                    class="btn btn-ghost-gold"
+                >
+                    <i class="bi bi-box-arrow-up-right"></i>
+
+                    Open in Zoom
+                </a>
+            @endif
+
+        </div>
+
+
+        <div
+            class="bd-zoom-width-lock"
+
+            data-zoom-width-lock
+        >
+            <div
+                class="bd-zoom-root"
+
+                data-sdk-root
+            ></div>
+        </div>
+
+
+        <p
+            class="bd-zoom-message"
+
+            data-desktop-zoom-message
+
+            hidden
+        ></p>
+
+    </div>
+
+
+    {{--
+    |--------------------------------------------------------------------------
+    | Tablet / Mobile Client View
+    |--------------------------------------------------------------------------
+    --}}
+
+    <div class="bd-zoom-mobile">
+
+        <div class="bd-zoom-actions">
+
+            <button
+                type="button"
+
+                class="btn btn-gold w-100"
+
+                data-mobile-zoom-start
+            >
+                <i class="bi bi-camera-video"></i>
+
+                {{ $meetingButtonText }}
+            </button>
+
+        </div>
+
+
+        <div
+            class="bd-mobile-zoom-wrap"
+
+            data-mobile-zoom-wrap
+
+            hidden
+        >
+            <iframe
+                class="bd-mobile-zoom-frame"
+
+                data-mobile-zoom-frame
+
+                title="BhaktiDeep Zoom Meeting"
+
+                allow="
+                    camera;
+                    microphone;
+                    display-capture;
+                    fullscreen;
+                    autoplay;
+                    clipboard-read;
+                    clipboard-write
+                "
+
+                allowfullscreen
+
+                referrerpolicy="same-origin"
+            ></iframe>
+        </div>
+
+
+        <p
+            class="bd-zoom-message"
+
+            data-mobile-zoom-message
+        ></p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+client blade ka old code 
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
+    >
+
+    <meta
+        name="csrf-token"
+        content="{{ csrf_token() }}"
+    >
+
+
+    <title>
+        BhaktiDeep Zoom Meeting
+    </title>
+
+
+    <!-- Zoom Client View CSS -->
+
+    <link
+        rel="stylesheet"
+        href="https://source.zoom.us/{{ $zoomSdkVersion }}/css/bootstrap.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://source.zoom.us/{{ $zoomSdkVersion }}/css/react-select.css"
+    >
+
+
+    <style>
+
+        html,
+        body {
+
+            width: 100%;
+            height: 100%;
+
+            margin: 0;
+            padding: 0;
+
+            overflow: hidden;
+
+            background: #000;
+
+        }
+
+
+        #zmmtg-root {
+
+            display: block !important;
+
+        }
+
+
+        .bd-zoom-loading {
+
+            position: fixed;
+
+            inset: 0;
+
+            z-index: 9999999;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            padding: 24px;
+
+            background: #101010;
+
+            color: white;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            text-align: center;
+
+        }
+
+
+        .bd-zoom-loading.hidden {
+
+            display: none;
+
+        }
+
+
+        .bd-spinner {
+
+            width: 42px;
+            height: 42px;
+
+            margin:
+                0 auto 18px;
+
+            border-radius:
+                50%;
+
+            border:
+                4px solid
+                rgba(
+                    255,
+                    255,
+                    255,
+                    .20
+                );
+
+            border-top-color:
+                #fff;
+
+            animation:
+                bdZoomSpin
+                .8s
+                linear
+                infinite;
+
+        }
+
+
+        @keyframes bdZoomSpin {
+
+            to {
+
+                transform:
+                    rotate(
+                        360deg
+                    );
+
+            }
+
+        }
+
+
+        .bd-zoom-loading strong {
+
+            display: block;
+
+            margin-bottom:
+                8px;
+
+            font-size:
+                18px;
+
+        }
+
+
+        .bd-zoom-loading p {
+
+            max-width:
+                360px;
+
+            margin: 0;
+
+            color:
+                #bbb;
+
+            font-size:
+                13px;
+
+            line-height:
+                1.5;
+
+        }
+
+    </style>
+
+</head>
+
+
+
+<body>
+
+
+<div
+    class="bd-zoom-loading"
+    data-zoom-loading
+>
+
+    <div>
+
+        <div
+            class="bd-spinner">
+        </div>
+
+
+        <strong>
+            Opening Zoom Meeting...
+        </strong>
+
+
+        <p
+            data-zoom-message
+        >
+            Camera aur microphone permission
+            Allow karein.
+        </p>
+
+    </div>
+
+</div>
+
+
+
+<!-- Zoom Dependencies -->
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react.min.js">
+</script>
+
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/react-dom.min.js">
+</script>
+
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux.min.js">
+</script>
+
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/redux-thunk.min.js">
+</script>
+
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/lib/vendor/lodash.min.js">
+</script>
+
+
+<!-- CLIENT VIEW -->
+
+<script
+    src="https://source.zoom.us/{{ $zoomSdkVersion }}/zoom-meeting-{{ $zoomSdkVersion }}.min.js">
+</script>
+
+
+
+<script>
+
+document.addEventListener(
+    'DOMContentLoaded',
+    async function () {
+
+
+        const sdkEndpoint =
+            @json($sdkEndpointUrl);
+
+
+        const leaveUrl =
+            @json($leaveUrl);
+
+
+        const sdkVersion =
+            @json($zoomSdkVersion);
+
+
+        const csrfToken =
+            @json(csrf_token());
+
+
+        const loading =
+            document.querySelector(
+                '[data-zoom-loading]'
+            );
+
+
+        const message =
+            document.querySelector(
+                '[data-zoom-message]'
+            );
+
+
+        const showError =
+            function (
+                text
+            ) {
+
+                console.error(
+                    text
+                );
+
+
+                if (message) {
+
+                    message.textContent =
+                        text;
+
+                }
+
+            };
+
+
+        if (
+            !window.ZoomMtg
+        ) {
+
+            showError(
+                'Zoom Client View SDK load nahi hua.'
+            );
+
+            return;
+
+        }
+
+
+        try {
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | GET EXISTING SDK CONFIG
+            |--------------------------------------------------------------------------
+            */
+
+            const response =
+                await fetch(
+                    sdkEndpoint,
+                    {
+
+                        method:
+                            'POST',
+
+                        headers: {
+
+                            'Accept':
+                                'application/json',
+
+                            'Content-Type':
+                                'application/json',
+
+                            'X-CSRF-TOKEN':
+                                csrfToken,
+
+                        },
+
+                        credentials:
+                            'same-origin',
+
+                    }
+                );
+
+
+            if (
+                !response.ok
+            ) {
+
+                const body =
+                    await response
+                        .json()
+                        .catch(
+                            () => ({})
+                        );
+
+
+                throw new Error(
+
+                    body.message
+                    ||
+                    'Zoom meeting prepare nahi ho payi.'
+
+                );
+
+            }
+
+
+            const config =
+                await response.json();
+
+
+            if (
+                config.provider
+                !== 'zoom'
+            ) {
+
+                throw new Error(
+                    'Zoom provider available nahi hai.'
+                );
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | ZOOM WASM
+            |--------------------------------------------------------------------------
+            */
+
+            ZoomMtg.setZoomJSLib(
+
+                'https://source.zoom.us/'
+                + sdkVersion
+                + '/lib',
+
+                '/av'
+
+            );
+
+
+            ZoomMtg.preLoadWasm();
+
+            ZoomMtg.prepareWebSDK();
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | INIT CLIENT VIEW
+            |--------------------------------------------------------------------------
+            */
+
+            ZoomMtg.init({
+
+                leaveUrl:
+                    leaveUrl,
+
+
+                patchJsMedia:
+                    true,
+
+
+                success:
+                    function () {
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | JOIN OPTIONS
+                        |--------------------------------------------------------------------------
+                        */
+
+                        const options = {
+
+                            signature:
+                                config.signature,
+
+
+                            meetingNumber:
+                                config.meetingNumber,
+
+
+                            userName:
+                                config.userName,
+
+
+                            userEmail:
+                                config.userEmail
+                                || '',
+
+
+                            /*
+                             * Client View uses
+                             * passWord
+                             */
+                            passWord:
+                                config.password
+                                || '',
+
+
+                            success:
+                                function () {
+
+
+                                    if (
+                                        loading
+                                    ) {
+
+                                        loading
+                                            .classList
+                                            .add(
+                                                'hidden'
+                                            );
+
+                                    }
+
+                                },
+
+
+                            error:
+                                function (
+                                    error
+                                ) {
+
+                                    console.error(
+                                        'Zoom join error:',
+                                        error
+                                    );
+
+
+                                    showError(
+                                        'Zoom meeting join nahi ho payi.'
+                                    );
+
+                                },
+
+                        };
+
+
+                        /*
+                         * Pandit host ke liye
+                         * ZAK.
+                         */
+                        if (
+                            config.zak
+                        ) {
+
+                            options.zak =
+                                config.zak;
+
+                        }
+
+
+                        ZoomMtg.join(
+                            options
+                        );
+
+                    },
+
+
+                error:
+                    function (
+                        error
+                    ) {
+
+                        console.error(
+                            'Zoom init error:',
+                            error
+                        );
+
+
+                        showError(
+                            'Zoom initialize nahi ho paya.'
+                        );
+
+                    },
+
+            });
+
+
+        } catch (
+            error
+        ) {
+
+
+            console.error(
+                'BhaktiDeep Zoom Error:',
+                error
+            );
+
+
+            showError(
+
+                error?.message
+                ||
+                'Zoom meeting open nahi ho payi.'
+
+            );
+
+        }
+
+    }
+);
+
+</script>
+
+
+</body>
+
+</html>

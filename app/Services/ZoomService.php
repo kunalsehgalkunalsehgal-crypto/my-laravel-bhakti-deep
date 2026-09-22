@@ -104,17 +104,27 @@ class ZoomService implements VideoMeetingProvider
             throw new RuntimeException('Zoom Meeting SDK client ID is not configured.');
         }
 
+        // return [
+        //     'provider' => 'zoom',
+        //     'sdkKey' => $sdkClientId,
+        //     'meetingNumber' => $meetingNumber,
+        //     'password' => (string) $meeting->passcode,
+        //     'role' => $role,
+        //     'signature' => $this->sdkSignature($meetingNumber, $role),
+        //     'userName' => $userName,
+        //     'userEmail' => $userEmail ?: '',
+        //     'zak' => $host ? $this->zakToken($meeting) : null,
+        // ];
         return [
-            'provider' => 'zoom',
-            'sdkKey' => $sdkClientId,
-            'meetingNumber' => $meetingNumber,
-            'password' => (string) $meeting->passcode,
-            'role' => $role,
-            'signature' => $this->sdkSignature($meetingNumber, $role),
-            'userName' => $userName,
-            'userEmail' => $userEmail ?: '',
-            'zak' => $host ? $this->zakToken($meeting) : null,
-        ];
+    'provider' => 'zoom',
+    'meetingNumber' => $meetingNumber,
+    'password' => (string) $meeting->passcode,
+    'role' => $role,
+    'signature' => $this->sdkSignature($meetingNumber, $role),
+    'userName' => $userName,
+    'userEmail' => $userEmail ?: '',
+    'zak' => $host ? $this->zakToken($meeting) : null,
+];
     }
 
     private function sdkSignature(string $meetingNumber, int $role): string
