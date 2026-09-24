@@ -12,51 +12,120 @@ use Illuminate\Support\Facades\Mail;
 
 class ReviewController extends Controller
 {
+    private const OTP_PURPOSE = 'review_submission';
+
     public function sendImageOtp(Request $request)
     {
-        [$booking] = $this->booking($request);
+        [$booking, $bookingType] = $this->booking($request);
         $actor = $this->actor();
         $otp = (string) random_int(100000, 999999);
 
-        ReviewImageOtp::create([
+        // Expire any older unverified OTP for this actor so only the latest code works.
+        ReviewImageOtp::where($this->otpWhere($actor))
+            ->whereNull('verified_at')
+            ->where('expires_at', '>', now())
+            ->update(['expires_at' => now()]);
+
+        $otpRecord = ReviewImageOtp::create([
             'user_type' => $actor['type'],
             'user_id' => $actor['id'],
             'email' => $actor['email'],
             'otp' => Hash::make($otp),
-            'purpose' => 'review_image_upload',
+            'purpose' => self::OTP_PURPOSE,
             'expires_at' => now()->addMinutes(5),
         ]);
+
+        $request->session()->put(
+            $this->sentSessionKey($actor, $bookingType, (int) $booking->id),
+            $otpRecord->id
+        );
+        $request->session()->forget(
+            $this->verifiedSessionKey($actor, $bookingType, (int) $booking->id)
+        );
 
         Mail::send('emails.otp', [
             'greetingName' => $actor['name'],
             'otp' => $otp,
-            'subject' => 'Review image upload OTP',
-            'context' => 'review_image_upload',
-        ], fn ($message) => $message->to($actor['email'])->subject('Review image upload OTP'));
+            'subject' => 'BhaktiDeep review verification OTP',
+            'context' => self::OTP_PURPOSE,
+        ], fn ($message) => $message->to($actor['email'])->subject('BhaktiDeep review verification OTP'));
 
-        return back()->with('success', 'Image upload OTP sent to your email.')
+        return back()
+            ->with('review_feedback_target', $this->feedbackTarget($bookingType, (int) $booking->id))
+            ->with('review_success', 'OTP sent to your email. Enter the 6-digit code to unlock the review form.')
             ->with('review_otp_preview', app()->environment('local') || config('mail.default') === 'log' ? $otp : null);
     }
 
     public function verifyImageOtp(Request $request)
     {
-        $request->validate(['otp' => ['required', 'digits:6']]);
+        $request->validate([
+            'booking_type' => ['required', 'in:hawan,pooja'],
+            'booking_id' => ['required', 'integer'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        [$booking, $bookingType] = $this->booking($request);
         $actor = $this->actor();
-        $otp = ReviewImageOtp::where($this->otpWhere($actor))->whereNull('verified_at')->latest()->first();
+
+        $sentKey = $this->sentSessionKey($actor, $bookingType, (int) $booking->id);
+        $sentOtpId = $request->session()->get($sentKey);
+
+        $otp = $sentOtpId
+            ? ReviewImageOtp::whereKey($sentOtpId)
+                ->where($this->otpWhere($actor))
+                ->whereNull('verified_at')
+                ->first()
+            : null;
 
         if (!$otp || $otp->expires_at->isPast() || !Hash::check($request->otp, $otp->otp)) {
-            return back()->withErrors(['otp' => 'Invalid or expired image OTP.']);
+            return back()
+                ->withErrors(['otp' => 'Invalid or expired OTP. Please send a new code and try again.'])
+                ->withInput();
         }
 
         $otp->update(['verified_at' => now()]);
 
-        return back()->with('success', 'Image upload verified. You can submit your review with image now.');
+        $request->session()->forget($sentKey);
+        $request->session()->put(
+            $this->verifiedSessionKey($actor, $bookingType, (int) $booking->id),
+            $otp->id
+        );
+
+        return back()
+            ->with('review_feedback_target', $this->feedbackTarget($bookingType, (int) $booking->id))
+            ->with('review_success', 'Email verified. You can now submit your review.');
     }
 
     public function store(Request $request)
     {
         [$booking, $bookingType] = $this->booking($request);
         $actor = $this->actor();
+
+        if (Review::where('booking_type', $bookingType)
+            ->where('booking_id', $booking->id)
+            ->where('review_by', $actor['type'])
+            ->exists()) {
+            return back()->withErrors(['review' => 'Review already submitted for this booking.']);
+        }
+
+        $verifiedKey = $this->verifiedSessionKey($actor, $bookingType, (int) $booking->id);
+        $verifiedOtpId = $request->session()->get($verifiedKey);
+
+        $verifiedOtp = $verifiedOtpId
+            ? ReviewImageOtp::whereKey($verifiedOtpId)
+                ->where($this->otpWhere($actor))
+                ->whereNotNull('verified_at')
+                ->where('expires_at', '>', now())
+                ->first()
+            : null;
+
+        if (!$verifiedOtp) {
+            $request->session()->forget($verifiedKey);
+
+            return back()
+                ->withErrors(['review_verification' => 'Please verify the email OTP before submitting your review.'])
+                ->withInput();
+        }
 
         $data = $request->validate([
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
@@ -65,16 +134,7 @@ class ReviewController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $otp = ReviewImageOtp::where($this->otpWhere($actor))->whereNotNull('verified_at')->where('expires_at', '>', now())->latest()->first();
-            if (!$otp) {
-                return back()->withErrors(['image' => 'Please verify email OTP before uploading review image.'])->withInput();
-            }
             $data['image_path'] = $request->file('image')->store('reviews', 'public');
-            $otp->update(['expires_at' => now()]);
-        }
-
-        if (Review::where('booking_type', $bookingType)->where('booking_id', $booking->id)->where('review_by', $actor['type'])->exists()) {
-            return back()->withErrors(['review' => 'Review already submitted for this booking.']);
         }
 
         Review::create($data + [
@@ -85,7 +145,16 @@ class ReviewController extends Controller
             'review_by' => $actor['type'],
         ]);
 
-        return back()->with('success', 'Review submitted successfully.');
+        // A verified OTP can unlock only one review submission.
+        $verifiedOtp->update(['expires_at' => now()]);
+        $request->session()->forget($verifiedKey);
+        $request->session()->forget(
+            $this->sentSessionKey($actor, $bookingType, (int) $booking->id)
+        );
+
+        return back()
+            ->with('review_feedback_target', $this->feedbackTarget($bookingType, (int) $booking->id))
+            ->with('review_success', 'Review submitted successfully.');
     }
 
     private function booking(Request $request): array
@@ -95,11 +164,19 @@ class ReviewController extends Controller
             'booking_id' => ['required', 'integer'],
         ]);
 
-        $booking = ($data['booking_type'] === 'hawan' ? HawanSession::class : PoojaSession::class)::with('reviews')->findOrFail($data['booking_id']);
+        $booking = ($data['booking_type'] === 'hawan' ? HawanSession::class : PoojaSession::class)
+            ::with('reviews')
+            ->findOrFail($data['booking_id']);
+
         $actor = $this->actor();
 
         abort_unless($booking->status === 'completed', 403);
-        abort_unless($actor['type'] === 'user' ? (int) $booking->user_id === $actor['id'] : (int) $booking->pandit_id === $actor['id'], 403);
+        abort_unless(
+            $actor['type'] === 'user'
+                ? (int) $booking->user_id === $actor['id']
+                : (int) $booking->pandit_id === $actor['id'],
+            403
+        );
 
         return [$booking, $data['booking_type']];
     }
@@ -125,7 +202,22 @@ class ReviewController extends Controller
             'user_type' => $actor['type'],
             'user_id' => $actor['id'],
             'email' => $actor['email'],
-            'purpose' => 'review_image_upload',
+            'purpose' => self::OTP_PURPOSE,
         ];
+    }
+
+    private function feedbackTarget(string $bookingType, int $bookingId): string
+    {
+        return $bookingType.':'.$bookingId;
+    }
+
+    private function sentSessionKey(array $actor, string $bookingType, int $bookingId): string
+    {
+        return 'review_otp_sent_'.$actor['type'].'_'.$actor['id'].'_'.$bookingType.'_'.$bookingId;
+    }
+
+    private function verifiedSessionKey(array $actor, string $bookingType, int $bookingId): string
+    {
+        return 'review_otp_verified_'.$actor['type'].'_'.$actor['id'].'_'.$bookingType.'_'.$bookingId;
     }
 }

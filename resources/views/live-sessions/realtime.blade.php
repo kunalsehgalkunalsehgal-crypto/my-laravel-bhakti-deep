@@ -1,13 +1,46 @@
-<script>
+
 document.addEventListener('DOMContentLoaded', function () {
     const channel = @json($channelName ?? null);
     if (!channel || !window.Echo) return;
 
     const text = (selector, value) => document.querySelectorAll(selector).forEach((el) => el.textContent = value ?? '-');
+    const statusClass = function (status) {
+        if (status === 'Present' || status === 'Joined') return 'present';
+        if (status === 'Left') return 'left';
+        if (status === 'Revoked') return 'revoked';
+        if (status === 'Expired') return 'expired';
+        return 'not-joined';
+    };
+
+    const statusIcon = function (status) {
+        const cls = statusClass(status);
+        if (cls === 'present') return 'bi-check-circle';
+        if (cls === 'left') return 'bi-box-arrow-right';
+        if (cls === 'revoked' || cls === 'expired') return 'bi-x-circle';
+        return 'bi-dash-circle';
+    };
+
     const row = (selector, data) => document.querySelectorAll(selector).forEach(function (el) {
-        el.querySelector('[data-presence-status]')?.replaceChildren(document.createTextNode(data.status || 'Not Joined'));
+        const status = data.status || 'Not Joined';
+        const cls = statusClass(status);
+
+        el.querySelectorAll('[data-presence-status]').forEach(function (statusEl) {
+            statusEl.textContent = status;
+        });
         el.querySelector('[data-presence-joined-at]')?.replaceChildren(document.createTextNode(data.joined_at || 'Not joined'));
         el.querySelector('[data-presence-left-at]')?.replaceChildren(document.createTextNode(data.left_at || '-'));
+
+        el.classList.remove('present', 'left', 'revoked', 'expired', 'not-joined', 'invited', 'joined');
+        el.classList.add(cls);
+
+        el.querySelectorAll('.family-status-pill, .pandit-live-pill[data-presence-status]').forEach(function (pill) {
+            pill.classList.remove('present', 'left', 'revoked', 'expired', 'not-joined', 'invited', 'joined');
+            pill.classList.add(cls);
+        });
+
+        el.querySelectorAll('[data-family-status-icon]').forEach(function (icon) {
+            icon.className = 'bi ' + statusIcon(status);
+        });
     });
     const apply = function (snapshot) {
         if (!snapshot) return;

@@ -1,0 +1,477 @@
+@php
+    $existingReview = $booking->reviews?->firstWhere('review_by', $reviewBy);
+@endphp
+
+@if($booking->status === 'completed')
+    <div class="booking-details">
+        @if($existingReview)
+            <div><small>{{ $title }}</small><b>{{ str_repeat('★', (int) $existingReview->rating) }} {{ $existingReview->comment ?: '' }}</b></div>
+            @if($existingReview->image_path)
+                <div><small>Review Image</small><b><a href="{{ asset('storage/'.$existingReview->image_path) }}" target="_blank">View image</a></b></div>
+            @endif
+        @else
+            <form method="POST" action="{{ $sendOtpRoute }}" class="booking-actions">
+                @csrf
+                <input type="hidden" name="booking_type" value="{{ $bookingType }}">
+                <input type="hidden" name="booking_id" value="{{ $booking->id }}">
+                <button class="btn btn-outline-saffron btn-sm rounded-pill" type="submit">Send Image OTP</button>
+            </form>
+            <form method="POST" action="{{ $verifyOtpRoute }}" class="booking-actions">
+                @csrf
+                <input class="form-control sacred-input" style="max-width:160px" name="otp" placeholder="Image OTP">
+                <button class="btn btn-outline-saffron btn-sm rounded-pill" type="submit">Verify OTP</button>
+            </form>
+            <form method="POST" action="{{ $storeRoute }}" enctype="multipart/form-data" class="booking-details">
+                @csrf
+                <input type="hidden" name="booking_type" value="{{ $bookingType }}">
+                <input type="hidden" name="booking_id" value="{{ $booking->id }}">
+                <div><small>{{ $title }}</small><b>
+                    <select name="rating" required>
+                        <option value="">Rating</option>
+                        @for($i = 1; $i <= 5; $i++)
+                            <option value="{{ $i }}">{{ $i }} Star</option>
+                        @endfor
+                    </select>
+                </b></div>
+                <textarea name="comment" rows="2" placeholder="Write comment" style="width:100%"></textarea>
+                <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp">
+                <button class="btn btn-saffron btn-sm rounded-pill" type="submit">Submit Review</button>
+            </form>
+        @endif
+    </div>
+@endif --}}
+@php
+    $existingReview = $booking->reviews?->firstWhere('review_by', $reviewBy);
+@endphp
+
+@if($booking->status === 'completed')
+
+    <div class="review-panel-content">
+
+        <div class="review-panel-heading">
+
+            <h3>
+                <i class="bi bi-star"></i>
+                {{ $title }}
+            </h3>
+
+            <p>
+                Share your experience after completing the Hawan.
+            </p>
+
+        </div>
+
+
+        @if($existingReview)
+
+            {{-- Already submitted --}}
+            <div class="booking-details review-existing">
+
+                <div>
+                    <small>Rating & Review</small>
+
+                    <b>
+                        {{ str_repeat('★', (int) $existingReview->rating) }}
+
+                        @if($existingReview->comment)
+                            <span class="review-comment">
+                                {{ $existingReview->comment }}
+                            </span>
+                        @endif
+                    </b>
+                </div>
+
+                @if($existingReview->image_path)
+
+                    <div>
+                        <small>Review Image</small>
+
+                        <b>
+                            <a
+                                href="{{ asset('storage/'.$existingReview->image_path) }}"
+                                target="_blank"
+                            >
+                                View Image
+                            </a>
+                        </b>
+                    </div>
+
+                @endif
+
+            </div>
+
+        @else
+
+            {{-- =========================
+                 IMAGE VERIFICATION
+            ========================== --}}
+
+            <div class="review-verification">
+
+                <div class="review-field-heading">
+                    <small>Image Verification</small>
+
+                    <p>
+                        Verify your image submission before submitting the review.
+                    </p>
+                </div>
+
+
+                {{-- Send OTP --}}
+                <form
+                    method="POST"
+                    action="{{ $sendOtpRoute }}"
+                    class="review-action-form"
+                >
+
+                    @csrf
+
+                    <input
+                        type="hidden"
+                        name="booking_type"
+                        value="{{ $bookingType }}"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="booking_id"
+                        value="{{ $booking->id }}"
+                    >
+
+                    <button
+                        class="btn btn-saffron btn-sm rounded-pill"
+                        type="submit"
+                    >
+                        <i class="bi bi-shield-check"></i>
+                        Send Image OTP
+                    </button>
+
+                </form>
+
+
+                {{-- Verify OTP --}}
+                <form
+                    method="POST"
+                    action="{{ $verifyOtpRoute }}"
+                    class="review-otp-form"
+                >
+
+                    @csrf
+
+                    <div class="review-input-group">
+
+                        <label>
+                            Enter Image OTP
+                        </label>
+
+                        <input
+                            type="text"
+                            name="otp"
+                            class="form-control sacred-input"
+                            placeholder="Enter Image OTP"
+                            maxlength="6"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            required
+                        >
+
+                    </div>
+
+                    <button
+                        class="btn btn-saffron btn-sm rounded-pill"
+                        type="submit"
+                    >
+                        <i class="bi bi-check2-circle"></i>
+                        Verify OTP
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            {{-- =========================
+                 REVIEW FORM
+            ========================== --}}
+
+            <form
+                method="POST"
+                action="{{ $storeRoute }}"
+                enctype="multipart/form-data"
+                class="review-submit-form"
+            >
+
+                @csrf
+
+                <input
+                    type="hidden"
+                    name="booking_type"
+                    value="{{ $bookingType }}"
+                >
+
+                <input
+                    type="hidden"
+                    name="booking_id"
+                    value="{{ $booking->id }}"
+                >
+
+
+                {{-- Rating --}}
+                <div class="review-form-field">
+
+                    <label>
+                        Rating
+                    </label>
+
+                    <select
+                        name="rating"
+                        class="form-control sacred-input"
+                        required
+                    >
+
+                        <option value="">
+                            Select Rating
+                        </option>
+
+                        @for($i = 1; $i <= 5; $i++)
+
+                            <option value="{{ $i }}">
+                                {{ $i }} Star
+                            </option>
+
+                        @endfor
+
+                    </select>
+
+                </div>
+
+
+                {{-- Review Image --}}
+                <div class="review-form-field">
+
+                    <label>
+                        Review Image
+                    </label>
+
+                    <input
+                        type="file"
+                        name="image"
+                        class="form-control sacred-input"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        required
+                    >
+
+                </div>
+
+
+                {{-- Your Review --}}
+                <div class="review-form-field">
+
+                    <label>
+                        Your Review
+                    </label>
+
+                    <textarea
+                        name="comment"
+                        rows="4"
+                        class="form-control sacred-input"
+                        placeholder="Write your experience..."
+                    ></textarea>
+
+                </div>
+
+
+                {{-- Submit --}}
+                <div class="review-submit-button">
+
+                    <button
+                        class="btn btn-saffron btn-sm rounded-pill"
+                        type="submit"
+                    >
+                        <i class="bi bi-send"></i>
+                        Submit Review
+                    </button>
+
+                </div>
+
+            </form>
+
+        @endif
+
+    </div>
+
+@push('styles')
+
+<style>
+    /* =========================================================
+   REVIEW YAJMAN
+   Uses the same visual language as .pandit-live-card
+   ========================================================= */
+
+.pandit-review-card {
+    margin-top: 20px;
+}
+
+
+/* Form rows */
+
+.pandit-review-form-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+
+/* Inputs */
+
+.pandit-review-input {
+    min-height: 46px;
+    box-sizing: border-box;
+
+    padding: 10px 14px;
+
+    border: 1px solid rgba(199, 141, 34, .24);
+    border-radius: 14px;
+
+    background: rgba(251, 244, 223, .58);
+
+    color: var(--cream);
+
+    font-size: 14px;
+
+    outline: none;
+
+    transition:
+        border-color .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
+}
+
+.pandit-review-input:focus {
+    border-color: rgba(199, 141, 34, .65);
+
+    background: rgba(251, 244, 223, .75);
+
+    box-shadow:
+        0 0 0 .2rem rgba(199, 141, 34, .12);
+}
+
+.pandit-review-input::placeholder {
+    color: var(--muted);
+}
+
+
+/* OTP input */
+
+.pandit-review-form-row .pandit-review-input {
+    width: 220px;
+}
+
+
+/* Select */
+
+select.pandit-review-input {
+    min-width: 180px;
+    cursor: pointer;
+}
+
+
+/* File input */
+
+input[type="file"].pandit-review-input {
+    max-width: 100%;
+    cursor: pointer;
+}
+
+
+/* Textarea */
+
+textarea.pandit-review-input {
+    width: 100%;
+    min-height: 110px;
+    resize: vertical;
+}
+
+
+/* Buttons */
+
+.pandit-review-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: 42px;
+
+    padding: 9px 16px;
+
+    border: 1px solid rgba(199, 141, 34, .35);
+    border-radius: 999px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--gold),
+            var(--saffron)
+        );
+
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 10px 25px -18px rgba(63, 36, 23, .7);
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease,
+        filter .2s ease;
+}
+
+.pandit-review-btn:hover {
+    transform: translateY(-1px);
+
+    filter: brightness(1.03);
+
+    box-shadow:
+        0 15px 30px -18px rgba(63, 36, 23, .8);
+}
+
+
+/* Review form spacing */
+
+.pandit-review-submit-form {
+    margin-top: 12px;
+}
+
+
+/* Mobile */
+
+@media (max-width: 767px) {
+
+    .pandit-review-form-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pandit-review-form-row .pandit-review-input {
+        width: 100%;
+        max-width: none;
+    }
+
+    .pandit-review-btn {
+        width: 100%;
+    }
+
+    .pandit-review-card {
+        padding: 20px;
+    }
+}
+</style>
+@endpush
+@endif

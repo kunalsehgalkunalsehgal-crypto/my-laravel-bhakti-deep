@@ -458,7 +458,6 @@
     border-radius: 14px;
     background: rgba(251,244,223,.58);
     color: var(--cream);
-    min-height: 48px;
 }
 
 .sacred-input:focus {
