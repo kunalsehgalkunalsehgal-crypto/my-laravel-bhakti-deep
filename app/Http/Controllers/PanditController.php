@@ -29,6 +29,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 
@@ -564,8 +565,10 @@ class PanditController extends Controller
             'account_number' => ['required', 'string', 'max:40'],
             'ifsc_code' => ['required', 'string', 'max:20'],
             'upi_id' => ['nullable', 'string', 'max:255'],
+            'upi_qr' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'pan_number' => ['nullable', 'string', 'max:20'],
         ]);
+        unset($data['upi_qr']);
         $bank = $pandit->bankDetail;
 
         if ($bank?->razorpay_linked_account_id) {
@@ -578,7 +581,18 @@ class PanditController extends Controller
             }
         }
 
-        PanditBankDetail::updateOrCreate(['pandit_id' => $pandit->id], $data);
+        $bank = PanditBankDetail::updateOrCreate(['pandit_id' => $pandit->id], $data);
+
+        if ($request->hasFile('upi_qr')) {
+            $oldQrPath = $bank->upi_qr_path;
+            $bank->upi_qr_path = $request->file('upi_qr')->store('pandits/upi-qr', 'public');
+            $bank->save();
+
+            if ($oldQrPath) {
+                Storage::disk('public')->delete($oldQrPath);
+            }
+        }
+
         return back()->with('success', 'Bank details saved!');
     }
 

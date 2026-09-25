@@ -470,9 +470,21 @@
 
         <div class="mt-5">
             <h2 class="mb-3">My Bookings</h2>
-            @foreach($bookingNotifications as $notification)
+            {{-- @foreach($bookingNotifications as $notification)
                 <div class="alert alert-info">{{ $notification->message }}</div>
-            @endforeach
+            @endforeach --}}
+            @foreach($bookingNotifications as $notification)
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{ $notification->message }}
+
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close">
+        </button>
+    </div>
+@endforeach
 
             <div class="row g-4">
                 @foreach ([

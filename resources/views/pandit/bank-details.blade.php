@@ -9,6 +9,7 @@
 @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
 @if($errors->has('razorpay'))<div style="color:red;margin-bottom:12px">{{ $errors->first('razorpay') }}</div>@endif
 @if($errors->has('bank_details'))<div style="color:red;margin-bottom:12px">{{ $errors->first('bank_details') }}</div>@endif
+@error('upi_qr')<div style="color:red;margin-bottom:12px">{{ $message }}</div>@enderror
 
 @php
     $bankRows = [
@@ -40,6 +41,12 @@
             <p>These details are private and never shown publicly.</p>
         </div>
     </div>
+    @if($bank?->upi_qr_path)
+        <div style="margin-top:16px">
+            <strong style="display:block;margin-bottom:8px">UPI QR</strong>
+            <img src="{{ asset('storage/'.$bank->upi_qr_path) }}" alt="Pandit UPI QR" style="width:180px;max-width:100%;border-radius:12px">
+        </div>
+    @endif
 
     <div class="pandit-profile-grid">
         @foreach ($bankRows as [$label, $value])
@@ -67,7 +74,7 @@
             <p>Update payout and verification information.</p>
         </div>
     </div>
-    <form class="pandit-dashboard-form" method="POST" action="{{ route('pandit.bank-details.update') }}">
+    <form class="pandit-dashboard-form" method="POST" enctype="multipart/form-data" action="{{ route('pandit.bank-details.update') }}">
         @csrf
         <div class="pandit-bank-grid">
             <label>Account Holder Name<input type="text" name="account_holder_name" value="{{ $bank->account_holder_name ?? '' }}"></label>
@@ -75,6 +82,7 @@
             <label>Account Number<input type="text" name="account_number" value="{{ $bank->account_number ?? '' }}"></label>
             <label>IFSC<input type="text" name="ifsc_code" value="{{ $bank->ifsc_code ?? '' }}"></label>
             <label>UPI ID<input type="text" name="upi_id" value="{{ $bank->upi_id ?? '' }}"></label>
+            <label>UPI QR<input type="file" name="upi_qr" accept="image/png,image/jpeg,image/webp"></label>
             <label>PAN Number<input type="text" name="pan_number" value="{{ $bank->pan_number ?? '' }}"></label>
         </div>
         <div class="pandit-profile-actions">

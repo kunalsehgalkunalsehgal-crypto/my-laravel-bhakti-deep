@@ -8,6 +8,7 @@ use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
 use App\Models\BookingUserConfirmation;
 use App\Models\Pandit\Pandit;
+use App\Models\Pandit\PanditBankDetail;
 use App\Models\Pandit\PanditService;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
@@ -17,7 +18,9 @@ use App\Models\VideoMeetingAttendance;
 use App\Services\PanditPayoutLedgerService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PanditPayoutSystemTest extends TestCase
@@ -136,6 +139,127 @@ class PanditPayoutSystemTest extends TestCase
             ->assertSee('Bank payout pending')
             ->assertSee('HAWAN-'.$session->id)
             ->assertSee('Rs 5,102');
+    }
+
+    public function test_admin_can_manually_settle_ready_payouts_and_cannot_reuse_the_utr(): void
+    {
+        config(['services.payouts.mode' => 'manual', 'services.payouts.route_enabled' => false]);
+        [$admin, $user, $session] = $this->paidBooking(status: 'completed');
+        $this->makeEligible($session);
+        app(PanditPayoutLedgerService::class)->syncForBooking($session);
+        $first = PanditPayout::firstOrFail();
+        $second = PanditPayout::create([
+            'pandit_id' => $session->pandit_id,
+            'payout_type' => PanditPayout::TYPE_BOOKING,
+            'service_amount' => 250,
+            'booking_amount' => 250,
+            'pandit_amount' => 250,
+            'payout_amount' => 250,
+            'currency' => 'INR',
+            'status' => PanditPayout::STATUS_READY,
+            'eligible_at' => now(),
+        ]);
+        $bank = PanditBankDetail::create([
+            'pandit_id' => $session->pandit_id,
+            'bank_name' => 'HDFC Bank',
+            'account_number' => '1234567890',
+            'ifsc_code' => 'HDFC0001234',
+            'upi_id' => 'pandit@upi',
+        ]);
+        $bank->upi_qr_path = 'pandits/upi-qr/test.png';
+        $bank->save();
+
+        $this->actingAs($admin, 'admin')->get(route('admin.payouts.index'))
+            ->assertOk()
+            ->assertSee('Ready Manual Settlements')
+            ->assertSee('HDFC Bank')
+            ->assertSee('1234567890')
+            ->assertSee('HDFC0001234')
+            ->assertSee('pandit@upi')
+            ->assertSee('storage/pandits/upi-qr/test.png', false);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$first->id, $second->id],
+            'payment_method' => 'upi',
+            'utr' => 'utr-12345',
+            'amount' => 1,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        foreach ([$first->fresh(), $second->fresh()] as $payout) {
+            $this->assertSame(PanditPayout::STATUS_PAID, $payout->status);
+            $this->assertSame('UTR-12345', $payout->payout_reference);
+            $this->assertSame((float) $payout->pandit_amount, (float) $payout->payout_amount);
+            $this->assertSame(5352.0, (float) data_get($payout->metadata, 'manual_settlement.amount'));
+            $this->assertSame('upi', data_get($payout->metadata, 'manual_settlement.payment_method'));
+            $this->assertNotNull($payout->paid_at);
+        }
+
+        $this->actingAs($admin, 'admin')->get(route('admin.payouts.index', ['status' => PanditPayout::STATUS_PAID]))
+            ->assertOk()
+            ->assertSee('Payout History')
+            ->assertSee('UTR-12345')
+            ->assertSee('UPI');
+
+        $this->actingAs($admin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$first->id, $second->id],
+            'payment_method' => 'upi',
+            'utr' => 'UTR-SECOND',
+        ])->assertSessionHasErrors('manual_payout');
+
+        $third = PanditPayout::create([
+            'pandit_id' => $session->pandit_id,
+            'payout_type' => PanditPayout::TYPE_BOOKING,
+            'pandit_amount' => 100,
+            'payout_amount' => 100,
+            'currency' => 'INR',
+            'status' => PanditPayout::STATUS_READY,
+        ]);
+
+        $this->actingAs($admin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$third->id],
+            'payment_method' => 'upi',
+            'utr' => 'utr-12345',
+        ])->assertSessionHasErrors('utr');
+        $this->assertSame(PanditPayout::STATUS_READY, $third->fresh()->status);
+
+        config(['services.payouts.mode' => 'route', 'services.payouts.route_enabled' => true]);
+        $this->actingAs($admin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$third->id],
+            'payment_method' => 'upi',
+            'utr' => 'UTR-NEW',
+        ])->assertSessionHasErrors('manual_payout');
+        $this->assertSame(PanditPayout::STATUS_READY, $third->fresh()->status);
+    }
+
+    public function test_pandit_can_upload_upi_qr_from_bank_details(): void
+    {
+        Storage::fake('public');
+        $pandit = Pandit::create([
+            'full_name' => 'QR Pandit',
+            'pandit_name' => 'QR Pandit',
+            'email' => 'qr-pandit@example.test',
+            'status' => 'verified',
+        ]);
+
+        $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.update'), [
+            'account_holder_name' => 'Pandit One',
+            'bank_name' => 'HDFC Bank',
+            'account_number' => '1234567890',
+            'ifsc_code' => 'HDFC0001234',
+            'upi_id' => 'pandit@upi',
+            'upi_qr' => UploadedFile::fake()->createWithContent(
+                'upi-qr.png',
+                base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+            ),
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $path = PanditBankDetail::where('pandit_id', $pandit->id)->firstOrFail()->upi_qr_path;
+        $this->assertNotNull($path);
+        Storage::disk('public')->assertExists($path);
+        $pandit->unsetRelation('bankDetail');
+        $this->actingAs($pandit, 'pandit')->get(route('pandit.bank-details'))
+            ->assertOk()
+            ->assertSee('storage/'.$path, false);
     }
 
     private function paidBooking(string $status = 'scheduled'): array
