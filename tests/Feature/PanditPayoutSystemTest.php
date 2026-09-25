@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin\Admin;
+use App\Models\Admin\AdminPermission;
 use App\Models\Admin\AdminRole;
 use App\Models\Admin\Hawan;
 use App\Models\Admin\HawanSession;
@@ -231,6 +232,50 @@ class PanditPayoutSystemTest extends TestCase
         $this->assertSame(PanditPayout::STATUS_READY, $third->fresh()->status);
     }
 
+    public function test_manual_settlement_is_limited_to_super_and_finance_admins(): void
+    {
+        config(['services.payouts.mode' => 'manual', 'services.payouts.route_enabled' => false]);
+        [$superAdmin, $user, $session] = $this->paidBooking(status: 'completed');
+        $this->makeEligible($session);
+        app(PanditPayoutLedgerService::class)->syncForBooking($session);
+        $payout = PanditPayout::firstOrFail();
+
+        $managePayouts = AdminPermission::firstOrCreate(['slug' => 'manage-payouts'], ['name' => 'Manage payouts', 'module' => 'Finance']);
+        $viewReports = AdminPermission::firstOrCreate(['slug' => 'view-reports'], ['name' => 'View reports', 'module' => 'Reports']);
+        $financeRole = AdminRole::create(['name' => 'Finance Admin', 'slug' => 'finance-admin', 'status' => 'active']);
+        $financeRole->permissions()->attach([$managePayouts->id, $viewReports->id]);
+        $financeAdmin = Admin::create(['name' => 'Finance', 'email' => 'finance@example.test', 'password' => 'password', 'role_id' => $financeRole->id, 'status' => 'active']);
+
+        $this->actingAs($financeAdmin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$payout->id],
+            'payment_method' => 'imps',
+            'utr' => 'FINANCE-UTR',
+        ])->assertRedirect()->assertSessionHas('success');
+        $this->assertSame(PanditPayout::STATUS_PAID, $payout->fresh()->status);
+
+        $ready = PanditPayout::create([
+            'pandit_id' => $session->pandit_id,
+            'payout_type' => PanditPayout::TYPE_BOOKING,
+            'pandit_amount' => 100,
+            'payout_amount' => 100,
+            'currency' => 'INR',
+            'status' => PanditPayout::STATUS_READY,
+        ]);
+        $reportsRole = AdminRole::create(['name' => 'Reports Admin', 'slug' => 'reports-admin', 'status' => 'active']);
+        $reportsRole->permissions()->attach($viewReports);
+        $reportsAdmin = Admin::create(['name' => 'Reports', 'email' => 'reports@example.test', 'password' => 'password', 'role_id' => $reportsRole->id, 'status' => 'active']);
+
+        $this->actingAs($reportsAdmin, 'admin')->get(route('admin.payouts.index'))
+            ->assertOk()
+            ->assertDontSee('Mark Selected as Paid');
+        $this->actingAs($reportsAdmin, 'admin')->post(route('admin.payouts.manual-settle'), [
+            'payout_ids' => [$ready->id],
+            'payment_method' => 'upi',
+            'utr' => 'REPORTS-UTR',
+        ])->assertForbidden();
+        $this->assertSame(PanditPayout::STATUS_READY, $ready->fresh()->status);
+    }
+
     public function test_pandit_can_upload_upi_qr_from_bank_details(): void
     {
         Storage::fake('public');
@@ -259,7 +304,35 @@ class PanditPayoutSystemTest extends TestCase
         $pandit->unsetRelation('bankDetail');
         $this->actingAs($pandit, 'pandit')->get(route('pandit.bank-details'))
             ->assertOk()
-            ->assertSee('storage/'.$path, false);
+            ->assertSee('storage/'.$path, false)
+            ->assertDontSee('Create Razorpay Route Account')
+            ->assertDontSee('Refresh Razorpay Activation');
+
+        config(['services.payouts.mode' => 'route']);
+        $this->actingAs($pandit, 'pandit')->get(route('pandit.bank-details'))
+            ->assertOk()
+            ->assertSee('Create Razorpay Route Account');
+    }
+
+    public function test_configured_commission_is_used_without_changing_existing_payout(): void
+    {
+        config(['services.payouts.platform_commission_percent' => 10]);
+        [$admin, $user, $session] = $this->paidBooking(status: 'completed');
+        $this->makeEligible($session);
+        app(PanditPayoutLedgerService::class)->syncForBooking($session);
+
+        $payout = PanditPayout::firstOrFail();
+        $this->assertSame(10.0, (float) $payout->commission_percent);
+        $this->assertSame(460.1, (float) $payout->platform_amount);
+        $this->assertSame(4641.9, (float) $payout->pandit_amount);
+
+        config(['services.payouts.platform_commission_percent' => 50]);
+        app(PanditPayoutLedgerService::class)->syncForBooking($session->fresh());
+
+        $payout->refresh();
+        $this->assertSame(10.0, (float) $payout->commission_percent);
+        $this->assertSame(460.1, (float) $payout->platform_amount);
+        $this->assertSame(4641.9, (float) $payout->pandit_amount);
     }
 
     private function paidBooking(string $status = 'scheduled'): array

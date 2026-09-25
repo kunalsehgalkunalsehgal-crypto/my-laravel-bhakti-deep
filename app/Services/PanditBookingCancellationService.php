@@ -27,9 +27,20 @@ class PanditBookingCancellationService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($session->payment_status !== 'paid') {
-                throw ValidationException::withMessages(['booking' => 'Only paid bookings can be cancelled by pandit.']);
-            }
+            // if ($session->payment_status !== 'paid') {
+            //     throw ValidationException::withMessages(['booking' => 'Only paid bookings can be cancelled by pandit.']);
+            // }
+            if ($session->status === 'cancelled_by_pandit') {
+    throw ValidationException::withMessages([
+        'booking' => 'This booking is already cancelled.'
+    ]);
+}
+
+if ($session->status !== 'scheduled' || $session->payment_status !== 'paid') {
+    throw ValidationException::withMessages([
+        'booking' => 'Only paid unaccepted bookings can be cancelled by pandit.'
+    ]);
+}
 
             if ($session->status === 'cancelled_by_pandit') {
                 throw ValidationException::withMessages(['booking' => 'This booking is already cancelled.']);

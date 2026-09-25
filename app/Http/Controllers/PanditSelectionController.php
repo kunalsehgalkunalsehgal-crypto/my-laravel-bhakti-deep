@@ -299,33 +299,55 @@ class PanditSelectionController extends Controller
                                 ->orWhereNull('slot_end_time');
                         });
                 })
-                ->whereRaw(
-                    "(select count(*) from hawan_sessions
-                        where hawan_sessions.pandit_id = pandits.id
-                        and hawan_sessions.deleted_at is null
-                        and hawan_sessions.ritual_id = ?
-                        and hawan_sessions.hawan_type = 'samuhik'
-                        and hawan_sessions.booking_date = ?
-                        and hawan_sessions.slot_start_time = ?
-                        and hawan_sessions.slot_end_time = ?
-                        and hawan_sessions.status != 'cancelled'
-                        and (
-                            hawan_sessions.payment_status = 'paid'
-                            or (
-                                hawan_sessions.payment_status = 'pending'
-                                and hawan_sessions.payment_hold_expires_at > ?
-                            )
-                        )
-                    ) < ?",
-                    [
-                        $selectedHawanId,
-                        $request->date,
-                        $slotTimes['start'],
-                        $slotTimes['end'],
-                        now(),
-                        PanditBookingService::SAMUHIK_HAWAN_MAX_PRIMARY_BOOKINGS,
-                    ]
-                );
+                // ->whereRaw(
+                //     "(select count(*) from hawan_sessions
+                //         where hawan_sessions.pandit_id = pandits.id
+                //         and hawan_sessions.deleted_at is null
+                //         and hawan_sessions.ritual_id = ?
+                //         and hawan_sessions.hawan_type = 'samuhik'
+                //         and hawan_sessions.booking_date = ?
+                //         and hawan_sessions.slot_start_time = ?
+                //         and hawan_sessions.slot_end_time = ?
+                //         and hawan_sessions.status != 'cancelled'
+                //         and (
+                //             hawan_sessions.payment_status = 'paid'
+                //             or (
+                //                 hawan_sessions.payment_status = 'pending'
+                //                 and hawan_sessions.payment_hold_expires_at > ?
+                //             )
+                //         )
+                //     ) < ?",
+                //     [
+                //         $selectedHawanId,
+                //         $request->date,
+                //         $slotTimes['start'],
+                //         $slotTimes['end'],
+                //         now(),
+                //         PanditBookingService::SAMUHIK_HAWAN_MAX_PRIMARY_BOOKINGS,
+                //     ]
+                // );
+                ->whereNotIn('pandits.id', function ($fullSessions) use (
+    $request,
+    $slotTimes,
+    $selectedHawanId
+) {
+    $fullSessions
+        ->select('hawan_sessions.pandit_id')
+        ->from('hawan_sessions')
+        ->whereNull('hawan_sessions.deleted_at')
+        ->where('hawan_sessions.ritual_id', $selectedHawanId)
+        ->where('hawan_sessions.hawan_type', 'samuhik')
+        ->whereDate('hawan_sessions.booking_date', $request->date)
+        ->where('hawan_sessions.slot_start_time', $slotTimes['start'])
+        ->where('hawan_sessions.slot_end_time', $slotTimes['end'])
+        ->where('hawan_sessions.status', '!=', 'cancelled')
+        ->where(fn ($active) => $this->activePaymentOrHold($active))
+        ->groupBy('hawan_sessions.pandit_id')
+        ->havingRaw(
+            'COUNT(*) >= ?',
+            [PanditBookingService::SAMUHIK_HAWAN_MAX_PRIMARY_BOOKINGS]
+        );
+});
         } else {
             $query->whereDoesntHave('hawanBookings', function ($q) use ($request, $slotTimes) {
                 $q->whereDate('booking_date', $request->date)

@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    @if($payoutMode === 'manual')
+    @if($payoutMode === 'manual' && $canManagePayouts)
         <h2>Ready Manual Settlements</h2>
         @forelse($readyGroups as $group)
             @php

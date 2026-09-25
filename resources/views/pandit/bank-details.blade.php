@@ -56,10 +56,12 @@
             </div>
         @endforeach
     </div>
-    @if($bank && !$bank->razorpay_linked_account_id)
-        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Create Razorpay Route Account</button></form>
-    @elseif($bank?->razorpay_linked_account_id)
-        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account.sync') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Refresh Razorpay Activation</button></form>
+    @if(config('services.payouts.mode', 'manual') === 'route')
+        @if($bank && !$bank->razorpay_linked_account_id)
+            <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Create Razorpay Route Account</button></form>
+        @elseif($bank?->razorpay_linked_account_id)
+            <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account.sync') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Refresh Razorpay Activation</button></form>
+        @endif
     @endif
     @if($bank?->razorpay_last_error)
         <p style="color:#a61b1b;margin-top:12px">{{ $bank->razorpay_last_error }}</p>

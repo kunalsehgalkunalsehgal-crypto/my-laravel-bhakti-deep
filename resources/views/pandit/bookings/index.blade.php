@@ -19,7 +19,8 @@
     <div class="pandit-panel-heading">
         <div>
             <h2>Pooja and Hawan</h2>
-            <p>{{ $bookings->count() }} assigned booking{{ $bookings->count() === 1 ? '' : 's' }}</p>
+            {{-- <p>{{ $bookings->count() }} assigned booking{{ $bookings->count() === 1 ? '' : 's' }}</p> --}}
+            <p>{{ $bookings->total() }} assigned booking{{ $bookings->total() === 1 ? '' : 's' }}</p>
         </div>
         <span><i class="bi bi-calendar2-check"></i></span>
     </div>
@@ -34,5 +35,24 @@
             </div>
         @endforelse
     </div>
+    @if($bookings->hasPages())
+    <div class="pandit-pagination">
+        @if($bookings->onFirstPage())
+            <span>← Previous</span>
+        @else
+            <a href="{{ $bookings->previousPageUrl() }}">← Previous</a>
+        @endif
+
+        <strong>
+            Page {{ $bookings->currentPage() }} of {{ $bookings->lastPage() }}
+        </strong>
+
+        @if($bookings->hasMorePages())
+            <a href="{{ $bookings->nextPageUrl() }}">Next →</a>
+        @else
+            <span>Next →</span>
+        @endif
+    </div>
+@endif
 </section>
 @endsection

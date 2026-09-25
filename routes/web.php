@@ -626,7 +626,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->middleware('admin.permission:view-reports')
             ->name('payouts.index');
         Route::post('/payouts/manual-settle', [AdminPayoutController::class, 'settle'])
-            ->middleware('admin.permission:view-reports')
+            ->middleware('admin.permission:manage-payouts')
             ->name('payouts.manual-settle');
 
         Route::get('/disputes', [AdminDisputeController::class, 'index'])

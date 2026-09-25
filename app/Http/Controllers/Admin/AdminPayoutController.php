@@ -34,7 +34,10 @@ class AdminPayoutController extends Controller
         $payoutMode = config('services.payouts.mode', 'manual');
         $routeAutomatic = $payoutMode === 'route'
             && (bool) config('services.payouts.route_enabled', false);
-        $readyGroups = $payoutMode === 'manual'
+        $admin = auth('admin')->user();
+        $canManagePayouts = $admin?->hasPermission('manage-payouts')
+            && in_array($admin->role?->slug, ['super-admin', 'finance-admin'], true);
+        $readyGroups = $payoutMode === 'manual' && $canManagePayouts
             ? PanditPayout::with('pandit.bankDetail')
                 ->where('status', PanditPayout::STATUS_READY)
                 ->orderBy('id')
@@ -48,6 +51,7 @@ class AdminPayoutController extends Controller
             'status' => $status,
             'routeAutomatic' => $routeAutomatic,
             'payoutMode' => $payoutMode,
+            'canManagePayouts' => $canManagePayouts,
             'readyGroups' => $readyGroups,
             'readyTotal' => PanditPayout::where('status', PanditPayout::STATUS_READY)->sum('pandit_amount'),
             'hawanSessionClass' => HawanSession::class,
@@ -57,6 +61,8 @@ class AdminPayoutController extends Controller
 
     public function settle(Request $request)
     {
+        abort_unless(in_array(auth('admin')->user()?->role?->slug, ['super-admin', 'finance-admin'], true), 403);
+
         if (config('services.payouts.mode', 'manual') !== 'manual') {
             throw ValidationException::withMessages(['manual_payout' => 'Manual payouts are disabled.']);
         }

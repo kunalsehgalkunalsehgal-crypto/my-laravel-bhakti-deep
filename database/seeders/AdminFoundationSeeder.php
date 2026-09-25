@@ -33,6 +33,7 @@ class AdminFoundationSeeder extends Seeder
             ['Manage blogs', 'manage-blogs', 'Content'],
             ['View notifications', 'view-notifications', 'Notifications'],
             ['View reports', 'view-reports', 'Reports'],
+            ['Manage payouts', 'manage-payouts', 'Finance'],
             ['Manage settings', 'manage-settings', 'Settings'],
             ['Manage live events', 'manage-live-events', 'Streaming'],
             ['Manage marketing', 'manage-marketing', 'Marketing'],
@@ -55,7 +56,7 @@ class AdminFoundationSeeder extends Seeder
             'audio-admin' => ['Audio Admin', 'Handles mantra, aarti, and ambience audio.', 'inactive', ['manage-audio', 'manage-playlists']],
             'streaming-admin' => ['Streaming Admin', 'Future-ready live pooja and hawan streams role.', 'inactive', ['manage-live-events', 'view-bookings']],
             'support-admin' => ['Support Admin', 'Handles users and booking support.', 'inactive', ['view-users', 'view-bookings', 'support-bookings']],
-            'finance-admin' => ['Finance Admin', 'Handles payments, donations, receipts, and reports.', 'active', ['view-donations', 'export-donations', 'view-reports']],
+            'finance-admin' => ['Finance Admin', 'Handles payments, donations, receipts, and reports.', 'active', ['view-donations', 'export-donations', 'view-reports', 'manage-payouts']],
             'marketing-admin' => ['Marketing Admin', 'Handles banners, campaigns, and promotions.', 'inactive', ['manage-marketing', 'view-reports']],
         ];
 

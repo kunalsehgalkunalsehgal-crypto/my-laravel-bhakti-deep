@@ -33,6 +33,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 use App\Events\PanditMessageSent;
 
 class PanditController extends Controller
@@ -130,17 +132,45 @@ class PanditController extends Controller
         return view('pandit.dashboard', compact('pandit', 'stats', 'nextSession', 'dashboardCounts', 'latestBookings', 'reportedBookings'));
     }
 
-    public function bookings()
-    {
-        $pandit = $this->getPandit();
-        if (!$pandit) return redirect()->route('pandit.login');
+    // public function bookings()
+    // {
+    //     $pandit = $this->getPandit();
+    //     if (!$pandit) return redirect()->route('pandit.login');
 
-        $bookings = $this->assignedBookingSessions($pandit)
-            ->sortByDesc('created_at')
-            ->values();
+    //     $bookings = $this->assignedBookingSessions($pandit)
+    //         ->sortByDesc('created_at')
+    //         ->values();
 
-        return view('pandit.bookings.index', compact('pandit', 'bookings'));
-    }
+    //     return view('pandit.bookings.index', compact('pandit', 'bookings'));
+    // }
+public function bookings(Request $request)
+{
+    $pandit = $this->getPandit();
+    if (!$pandit) return redirect()->route('pandit.login');
+
+    $allBookings = $this->assignedBookingSessions($pandit)
+        ->sortByDesc('created_at')
+        ->values();
+
+    $perPage = 10;
+    $page = LengthAwarePaginator::resolveCurrentPage();
+
+    $bookings = new LengthAwarePaginator(
+        $allBookings->forPage($page, $perPage)->values(),
+        $allBookings->count(),
+        $perPage,
+        $page,
+        [
+            'path' => $request->url(),
+            'query' => $request->query(),
+        ]
+    );
+
+    return view('pandit.bookings.index', compact('pandit', 'bookings'));
+}
+
+
+
 
     public function showBooking(string $type, string $id)
     {
@@ -203,13 +233,22 @@ class PanditController extends Controller
             'dakshina' => (float) ($meta['dakshina'] ?? 0),
             'total_amount' => (float) ($meta['total_amount'] ?? $meta['package_amount'] ?? 0),
             'amount' => (float) ($meta['total_amount'] ?? $meta['package_amount'] ?? $meta['dakshina'] ?? 0),
-            'accept_url' => in_array($session->status, ['pending', 'scheduled'], true)
-                ? route('pandit.bookings.accept', ['type' => $type, 'id' => $session->id])
-                : null,
-            'can_accept' => in_array($session->status, ['pending', 'scheduled'], true),
-            'cancel_url' => route('pandit.bookings.cancel', ['type' => $type, 'id' => $session->id]),
-            'can_cancel' => $session->payment_status === 'paid'
-                && !in_array($session->status, ['completed', 'cancelled', 'cancelled_by_pandit'], true),
+            $canRespond = $session->payment_status === 'paid'
+    && $session->status === 'scheduled',
+            // 'accept_url' => in_array($session->status, ['pending', 'scheduled'], true)
+            //     ? route('pandit.bookings.accept', ['type' => $type, 'id' => $session->id])
+            //     : null,
+            // 'can_accept' => in_array($session->status, ['pending', 'scheduled'], true),
+            // 'cancel_url' => route('pandit.bookings.cancel', ['type' => $type, 'id' => $session->id]),
+            // 'can_cancel' => $session->payment_status === 'paid'
+            //     && !in_array($session->status, ['completed', 'cancelled', 'cancelled_by_pandit'], true),
+            'accept_url' => $canRespond
+    ? route('pandit.bookings.accept', ['type' => $type, 'id' => $session->id])
+    : null,
+'can_accept' => $canRespond,
+
+'cancel_url' => route('pandit.bookings.cancel', ['type' => $type, 'id' => $session->id]),
+'can_cancel' => $canRespond,
             'pandit_cancel_reason' => $session->pandit_cancel_reason,
             'pandit_cancelled_at' => $session->pandit_cancelled_at,
             'pandit_name' => $session->pandit?->pandit_name ?: ($session->pandit?->full_name ?: 'Not added'),
@@ -291,9 +330,14 @@ class PanditController extends Controller
             ->where('pandit_id', $pandit->id)
             ->firstOrFail();
 
-        if (!in_array($session->status, ['pending', 'scheduled'], true)) {
-            return back()->with('info', ucfirst($type).' booking is already '.str_replace('_', ' ', $session->status).'.');
-        }
+        // if (!in_array($session->status, ['pending', 'scheduled'], true)) {
+        //     return back()->with('info', ucfirst($type).' booking is already '.str_replace('_', ' ', $session->status).'.');
+        // }
+        if ($session->status !== 'scheduled' || $session->payment_status !== 'paid') {
+    return back()->withErrors([
+        'booking' => 'Only paid unaccepted bookings can be accepted.'
+    ]);
+}
 
         $session->update(['status' => 'confirmed']);
 
