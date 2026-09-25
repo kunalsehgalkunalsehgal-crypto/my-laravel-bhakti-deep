@@ -1,4 +1,4 @@
-
+<script>
 document.addEventListener('DOMContentLoaded', function () {
     const channel = @json($channelName ?? null);
     if (!channel || !window.Echo) return;

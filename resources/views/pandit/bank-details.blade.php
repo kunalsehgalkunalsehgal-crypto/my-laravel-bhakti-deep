@@ -8,6 +8,7 @@
 
 @if(session('success'))<div style="color:green;margin-bottom:12px">{{ session('success') }}</div>@endif
 @if($errors->has('razorpay'))<div style="color:red;margin-bottom:12px">{{ $errors->first('razorpay') }}</div>@endif
+@if($errors->has('bank_details'))<div style="color:red;margin-bottom:12px">{{ $errors->first('bank_details') }}</div>@endif
 
 @php
     $bankRows = [
@@ -18,6 +19,10 @@
         ['UPI ID', $bank->upi_id ?? null],
         ['PAN Number', $bank->pan_number ?? null],
         ['Verification Status', ucfirst($bank->verification_status ?? 'pending')],
+        ['Razorpay Account ID', $bank->razorpay_linked_account_id ?? null],
+        ['Route Activation', ucfirst(str_replace('_', ' ', $bank->razorpay_linked_account_status ?? 'not created'))],
+        ['Bank Verification', ucfirst(str_replace('_', ' ', $bank->razorpay_bank_verification_status ?? 'pending'))],
+        ['Automatic Payout', $bank?->isRazorpayPayoutReady() ? 'Ready' : 'Not ready'],
     ];
 @endphp
 
@@ -45,7 +50,12 @@
         @endforeach
     </div>
     @if($bank && !$bank->razorpay_linked_account_id)
-        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Create Razorpay Linked Account</button></form>
+        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Create Razorpay Route Account</button></form>
+    @elseif($bank?->razorpay_linked_account_id)
+        <form method="POST" action="{{ route('pandit.bank-details.razorpay-linked-account.sync') }}" class="mt-3">@csrf<button class="pandit-submit-btn compact" type="submit">Refresh Razorpay Activation</button></form>
+    @endif
+    @if($bank?->razorpay_last_error)
+        <p style="color:#a61b1b;margin-top:12px">{{ $bank->razorpay_last_error }}</p>
     @endif
 </section>
 

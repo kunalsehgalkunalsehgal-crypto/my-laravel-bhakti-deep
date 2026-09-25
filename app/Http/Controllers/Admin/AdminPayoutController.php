@@ -32,7 +32,9 @@ class AdminPayoutController extends Controller
             'payouts' => $payouts,
             'statuses' => $statuses,
             'status' => $status,
-            'providerConfigured' => filled(config('services.payouts.provider')),
+            'routeAutomatic' => config('services.payouts.mode', 'manual') === 'route'
+                && (bool) config('services.payouts.route_enabled', false),
+            'payoutMode' => config('services.payouts.mode', 'manual'),
             'readyTotal' => PanditPayout::where('status', PanditPayout::STATUS_READY)->sum('pandit_amount'),
             'hawanSessionClass' => HawanSession::class,
             'poojaSessionClass' => PoojaSession::class,

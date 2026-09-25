@@ -85,6 +85,8 @@ class PanditLiveSessionController extends Controller
             'service',
             'videoMeeting',
             'videoMeetingAttendances',
+                'reviews',
+
         ]);
 
         $serviceName = $this->serviceName($booking, $type);

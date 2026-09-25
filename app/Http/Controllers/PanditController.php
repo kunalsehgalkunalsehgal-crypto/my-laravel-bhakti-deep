@@ -22,6 +22,7 @@ use App\Models\Dispute;
 use App\Models\SessionCompletionProof;
 use App\Models\VideoMeetingAttendance;
 use App\Services\PanditBookingCancellationService;
+use App\Services\PanditPayoutAutomationService;
 use App\Services\RazorpayPaymentService;
 use App\Services\VideoMeetingService;
 use Carbon\Carbon;
@@ -557,9 +558,27 @@ class PanditController extends Controller
         $pandit = $this->getPandit();
         if (!$pandit) return redirect()->route('pandit.login');
 
-        PanditBankDetail::updateOrCreate(['pandit_id' => $pandit->id], $request->only([
-            'account_holder_name','bank_name','account_number','ifsc_code','upi_id','pan_number',
-        ]));
+        $data = $request->validate([
+            'account_holder_name' => ['required', 'string', 'max:200'],
+            'bank_name' => ['nullable', 'string', 'max:200'],
+            'account_number' => ['required', 'string', 'max:40'],
+            'ifsc_code' => ['required', 'string', 'max:20'],
+            'upi_id' => ['nullable', 'string', 'max:255'],
+            'pan_number' => ['nullable', 'string', 'max:20'],
+        ]);
+        $bank = $pandit->bankDetail;
+
+        if ($bank?->razorpay_linked_account_id) {
+            foreach (['account_holder_name', 'account_number', 'ifsc_code', 'pan_number'] as $field) {
+                if ((string) $bank->{$field} !== (string) ($data[$field] ?? '')) {
+                    throw ValidationException::withMessages([
+                        'bank_details' => 'Settlement details are locked after Route onboarding. Update them in Razorpay and contact admin before changing them here.',
+                    ]);
+                }
+            }
+        }
+
+        PanditBankDetail::updateOrCreate(['pandit_id' => $pandit->id], $data);
         return back()->with('success', 'Bank details saved!');
     }
 
@@ -568,8 +587,32 @@ class PanditController extends Controller
         $pandit = $this->getPandit();
         if (!$pandit) return redirect()->route('pandit.login');
         if (!$pandit->bankDetail) throw ValidationException::withMessages(['razorpay' => 'Bank details are required.']);
-        app(RazorpayPaymentService::class)->createLinkedAccount($pandit, $pandit->bankDetail);
-        return back()->with('success', 'Razorpay linked account saved!');
+        $bank = app(RazorpayPaymentService::class)->createLinkedAccount($pandit, $pandit->bankDetail);
+
+        if ($bank->isRazorpayPayoutReady()) {
+            app(PanditPayoutAutomationService::class)->retryFailedForPandit($pandit->id);
+        }
+
+        return back()->with('success', $bank->isRazorpayPayoutReady()
+            ? 'Razorpay Route account is active and ready for payouts.'
+            : 'Razorpay linked account created. Activation and bank verification are still pending.');
+    }
+
+    public function syncRazorpayLinkedAccount()
+    {
+        $pandit = $this->getPandit();
+        if (!$pandit) return redirect()->route('pandit.login');
+        if (!$pandit->bankDetail) throw ValidationException::withMessages(['razorpay' => 'Bank details are required.']);
+
+        $bank = app(RazorpayPaymentService::class)->syncLinkedAccount($pandit->bankDetail);
+
+        if ($bank->isRazorpayPayoutReady()) {
+            app(PanditPayoutAutomationService::class)->retryFailedForPandit($pandit->id);
+        }
+
+        return back()->with('success', $bank->isRazorpayPayoutReady()
+            ? 'Razorpay Route account is active and ready for payouts.'
+            : 'Razorpay status refreshed. Activation or bank verification is still pending.');
     }
 
     // DOCUMENTS

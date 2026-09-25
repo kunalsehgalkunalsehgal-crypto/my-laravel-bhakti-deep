@@ -10,17 +10,25 @@ use Illuminate\Support\Str;
 class PanditPayout extends Model
 {
     public const STATUS_HOLD = 'hold';
+
     public const STATUS_READY = 'ready';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_FAILED = 'failed';
 
     public const STATUS_PENDING = 'hold';
+
     public const STATUS_ON_HOLD = 'hold';
+
     public const STATUS_APPROVED = 'ready';
 
     public const TYPE_BOOKING = 'booking';
+
     public const TYPE_QUICK_DAKSHINA = 'quick_dakshina';
 
     protected $fillable = [
@@ -31,9 +39,11 @@ class PanditPayout extends Model
         'session_type',
         'session_id',
         'payout_type',
+        'service_amount',
         'booking_amount',
         'pandit_amount',
         'platform_amount',
+        'commission_percent',
         'gross_amount',
         'platform_fee',
         'dakshina_amount',
@@ -42,6 +52,12 @@ class PanditPayout extends Model
         'status',
         'payout_reference',
         'provider_payout_id',
+        'razorpay_transfer_id',
+        'gateway_status',
+        'transfer_attempts',
+        'processing_token',
+        'processing_started_at',
+        'last_error',
         'scheduled_at',
         'approved_at',
         'eligible_at',
@@ -54,9 +70,11 @@ class PanditPayout extends Model
     protected function casts(): array
     {
         return [
+            'service_amount' => 'decimal:2',
             'booking_amount' => 'decimal:2',
             'pandit_amount' => 'decimal:2',
             'platform_amount' => 'decimal:2',
+            'commission_percent' => 'decimal:4',
             'gross_amount' => 'decimal:2',
             'platform_fee' => 'decimal:2',
             'dakshina_amount' => 'decimal:2',
@@ -67,6 +85,8 @@ class PanditPayout extends Model
             'paid_at' => 'datetime',
             'failed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'processing_started_at' => 'datetime',
+            'transfer_attempts' => 'integer',
             'metadata' => 'array',
         ];
     }

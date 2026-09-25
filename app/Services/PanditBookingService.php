@@ -308,6 +308,7 @@ class PanditBookingService
     {
         $holdStart = $session->payment_hold_started_at ?: now();
         $holdEnd = $session->payment_hold_expires_at ?: $holdStart->copy()->addMinutes(self::PAYMENT_HOLD_MINUTES);
+        $meta = app(PayoutAmountCalculator::class)->freeze($amount, $meta);
 
         $donation = Donation::create([
             'user_id' => $session->user_id,

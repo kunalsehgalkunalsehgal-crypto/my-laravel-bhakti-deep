@@ -80,7 +80,7 @@ class PanditPayoutSystemTest extends TestCase
         $this->assertNull($payout->eligible_at);
     }
 
-    public function test_open_dispute_keeps_completed_booking_payout_on_hold(): void
+    public function test_dispute_cannot_be_opened_after_customer_confirmation(): void
     {
         [$admin, $user, $session] = $this->paidBooking();
         $this->makeEligible($session);
@@ -100,12 +100,13 @@ class PanditPayoutSystemTest extends TestCase
                 'description' => 'The session ended too early.',
             ])
             ->assertRedirect()
-            ->assertSessionHas('success', 'Issue Reported - Status: Open');
+            ->assertSessionHasErrors('dispute');
 
         $payout = PanditPayout::firstOrFail()->fresh();
 
-        $this->assertSame(PanditPayout::STATUS_HOLD, $payout->status);
-        $this->assertNull($payout->eligible_at);
+        $this->assertSame(PanditPayout::STATUS_READY, $payout->status);
+        $this->assertNotNull($payout->eligible_at);
+        $this->assertDatabaseCount('disputes', 0);
         $this->assertDatabaseCount('pandit_payouts', 1);
     }
 

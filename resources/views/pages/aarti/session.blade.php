@@ -52,13 +52,24 @@
         background: #000;
     }
 
-    .aarti-session-page .aarti-session-video {
+    /* .aarti-session-page .aarti-session-video {
         display: block;
         width: 100%;
         height: clamp(360px, 58vw, 650px);
         object-fit: contain;
         background: #000;
-    }
+    } */
+     .aarti-session-page .aarti-session-video {
+    display: block;
+    width: 100%;
+    height: clamp(360px, 58vw, 650px);
+    object-fit: contain;
+    background: #000;
+}
+
+.aarti-session-page .aarti-session-video.video-playing {
+    object-fit: cover;
+}
 
     .aarti-session-page .aarti-session-player::after {
         content: none;

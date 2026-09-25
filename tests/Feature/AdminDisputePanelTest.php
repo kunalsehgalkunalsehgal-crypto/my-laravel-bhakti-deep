@@ -183,7 +183,8 @@ class AdminDisputePanelTest extends TestCase
         $this->assertDatabaseHas('pandit_payouts', [
             'payment_attempt_id' => $booking->latest_payment_attempt_id,
             'status' => PanditPayout::STATUS_CANCELLED,
-            'pandit_amount' => 0,
+            'pandit_amount' => 4500,
+            'payout_amount' => 0,
         ]);
         $this->assertDatabaseHas('admin_activity_logs', [
             'admin_id' => $admin->id,
@@ -273,7 +274,8 @@ class AdminDisputePanelTest extends TestCase
         $this->assertDatabaseHas('pandit_payouts', [
             'payment_attempt_id' => $booking->latest_payment_attempt_id,
             'status' => PanditPayout::STATUS_CANCELLED,
-            'pandit_amount' => 0,
+            'pandit_amount' => 4500,
+            'payout_amount' => 0,
         ]);
         $this->assertDatabaseHas('notifications', [
             'user_id' => $dispute->user_id,

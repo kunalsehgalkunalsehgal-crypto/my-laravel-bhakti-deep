@@ -71,7 +71,7 @@
 .ld-img-card video {
     width: 100%;
     height: 460px;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
 }
 
@@ -133,10 +133,13 @@
     border: 1px solid rgba(199, 141, 34, 0.18);
     border-radius: 20px;
     background: rgba(251, 244, 223, 0.35);
-    padding: 20px;
+    padding: 0px;
     text-align: left;
     cursor: pointer;
     transition: all 0.2s ease;
+}
+.ld-diya-info{
+    padding: 20px;
 }
 
 .ld-diya-card:hover {
@@ -207,7 +210,7 @@
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .ld-diya-thumb .ld-check-icon {
@@ -826,7 +829,7 @@ border: 1px solid rgba(199, 141, 34, 0.18);
     }
     .ld-hero h1 { font-size: 30px; }
     .ld-img-card img { height: 300px; }
-    .ld-diya-card { padding: 14px; }
+    .ld-diya-card { padding: 0px; }
     .diya-session-meta,
     .diya-detail-list {
         grid-template-columns: 1fr;

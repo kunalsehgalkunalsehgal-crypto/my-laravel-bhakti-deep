@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class LiveSessionController extends Controller
@@ -240,6 +241,17 @@ public function inviteClientView(
         $booking = $this->ownedReportableBooking($type, $id);
         $activeStatuses = [Dispute::STATUS_OPEN, Dispute::STATUS_UNDER_REVIEW];
 
+        if ($booking->userConfirmations()
+            ->where('user_id', Auth::id())
+            ->whereIn('status', [BookingUserConfirmation::STATUS_CONFIRMED, BookingUserConfirmation::STATUS_AUTO_CONFIRMED])
+            ->whereNotNull('confirmed_at')
+            ->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'dispute' => 'A dispute cannot be opened after completion has been confirmed.',
+            ]);
+        }
+
         $existingDispute = $booking->disputes()
             ->where('user_id', Auth::id())
             ->whereIn('status', $activeStatuses)
@@ -311,6 +323,10 @@ public function inviteClientView(
 
         abort_unless($booking->status === 'completed' && $booking->payment_status === 'paid', 403);
         abort_unless($booking->completionProofs()->whereNotNull('file_path')->where('status', '!=', SessionCompletionProof::STATUS_REJECTED)->exists(), 403);
+
+        if ($booking->disputes()->whereIn('status', [Dispute::STATUS_OPEN, Dispute::STATUS_UNDER_REVIEW])->exists()) {
+            throw ValidationException::withMessages(['completion' => 'Resolve the open dispute before confirming completion.']);
+        }
 
         BookingUserConfirmation::updateOrCreate(
             [

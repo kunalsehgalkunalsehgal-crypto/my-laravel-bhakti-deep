@@ -58,6 +58,9 @@ return [
     ],
 
     'payouts' => [
+        'mode' => env('PAYOUT_MODE', 'manual'),
+        'route_enabled' => env('RAZORPAY_ROUTE_ENABLED', false),
+        'platform_commission_percent' => env('PAYOUT_PLATFORM_COMMISSION_PERCENT', 0),
         'provider' => env('PAYOUT_PROVIDER'),
     ],
 

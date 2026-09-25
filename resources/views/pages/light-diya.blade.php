@@ -107,11 +107,13 @@
                                     <img src="{{ asset($diya->imagePath()) }}" alt="{{ $diya->name }}">
                                     <i class="bi bi-check ld-check-icon {{ $index === 0 ? '' : 'd-none' }}"></i>
                                 </div>
-                                <div class="ld-diya-name mt-3">{{ $diya->name }}</div>
-                                <div class="ld-diya-desc mt-1">{{ $diya->short_description }}</div>
-                                <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
-                                    <span class="ld-dur">{{ $diya->duration ?: 'Duration set by temple' }}</span>
-                                    {{-- <span class="ld-price-tag">Rs.{{ number_format((float) $diya->seva_amount, 2) }}</span> --}}
+                                <div class="ld-diya-info">
+                                    <div class="ld-diya-name mt-1">{{ $diya->name }}</div>
+                                    <div class="ld-diya-desc mt-1">{{ $diya->short_description }}</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
+                                        <span class="ld-dur">{{ $diya->duration ?: 'Duration set by temple' }}</span>
+                                        {{-- <span class="ld-price-tag">Rs.{{ number_format((float) $diya->seva_amount, 2) }}</span> --}}
+                                    </div>
                                 </div>
                             </button>
                         </div>

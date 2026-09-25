@@ -346,7 +346,7 @@ class PanditDashboardTest extends TestCase
         Http::fake(['https://api.razorpay.com/v2/accounts' => Http::response(['error' => ['description' => 'Merchant email already exists.']], 400)]);
         [$pandit] = $this->pandits();
         $pandit->update(['mobile' => '9876543210']);
-        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234']);
+        PanditBankDetail::create(['pandit_id' => $pandit->id, 'account_holder_name' => 'Pandit One', 'account_number' => '1234567890', 'ifsc_code' => 'HDFC0001234', 'pan_number' => 'ABCDE1234F']);
 
         $this->actingAs($pandit, 'pandit')->post(route('pandit.bank-details.razorpay-linked-account'))->assertRedirect()->assertSessionHasErrors('razorpay');
 

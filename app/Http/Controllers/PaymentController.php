@@ -14,6 +14,7 @@ use App\Models\PaymentAttempt;
 use App\Services\PanditBookingService;
 use App\Services\PanditPayoutLedgerService;
 use App\Services\RazorpayPaymentService;
+use App\Services\RazorpayRoutePayoutService;
 use App\Services\UserBookingNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -154,11 +155,22 @@ class PaymentController extends Controller
         }
 
         $data = $request->json()->all();
+        $event = $data['event'] ?? null;
+
+        if (in_array($event, ['transfer.processed', 'transfer.failed'], true)) {
+            app(RazorpayRoutePayoutService::class)->applyWebhook(
+                $event,
+                $data['payload']['transfer']['entity'] ?? []
+            );
+
+            return response()->json(['success' => true]);
+        }
+
         $payment = $data['payload']['payment']['entity'] ?? [];
         $orderId = $payment['order_id'] ?? null;
         $paymentId = $payment['id'] ?? null;
 
-        if (($data['event'] ?? null) !== 'payment.captured' || !$orderId || !$paymentId) {
+        if ($event !== 'payment.captured' || !$orderId || !$paymentId) {
             return response()->json(['success' => true, 'message' => 'Webhook ignored.']);
         }
 

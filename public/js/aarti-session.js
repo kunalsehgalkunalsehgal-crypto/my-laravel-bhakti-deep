@@ -23,15 +23,28 @@ document.addEventListener(
                 "aartiVideo"
             );
 
+        // if (video) {
+
+        //     video.muted = true;
+
+        //     video.play().catch(function () {
+        //         // Browser autoplay block kare
+        //         // to koi page error nahi dikhana.
+        //     });
+        // }
         if (video) {
 
-            video.muted = true;
+    video.muted = true;
 
-            video.play().catch(function () {
-                // Browser autoplay block kare
-                // to koi page error nahi dikhana.
-            });
-        }
+    video.addEventListener("playing", function () {
+        video.classList.add("video-playing");
+    });
+
+    video.play().catch(function () {
+        // Browser autoplay block kare
+        // to poster image contain mode mein hi rahe.
+    });
+}
 
 
         /*

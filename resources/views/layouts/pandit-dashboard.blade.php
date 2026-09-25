@@ -13,7 +13,7 @@
     <link href="{{ asset('css/header.css') }}" rel="stylesheet">
     <link href="{{ asset('css/pandit.css') }}" rel="stylesheet">
 
-
+@stack('styles')
     @vite(['resources/js/app.js'])
 </head>
 <body class="pandit-dashboard-body">

@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\PaymentAttempt;
 use App\Models\Pandit\Pandit;
 use App\Models\Pandit\PanditBankDetail;
+use App\Models\PaymentAttempt;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class RazorpayPaymentService
@@ -17,7 +18,7 @@ class RazorpayPaymentService
         $key = config('services.razorpay.key_id');
         $secret = config('services.razorpay.key_secret');
 
-        if (!$key || !$secret) {
+        if (! $key || ! $secret) {
             throw ValidationException::withMessages(['payment' => 'Razorpay test keys are not configured.']);
         }
 
@@ -36,7 +37,7 @@ class RazorpayPaymentService
                 ],
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw ValidationException::withMessages(['payment' => 'Could not start Razorpay payment. Please retry.']);
         }
 
@@ -86,7 +87,7 @@ class RazorpayPaymentService
     {
         $secret = config('services.razorpay.webhook_secret') ?: config('services.razorpay.key_secret');
 
-        if (!$secret || !$signature) {
+        if (! $secret || ! $signature) {
             return false;
         }
 
@@ -97,7 +98,7 @@ class RazorpayPaymentService
 
     public function refund(PaymentAttempt $attempt, string $reason): array
     {
-        if (!$attempt->gateway_payment_id) {
+        if (! $attempt->gateway_payment_id) {
             throw ValidationException::withMessages(['payment' => 'Paid Razorpay payment id is missing.']);
         }
 
@@ -110,7 +111,7 @@ class RazorpayPaymentService
                 'notes' => ['reason' => $reason],
             ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw ValidationException::withMessages(['payment' => 'Refund could not be started. Please contact admin.']);
         }
 
@@ -126,24 +127,40 @@ class RazorpayPaymentService
         $phone = preg_replace('/\D+/', '', (string) $pandit->mobile);
         $route = config('services.razorpay.route');
 
-        if ($pandit->status !== 'verified' || blank(config('services.razorpay.key_id')) || blank(config('services.razorpay.key_secret')) || blank($bank->account_holder_name) || blank($bank->account_number) || blank($bank->ifsc_code) || blank($pandit->email) || strlen($phone) < 8 || strlen($phone) > 15 || blank($route['business_type']) || blank($route['category']) || blank($route['subcategory'])) {
+        if ($pandit->status !== 'verified' || blank(config('services.razorpay.key_id')) || blank(config('services.razorpay.key_secret')) || blank($bank->account_holder_name) || blank($bank->account_number) || blank($bank->ifsc_code) || blank($bank->pan_number) || blank($pandit->email) || strlen($phone) < 8 || strlen($phone) > 15 || blank($route['business_type'])) {
             throw ValidationException::withMessages(['razorpay' => 'Verified pandit, bank details and Razorpay Route config are required.']);
         }
 
+        $idempotencyKey = $bank->razorpay_onboarding_idempotency_key ?: (string) Str::uuid();
+        $bank->update(['razorpay_onboarding_idempotency_key' => $idempotencyKey]);
+
         $response = Http::withBasicAuth(config('services.razorpay.key_id'), config('services.razorpay.key_secret'))
+            ->withHeader('Idempotency-Key', $idempotencyKey)
             ->asJson()
             ->post(rtrim(config('services.razorpay.base_url'), '/').'/v2/accounts', array_filter([
-                'email' => $pandit->email,
-                'phone' => $phone,
                 'type' => 'route',
+                'tnc_accepted' => true,
+                'reference_id' => 'bhaktideep_pandit_'.$pandit->id,
                 'legal_business_name' => $bank->account_holder_name,
                 'business_type' => $route['business_type'],
-                'contact_name' => $bank->account_holder_name,
-                'profile' => ['category' => $route['category'], 'subcategory' => $route['subcategory']],
+                'email' => $pandit->email,
+                'phone' => $phone,
                 'legal_info' => $bank->pan_number ? ['pan' => $bank->pan_number] : null,
+                'notes' => ['pandit_id' => (string) $pandit->id],
+                'settlement_accounts' => [[
+                    'method' => 'bank_account',
+                    'bank_account' => [
+                        'account_number' => $bank->account_number,
+                        'beneficiary_name' => $bank->account_holder_name,
+                        'code_type' => 'ifsc',
+                        'code' => strtoupper($bank->ifsc_code),
+                        'currency' => 'INR',
+                        'is_default' => true,
+                    ],
+                ]],
             ]));
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $bank->update(['razorpay_last_error' => $response->json('error.description') ?: 'Razorpay linked account creation failed.']);
             throw ValidationException::withMessages(['razorpay' => $bank->razorpay_last_error]);
         }
@@ -154,15 +171,72 @@ class RazorpayPaymentService
             throw ValidationException::withMessages(['razorpay' => $bank->razorpay_last_error]);
         }
 
-        $status = $data['status'] ?? null;
-        $enabled = (bool) ($data['payout_enabled'] ?? $data['payouts_enabled'] ?? false);
+        return $this->storeLinkedAccountState($bank, $data);
+    }
+
+    public function syncLinkedAccount(PanditBankDetail $bank): PanditBankDetail
+    {
+        if (! $bank->razorpay_linked_account_id) {
+            throw ValidationException::withMessages(['razorpay' => 'Create the Razorpay linked account first.']);
+        }
+
+        $baseUrl = rtrim(config('services.razorpay.base_url'), '/');
+        $client = Http::withBasicAuth(config('services.razorpay.key_id'), config('services.razorpay.key_secret'))
+            ->acceptJson();
+        $accountResponse = $client->get($baseUrl.'/v2/accounts/'.$bank->razorpay_linked_account_id);
+
+        if (! $accountResponse->successful()) {
+            $message = $accountResponse->json('error.description') ?: 'Could not fetch Razorpay linked account status.';
+            $bank->update(['razorpay_last_error' => $message, 'razorpay_synced_at' => now()]);
+            throw ValidationException::withMessages(['razorpay' => $message]);
+        }
+
+        $data = $accountResponse->json();
+        $productId = $bank->razorpay_product_id ?: ($data['product_config']['id'] ?? null);
+
+        if ($productId && empty($data['product_config'])) {
+            $productResponse = $client->get($baseUrl.'/v2/accounts/'.$bank->razorpay_linked_account_id.'/products/'.$productId);
+
+            if ($productResponse->successful()) {
+                $data['product_config'] = $productResponse->json();
+            } else {
+                $message = $productResponse->json('error.description') ?: 'Could not fetch Razorpay Route activation status.';
+                $bank->update(['razorpay_last_error' => $message, 'razorpay_synced_at' => now()]);
+                throw ValidationException::withMessages(['razorpay' => $message]);
+            }
+        }
+
+        return $this->storeLinkedAccountState($bank, $data);
+    }
+
+    private function storeLinkedAccountState(PanditBankDetail $bank, array $data): PanditBankDetail
+    {
+        $product = $data['product_config'] ?? [];
+        $settlements = $product['active_configuration']['settlement_accounts']
+            ?? $data['active_configuration']['settlement_accounts']
+            ?? [];
+        $settlement = collect($settlements)->firstWhere('is_default', true) ?: collect($settlements)->first();
+        $activationStatus = $product['activation_status'] ?? $data['activation_status'] ?? $data['status'] ?? null;
+        $verificationStatus = $settlement['verification_status'] ?? $data['bank_verification_status'] ?? null;
+        $legacyEnabled = (bool) ($data['payout_enabled'] ?? $data['payouts_enabled'] ?? false);
+        $settlementReady = $settlement
+            && (bool) ($settlement['active'] ?? false)
+            && $verificationStatus === 'verified';
+        $enabled = $activationStatus === 'activated' && ($legacyEnabled || $settlementReady);
+        $lastError = $enabled
+            ? null
+            : ($data['error']['description'] ?? 'Razorpay Route or bank verification is not activated yet.');
 
         $bank->update([
-            'razorpay_linked_account_id' => $data['id'] ?? null,
-            'razorpay_linked_account_status' => $status,
+            'razorpay_linked_account_id' => $data['id'] ?? $bank->razorpay_linked_account_id,
+            'razorpay_product_id' => $product['id'] ?? $bank->razorpay_product_id,
+            'razorpay_settlement_account_id' => $settlement['id'] ?? $bank->razorpay_settlement_account_id,
+            'razorpay_linked_account_status' => $activationStatus,
+            'razorpay_bank_verification_status' => $verificationStatus,
             'razorpay_payout_enabled' => $enabled,
-            'razorpay_verified_at' => $enabled || in_array($status, ['active', 'activated', 'verified'], true) ? now() : null,
-            'razorpay_last_error' => null,
+            'razorpay_verified_at' => $enabled ? ($bank->razorpay_verified_at ?: now()) : null,
+            'razorpay_synced_at' => now(),
+            'razorpay_last_error' => $lastError,
         ]);
 
         return $bank->fresh();

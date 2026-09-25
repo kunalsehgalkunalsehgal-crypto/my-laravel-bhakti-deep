@@ -1075,15 +1075,6 @@
                     </div>
                 </div>
             </section>
-                @include('partials.review-form', [
-        'booking' => $bookingRecord,
-        'bookingType' => $sessionType,
-        'reviewBy' => 'pandit',
-        'title' => 'Review Yajman',
-        'sendOtpRoute' => route('pandit.reviews.image-otp'),
-        'verifyOtpRoute' => route('pandit.reviews.image-otp.verify'),
-        'storeRoute' => route('pandit.reviews.store'),
-    ])
         @elseif($canCompleteOnline)
             <section class="pandit-live-card" data-completion-after-ended style="{{ $sessionProgress['status'] === 'Ended' ? '' : 'display:none' }}">
                 <div class="pandit-live-card-head">
@@ -1211,6 +1202,14 @@
             </div>
         </section>
 
+        @include('partials.pandit-review-form', [
+            'booking' => $bookingRecord,
+            'bookingType' => $sessionType,
+            'sendOtpRoute' => route('pandit.reviews.image-otp'),
+            'verifyOtpRoute' => route('pandit.reviews.image-otp.verify'),
+            'storeRoute' => route('pandit.reviews.store'),
+        ])
+
         <section class="pandit-live-card">
             <div class="pandit-live-card-head">
                 <div>
@@ -1235,13 +1234,6 @@
             </div>
         </section>
 
-        @include('partials.pandit-review-form', [
-            'booking' => $bookingRecord,
-            'bookingType' => $sessionType,
-            'sendOtpRoute' => route('pandit.reviews.image-otp'),
-            'verifyOtpRoute' => route('pandit.reviews.image-otp.verify'),
-            'storeRoute' => route('pandit.reviews.store'),
-        ])
     </aside>
 </div>
 @push('scripts')

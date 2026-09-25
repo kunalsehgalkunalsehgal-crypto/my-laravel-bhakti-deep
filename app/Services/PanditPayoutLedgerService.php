@@ -24,7 +24,7 @@ class PanditPayoutLedgerService
             $lockedBooking = $this->lockedBooking($booking);
             $attempt = $this->lockedPaidAttempt($lockedBooking);
 
-            if (!$attempt) {
+            if (! $attempt) {
                 return null;
             }
 
@@ -38,7 +38,7 @@ class PanditPayoutLedgerService
             $lockedBooking = $this->lockedBooking($booking);
             $attempt = $this->lockedPaidAttempt($lockedBooking);
 
-            if (!$attempt) {
+            if (! $attempt) {
                 return null;
             }
 
@@ -54,7 +54,7 @@ class PanditPayoutLedgerService
                 ? PaymentAttempt::with('donation')->whereKey($attempt->id)->lockForUpdate()->first()
                 : $this->lockedPaidAttempt($lockedBooking);
 
-            if (!$lockedAttempt) {
+            if (! $lockedAttempt) {
                 return null;
             }
 
@@ -81,7 +81,7 @@ class PanditPayoutLedgerService
 
     private function lockedPaidAttempt(Model $booking): ?PaymentAttempt
     {
-        if (!$booking->latest_payment_attempt_id) {
+        if (! $booking->latest_payment_attempt_id) {
             return null;
         }
 
@@ -90,7 +90,7 @@ class PanditPayoutLedgerService
             ->lockForUpdate()
             ->first();
 
-        if (!$attempt || $attempt->status !== PaymentAttempt::STATUS_PAID) {
+        if (! $attempt || $attempt->status !== PaymentAttempt::STATUS_PAID) {
             return null;
         }
 
@@ -145,7 +145,7 @@ class PanditPayoutLedgerService
 
     private function upsert(Model $booking, PaymentAttempt $attempt, string $status, string $reason): ?PanditPayout
     {
-        if (!$booking->pandit_id) {
+        if (! $booking->pandit_id) {
             return null;
         }
 
@@ -159,7 +159,7 @@ class PanditPayoutLedgerService
             ->lockForUpdate()
             ->first();
 
-        if (!$payout) {
+        if (! $payout) {
             $payout = PanditPayout::query()
                 ->where('session_type', get_class($booking))
                 ->where('session_id', $booking->getKey())
@@ -172,14 +172,19 @@ class PanditPayoutLedgerService
             return $payout;
         }
 
-        $amounts = $this->amounts($booking, $attempt, $status);
+        if ($payout && $payout->status === PanditPayout::STATUS_PROCESSING) {
+            return $payout;
+        }
+
+        $previousStatus = $payout?->status;
+        $amounts = $this->amounts($booking, $attempt, $payout, $status);
         $now = now();
         $existingMetadata = $payout?->metadata ?: [];
         $metadata = array_merge($existingMetadata, [
             'last_ledger_reason' => $reason,
             'last_synced_at' => $now->toIso8601String(),
-            'payout_provider_configured' => $this->providerConfigured(),
-            'payout_provider_pending' => !$this->providerConfigured(),
+            'payout_mode' => config('services.payouts.mode', 'manual'),
+            'razorpay_route_enabled' => (bool) config('services.payouts.route_enabled', false),
         ]);
 
         $data = array_merge($amounts, [
@@ -199,32 +204,52 @@ class PanditPayoutLedgerService
 
         if ($payout) {
             $payout->update($data);
-
-            return $payout->fresh();
+            $payout = $payout->fresh();
+        } else {
+            $payout = PanditPayout::create($data);
         }
 
-        return PanditPayout::create($data);
+        if ($payout->status === PanditPayout::STATUS_READY) {
+            app(PanditPayoutAutomationService::class)->payoutBecameReady($payout, $previousStatus);
+        }
+
+        return $payout;
     }
 
-    private function amounts(Model $booking, PaymentAttempt $attempt, string $status): array
+    private function amounts(Model $booking, PaymentAttempt $attempt, ?PanditPayout $payout, string $status): array
     {
-        $meta = array_merge($attempt->metadata ?: [], $this->bookingMeta($booking));
-        $bookingAmount = (float) $attempt->amount;
-        $platformAmount = (float) ($meta['platform_amount'] ?? $meta['platform_fee'] ?? 0);
-        $panditAmount = (float) ($meta['pandit_amount'] ?? max($bookingAmount - $platformAmount, 0));
+        if ($payout) {
+            $serviceAmount = (float) $payout->service_amount;
+            $bookingAmount = (float) $payout->booking_amount;
+            $platformAmount = (float) $payout->platform_amount;
+            $panditAmount = (float) $payout->pandit_amount;
+            $commissionPercent = (float) $payout->commission_percent;
+            $dakshinaAmount = (float) $payout->dakshina_amount;
+        } else {
+            $meta = array_merge($this->bookingMeta($booking), $attempt->metadata ?: []);
+            $meta = app(PayoutAmountCalculator::class)->freeze((float) $attempt->amount, $meta);
+            $serviceAmount = (float) $meta['service_amount'];
+            $bookingAmount = (float) $meta['gross_amount'];
+            $platformAmount = (float) $meta['platform_commission_amount'];
+            $panditAmount = (float) $meta['pandit_amount'];
+            $commissionPercent = (float) $meta['platform_commission_percent'];
+            $dakshinaAmount = (float) $meta['dakshina_amount'];
 
-        if ($status === PanditPayout::STATUS_CANCELLED) {
-            $panditAmount = 0;
+            if (! (($attempt->metadata ?: [])['financial_snapshot_frozen'] ?? false)) {
+                $attempt->update(['metadata' => $meta]);
+            }
         }
 
         return [
+            'service_amount' => $serviceAmount,
             'booking_amount' => $bookingAmount,
             'pandit_amount' => $panditAmount,
             'platform_amount' => $platformAmount,
+            'commission_percent' => $commissionPercent,
             'gross_amount' => $bookingAmount,
             'platform_fee' => $platformAmount,
-            'dakshina_amount' => (float) ($meta['dakshina'] ?? $meta['donation_amount'] ?? 0),
-            'payout_amount' => $panditAmount,
+            'dakshina_amount' => $dakshinaAmount,
+            'payout_amount' => $status === PanditPayout::STATUS_CANCELLED ? 0 : $panditAmount,
         ];
     }
 
@@ -260,10 +285,5 @@ class PanditPayoutLedgerService
             ->where('status', Dispute::STATUS_RESOLVED)
             ->where('resolution', $resolution)
             ->exists();
-    }
-
-    private function providerConfigured(): bool
-    {
-        return filled(config('services.payouts.provider'));
     }
 }
