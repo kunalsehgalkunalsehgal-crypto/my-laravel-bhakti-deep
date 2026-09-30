@@ -381,7 +381,9 @@ public function inviteClientView(
     private function bookingRecord(string $type, string $id): Model
     {
         return match ($type) {
-            'pooja' => PoojaSession::with(['sankalp', 'videoMeeting', 'completionProofs', 'userConfirmations'])->findOrFail($id),
+            'pooja' => PoojaSession::with(['sankalp', 'videoMeeting', 'completionProofs', 'userConfirmations'])
+                ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
+                ->findOrFail($id),
             'hawan' => HawanSession::with(['sankalp', 'videoMeeting', 'completionProofs', 'userConfirmations'])->findOrFail($id),
         };
     }

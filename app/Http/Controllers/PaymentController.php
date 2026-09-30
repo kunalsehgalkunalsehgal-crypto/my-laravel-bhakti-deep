@@ -44,7 +44,12 @@ class PaymentController extends Controller
             }
 
             if (!$session->payment_hold_expires_at || $session->payment_hold_expires_at->lte(now())) {
-                $this->refreshHoldIfAvailable($session, $type);
+                if ($this->isDigitalPooja($session)) {
+                    [$start, $end] = app(PanditBookingService::class)->holdTimes();
+                    $session->update(['payment_hold_started_at' => $start, 'payment_hold_expires_at' => $end]);
+                } else {
+                    $this->refreshHoldIfAvailable($session, $type);
+                }
             }
 
             $this->cancelOpenAttempts($session);
@@ -80,12 +85,12 @@ class PaymentController extends Controller
             $session = $this->lockedPayable($attempt);
 
             if ($attempt->status === PaymentAttempt::STATUS_PAID) {
-                return response()->json(['success' => true, 'redirect_url' => route('user.profile')]);
+                return response()->json(['success' => true, 'redirect_url' => $this->successfulRedirect($session)]);
             }
 
             if ($session->payment_status === 'paid') {
                 $this->cancelAttempt($attempt);
-                return response()->json(['success' => true, 'redirect_url' => route('user.profile')]);
+                return response()->json(['success' => true, 'redirect_url' => $this->successfulRedirect($session)]);
             }
 
             if ($this->bookingClosedForPayment($session)) {
@@ -118,7 +123,7 @@ class PaymentController extends Controller
 
             $this->completePaymentAttempt($attempt, $session, $data['razorpay_payment_id'], $data, 'payment_verified');
 
-            return response()->json(['success' => true, 'redirect_url' => route('user.profile')]);
+            return response()->json(['success' => true, 'redirect_url' => $this->successfulRedirect($session)]);
         });
     }
 
@@ -374,6 +379,20 @@ class PaymentController extends Controller
 
     private function markPayablePaid(Model $session): void
     {
+        if ($this->isDigitalPooja($session)) {
+            $start = now();
+            $minutes = max(1, (int) ($session->digital_access_minutes ?: 120));
+
+            $session->update([
+                'start_at' => $start,
+                'expires_at' => $start->copy()->addMinutes($minutes),
+                'status' => 'active',
+                'payment_status' => 'paid',
+            ]);
+
+            return;
+        }
+
         if ($session instanceof DiyaSession) {
             $startAt = now();
             $endAt = $this->diyaEndAt($startAt, $session->diya?->duration);
@@ -441,11 +460,44 @@ if (
             app(UserBookingNotificationService::class)->diyaPaymentSuccessful($session->fresh(['user', 'diya', 'deity']));
         }
 
-        if ($attempt->purpose === PaymentAttempt::PURPOSE_BOOKING) {
+        if ($attempt->purpose === PaymentAttempt::PURPOSE_BOOKING && ! $this->isDigitalPooja($session)) {
             app(PanditPayoutLedgerService::class)->holdForSuccessfulPayment($session, $attempt);
         }
 
         $this->log($attempt, $event, 'paid', $payload);
+        if (
+    $attempt->purpose
+        !== PaymentAttempt::PURPOSE_QUICK_DAKSHINA
+    && (
+        $session instanceof PoojaSession
+        || $session instanceof HawanSession
+        || $session instanceof DiyaSession
+    )
+) {
+
+    app(
+        UserBookingNotificationService::class
+    )->paymentSuccessful(
+        $session->fresh(),
+
+        $attempt->fresh([
+            'donation',
+            'user',
+        ])
+    );
+}
+    }
+
+    private function isDigitalPooja(Model $session): bool
+    {
+        return $session instanceof PoojaSession && $session->pooja_type === 'digital';
+    }
+
+    private function successfulRedirect(Model $session): string
+    {
+        return $this->isDigitalPooja($session)
+            ? route('pooja.digital.show', $session)
+            : route('user.profile');
     }
 
     private function cancelAttempt(PaymentAttempt $attempt): void

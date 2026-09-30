@@ -3,6 +3,13 @@
 @section('title', $pooja['name'].' - BhaktiDeep')
 @section('description', $pooja['short_description'])
 
+@php
+    $poojaTypes = $pooja['types'] ?? [];
+    $defaultPoojaType = $poojaTypes[0] ?? null;
+    $defaultPoojaTypeTitle = $defaultPoojaType['title'] ?? '-';
+    $defaultPoojaTypePrice = (float) ($defaultPoojaType['price'] ?? 0);
+@endphp
+
 @push('styles')
 <link href="{{ asset('css/hawan-detail.css') }}" rel="stylesheet">
 <link href="{{ asset('css/light-diya.css') }}" rel="stylesheet">
@@ -32,7 +39,7 @@
                 <div class="row g-3 mt-3 ld-stats">
                     <div class="col-4">
                         <div class="glass rounded-3 px-3 py-2 text-center">
-                            <div class="gold-text fw-bold" style="font-family:'Cinzel',serif;font-size:18px;">Rs.{{ number_format($pooja['base_price']) }}</div>
+                            <div class="gold-text fw-bold" style="font-family:'Cinzel',serif;font-size:18px;">Rs.{{ number_format($defaultPoojaTypePrice) }}</div>
                             <div class="ld-stat-label">Base Price</div>
                         </div>
                     </div>
@@ -102,10 +109,10 @@
                     <div class="hawan-order-summary">
                         <h5><i class="bi bi-receipt"></i> Booking Summary</h5>
                         <div class="hawan-summary-row"><span class="hawan-label">Pooja</span><span class="hawan-value">{{ $pooja['name'] }}</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Package</span><span class="hawan-value">Standard Pooja</span></div>
+                        <div class="hawan-summary-row"><span class="hawan-label">Package</span><span class="hawan-value">{{ $defaultPoojaTypeTitle }}</span></div>
                         <div class="hawan-summary-row"><span class="hawan-label">Slot</span><span class="hawan-value">Select slot</span></div>
                         <div class="hawan-summary-row"><span class="hawan-label">Dakshina</span><span class="hawan-value">Rs.0</span></div>
-                        <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total</span><span class="hawan-value">Rs.{{ number_format($pooja['base_price']) }}</span></div>
+                        <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total</span><span class="hawan-value">Rs.{{ number_format($defaultPoojaTypePrice) }}</span></div>
                     </div>
                 </div>
             </div>
@@ -144,8 +151,8 @@
                     </div>
                     <div class="hawan-stepper-wrapper">
                         <div class="hawan-stepper-header">
-                            @foreach (['Pooja Details', 'Sankalp', 'Donation', 'Date & Slot', 'Review & Pay'] as $index => $label)
-                                <div class="hawan-step-item {{ $index === 0 ? 'hawan-active' : '' }}" data-step="{{ $index + 1 }}">
+                            @foreach (['Pooja Details', 'Sankalp', 'Offering', 'Date & Slot', 'Review & Pay'] as $index => $label)
+                                <div class="hawan-step-item {{ $index === 0 ? 'hawan-active' : '' }} {{ $index === 3 ? 'live-pooja-only' : '' }}" data-step="{{ $index + 1 }}">
                                     <div class="hawan-step-circle">{{ $index + 1 }}</div>
                                     <span class="hawan-step-label">{{ $label }}</span>
                                 </div>
@@ -162,7 +169,7 @@
                                         <h4 class="hawan-hawan-confirm-title">{{ $pooja['name'] }}</h4>
                                         <p class="hawan-hawan-confirm-desc">{{ $pooja['short_description'] }}</p>
                                         <div class="d-flex gap-3 flex-wrap">
-                                            <span class="hawan-badge-saffron">Rs.{{ number_format($pooja['base_price']) }}</span>
+                                            <span class="hawan-badge-saffron">Rs.{{ number_format($defaultPoojaTypePrice) }}</span>
                                             <span class="hawan-badge-gold">{{ $pooja['duration'] }}</span>
                                             <span class="hawan-badge-saffron">{{ $pooja['mode'] }}</span>
                                         </div>
@@ -241,30 +248,21 @@
                             <h3 class="hawan-step-title">Choose Package & Offering</h3>
                             <p class="hawan-step-desc">Select the pooja experience and add optional dakshina if you wish</p>
                             <div class="row g-3 mb-4">
-                                <div class="col-md-4">
-                                    <div class="hawan-mode-card hawan-package-card hawan-selected" onclick="selectPackage(this, 'Standard Pooja', {{ $pooja['base_price'] }})">
-                                        <i class="bi bi-flower1"></i>
-                                        <h6>Standard Pooja</h6>
-                                        <p>Personalized sankalp, live access, digital receipt</p>
-                                        <strong>Rs.{{ number_format($pooja['base_price']) }}</strong>
+                                @forelse ($poojaTypes as $index => $type)
+                                    <div class="col-md-6">
+                                        <div class="hawan-mode-card hawan-package-card {{ $index === 0 ? 'hawan-selected' : '' }}"
+                                            data-pooja-type="{{ $type['key'] }}" onclick="selectPackage(this)">
+                                            <i class="bi {{ $type['icon'] ?? 'bi-flower1' }}"></i>
+                                            <h6>{{ $type['title'] }}</h6>
+                                            <p>{{ $type['description'] }}</p>
+                                            <strong>Rs.{{ number_format($type['price']) }}</strong>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="hawan-mode-card hawan-package-card" onclick="selectPackage(this, 'Premium Pooja', {{ $pooja['base_price'] + 1000 }})">
-                                        <i class="bi bi-camera-video"></i>
-                                        <h6>Premium Pooja</h6>
-                                        <p>Live access, replay, family join, certificate</p>
-                                        <strong>Rs.{{ number_format($pooja['base_price'] + 1000) }}</strong>
+                                @empty
+                                    <div class="col-12">
+                                        <p class="hawan-step-desc mb-0">No Pooja type is currently available.</p>
                                     </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="hawan-mode-card hawan-package-card" onclick="selectPackage(this, 'Special Pooja', {{ $pooja['base_price'] + 2500 }})">
-                                        <i class="bi bi-stars"></i>
-                                        <h6>Special Pooja</h6>
-                                        <p>Priority slot, extended ritual, family join, replay</p>
-                                        <strong>Rs.{{ number_format($pooja['base_price'] + 2500) }}</strong>
-                                    </div>
-                                </div>
+                                @endforelse
                             </div>
 
                             <h5 class="hawan-review-box-title mb-3">Add Custom Offering (Optional)</h5>
@@ -287,13 +285,42 @@
                             </div>
                             <div class="d-flex gap-3">
                                 <button class="hawan-btn hawan-btn-outline-saffron" onclick="prevStep(2)"><i class="bi bi-arrow-left me-2"></i>Back</button>
-                                <button class="hawan-btn hawan-btn-saffron flex-fill" onclick="nextStep(4)">Continue to Slot <i class="bi bi-arrow-right ms-2"></i></button>
+                                <button class="hawan-btn hawan-btn-saffron flex-fill" id="offeringContinueButton" onclick="continueAfterOffering()">Continue <i class="bi bi-arrow-right ms-2"></i></button>
                             </div>
                         </div>
 
-                        <div class="hawan-step-content" id="step4">
+                        <div class="hawan-step-content live-pooja-only" id="step4">
                             <h3 class="hawan-step-title">Date & Slot</h3>
                             <p class="hawan-step-desc">Select your preferred date and time for the pooja</p>
+                            <div class="mb-4">
+                                <label class="hawan-form-label">Pooja Mode *</label>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="hawan-mode-card pooja-booking-mode-card hawan-selected" data-booking-mode="online" onclick="setBookingMode('online')">
+                                            <i class="bi bi-camera-video"></i>
+                                            <h6>Online</h6>
+                                            <p>Join the Live Pooja through the existing live session.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="hawan-mode-card pooja-booking-mode-card" data-booking-mode="offline" onclick="setBookingMode('offline')">
+                                            <i class="bi bi-geo-alt"></i>
+                                            <h6>Offline</h6>
+                                            <p>Book an eligible local Pandit for your location.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-4" id="offlinePoojaLocation" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="hawan-form-label">State *</label>
+                                    <input type="text" class="hawan-form-control" name="state" id="poojaState" placeholder="Punjab">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="hawan-form-label">City *</label>
+                                    <input type="text" class="hawan-form-control" name="city" id="poojaCity" placeholder="Lalru">
+                                </div>
+                            </div>
                             <div class="mb-4">
                                 <label class="hawan-form-label">Select Date *</label>
                                 <input type="date" class="hawan-form-control" id="poojaDate" onchange="renderAllowedSlots()" min="{{ date('Y-m-d') }}">
@@ -316,15 +343,15 @@
                             <div class="hawan-review-box mb-4">
                                 <h5 class="hawan-review-box-title">Booking Summary</h5>
                                 <div class="hawan-summary-row"><span class="hawan-label">Pooja:</span><span class="hawan-value">{{ $pooja['name'] }}</span></div>
-                                <div class="hawan-summary-row"><span class="hawan-label">Pandit:</span><span class="hawan-value">{{ $selectedPandit ? ($selectedPandit->pandit_name ?: $selectedPandit->full_name) : 'Please select pandit' }}</span></div>
-                                <div class="hawan-summary-row"><span class="hawan-label">Package:</span><span class="hawan-value" id="reviewPackage">Standard Pooja</span></div>
+                                <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Pandit:</span><span class="hawan-value">{{ $selectedPandit ? ($selectedPandit->pandit_name ?: $selectedPandit->full_name) : 'Please select pandit' }}</span></div>
+                                <div class="hawan-summary-row"><span class="hawan-label">Package:</span><span class="hawan-value" id="reviewPackage">{{ $defaultPoojaTypeTitle }}</span></div>
                                 <div class="hawan-summary-row"><span class="hawan-label">Name:</span><span class="hawan-value" id="reviewName">-</span></div>
                                 <div class="hawan-summary-row"><span class="hawan-label">Purpose:</span><span class="hawan-value" id="reviewPurpose">-</span></div>
-                                <div class="hawan-summary-row"><span class="hawan-label">Date:</span><span class="hawan-value" id="reviewDate">-</span></div>
-                                <div class="hawan-summary-row"><span class="hawan-label">Time:</span><span class="hawan-value" id="reviewSlot">-</span></div>
-                                <div class="hawan-summary-row"><span class="hawan-label">Package Amount:</span><span class="hawan-value" id="reviewPackageAmount">Rs.{{ number_format($pooja['base_price']) }}</span></div>
+                                <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Date:</span><span class="hawan-value" id="reviewDate">-</span></div>
+                                <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Time:</span><span class="hawan-value" id="reviewSlot">-</span></div>
+                                <div class="hawan-summary-row"><span class="hawan-label">Package Amount:</span><span class="hawan-value" id="reviewPackageAmount">Rs.{{ number_format($defaultPoojaTypePrice) }}</span></div>
                                 <div class="hawan-summary-row"><span class="hawan-label">Dakshina:</span><span class="hawan-value" id="reviewDakshina">None</span></div>
-                                <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total Amount:</span><span class="hawan-value" id="reviewTotal">Rs.{{ number_format($pooja['base_price']) }}</span></div>
+                                <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total Amount:</span><span class="hawan-value" id="reviewTotal">Rs.{{ number_format($defaultPoojaTypePrice) }}</span></div>
                             </div>
 
                             <div class="hawan-login-box mb-4">
@@ -366,7 +393,7 @@
                                 <i class="bi bi-credit-card me-2"></i>Confirm & Pay
                             </button>
                             <div class="d-flex gap-3 mt-3">
-                                <button class="hawan-btn hawan-btn-outline-saffron" onclick="prevStep(4)"><i class="bi bi-arrow-left me-2"></i>Back</button>
+                                <button class="hawan-btn hawan-btn-outline-saffron" onclick="backFromReview()"><i class="bi bi-arrow-left me-2"></i>Back</button>
                             </div>
                         </div>
                     </div>
@@ -376,19 +403,19 @@
                     <div class="hawan-order-summary" id="orderSummary">
                         <h5><i class="bi bi-receipt me-2"></i>Order Summary</h5>
                         <div class="hawan-summary-row"><span class="hawan-label">Pooja:</span><span class="hawan-value">{{ $pooja['name'] }}</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Pandit:</span><span class="hawan-value">{{ $selectedPandit ? ($selectedPandit->pandit_name ?: $selectedPandit->full_name) : 'Please select pandit' }}</span></div>
+                        <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Pandit:</span><span class="hawan-value">{{ $selectedPandit ? ($selectedPandit->pandit_name ?: $selectedPandit->full_name) : 'Please select pandit' }}</span></div>
                         <div class="hawan-summary-row"><span class="hawan-label">Purpose:</span><span class="hawan-value" id="summaryPurpose">-</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Date:</span><span class="hawan-value" id="summaryDate">-</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Slot:</span><span class="hawan-value" id="summarySlot">-</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Package:</span><span class="hawan-value" id="summaryPackage">Standard Pooja</span></div>
-                        <div class="hawan-summary-row"><span class="hawan-label">Package Price:</span><span class="hawan-value" id="summaryBase">Rs.{{ number_format($pooja['base_price']) }}</span></div>
+                        <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Date:</span><span class="hawan-value" id="summaryDate">-</span></div>
+                        <div class="hawan-summary-row live-pooja-only"><span class="hawan-label">Slot:</span><span class="hawan-value" id="summarySlot">-</span></div>
+                        <div class="hawan-summary-row"><span class="hawan-label">Package:</span><span class="hawan-value" id="summaryPackage">{{ $defaultPoojaTypeTitle }}</span></div>
+                        <div class="hawan-summary-row"><span class="hawan-label">Package Price:</span><span class="hawan-value" id="summaryBase">Rs.{{ number_format($defaultPoojaTypePrice) }}</span></div>
                         <div class="hawan-summary-row"><span class="hawan-label">Dakshina:</span><span class="hawan-value" id="summaryDakshina">None</span></div>
-                        <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total:</span><span class="hawan-value" id="summaryTotal">Rs.{{ number_format($pooja['base_price']) }}</span></div>
+                        <div class="hawan-summary-row hawan-total"><span class="hawan-label">Total:</span><span class="hawan-value" id="summaryTotal">Rs.{{ number_format($defaultPoojaTypePrice) }}</span></div>
                         <div class="hawan-trust-strip">
-                            <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> Trusted Pandit Ji</div>
+                            <div class="hawan-trust-item live-pooja-only"><i class="bi bi-check-circle-fill"></i> Trusted Pandit Ji</div>
                             <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> Secure Payment</div>
                             <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> WhatsApp Updates</div>
-                            <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> Family Join</div>
+                            <div class="hawan-trust-item live-pooja-only"><i class="bi bi-check-circle-fill"></i> Family Join</div>
                             <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> Replay Available</div>
                             <div class="hawan-trust-item"><i class="bi bi-check-circle-fill"></i> Digital Certificate</div>
                         </div>
@@ -403,8 +430,10 @@
 @push('scripts')
 <script>
 let currentStep = 1;
-let selectedPackage = 'Standard Pooja';
-let selectedPackagePrice = {{ $pooja['base_price'] }};
+const poojaTypes = @json($poojaTypes);
+let selectedPoojaType = @json($defaultPoojaType['key'] ?? '');
+let selectedPackage = @json($defaultPoojaTypeTitle);
+let selectedPackagePrice = Number(@json($defaultPoojaTypePrice));
 let selectedDonation = 0;
 let selectedSlot = '';
 let selectedPurpose = '';
@@ -412,7 +441,12 @@ const selectedPanditId = @json($selectedPandit?->id);
 const openReviewStep = @json($openReviewStep ?? false);
 const savedBookingDate = @json(session('pooja_booking.date'));
 const savedBookingSlot = @json(session('pooja_booking.slot'));
-const savedBookingMode = @json(session('pooja_booking.mode'));
+const savedPackageMode = @json(session('pooja_booking.mode'));
+const savedPoojaType = @json(session('pooja_booking.pooja_type'));
+const savedBookingMode = @json(session('pooja_booking.booking_mode'));
+const savedBookingState = @json(session('pooja_booking.state'));
+const savedBookingCity = @json(session('pooja_booking.city'));
+let selectedBookingMode = savedBookingMode || 'online';
 const weeklyAvailability = @json($pooja['weekly_availability'] ?? []);
 const draftKey = 'pooja_booking_draft_' + @json($pooja['slug']);
 const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -435,6 +469,7 @@ function getSankalpValue(name) {
 }
 
 function nextStep(step) {
+    if (step === 4 && selectedPoojaType === 'digital') step = 5;
     document.querySelectorAll('.hawan-step-content').forEach(el => el.classList.remove('hawan-active'));
     document.querySelectorAll('.hawan-step-item').forEach(el => {
         el.classList.remove('hawan-active');
@@ -452,6 +487,15 @@ function prevStep(step) {
     nextStep(step);
 }
 
+function continueAfterOffering() {
+    saveBookingDraft();
+    nextStep(selectedPoojaType === 'digital' ? 5 : 4);
+}
+
+function backFromReview() {
+    nextStep(selectedPoojaType === 'digital' ? 3 : 4);
+}
+
 function selectPurpose(el) {
     document.querySelectorAll('.hawan-purpose-tag').forEach(tag => tag.classList.remove('hawan-selected'));
     el.classList.add('hawan-selected');
@@ -459,12 +503,50 @@ function selectPurpose(el) {
     setText('summaryPurpose', selectedPurpose);
 }
 
-function selectPackage(el, packageName, amount) {
+function selectPackage(el) {
+    setPoojaType(el.dataset.poojaType);
+}
+
+function setPoojaType(poojaType) {
+    const type = poojaTypes.find(item => item.key === poojaType);
+    if (!type) return;
+
     document.querySelectorAll('.hawan-package-card').forEach(card => card.classList.remove('hawan-selected'));
-    el.classList.add('hawan-selected');
-    selectedPackage = packageName;
-    selectedPackagePrice = parseInt(amount) || {{ $pooja['base_price'] }};
+    document.querySelectorAll('.hawan-package-card').forEach(card => {
+        if (card.dataset.poojaType === type.key) card.classList.add('hawan-selected');
+    });
+    selectedPoojaType = type.key;
+    selectedPackage = type.title;
+    selectedPackagePrice = Number(type.price);
+    if (selectedPoojaType === 'digital') selectedSlot = '';
+    syncPoojaTypeUi();
     updateSummary();
+}
+
+function syncPoojaTypeUi() {
+    const digital = selectedPoojaType === 'digital';
+
+    document.querySelectorAll('.live-pooja-only').forEach(el => {
+        el.style.display = digital ? 'none' : '';
+    });
+
+    const reviewStep = document.querySelector('.hawan-step-item[data-step="5"] .hawan-step-circle');
+    if (reviewStep) reviewStep.textContent = digital ? '4' : '5';
+
+    const continueButton = document.getElementById('offeringContinueButton');
+    if (continueButton) {
+        continueButton.innerHTML = digital
+            ? 'Continue to Review <i class="bi bi-arrow-right ms-2"></i>'
+            : 'Continue to Slot <i class="bi bi-arrow-right ms-2"></i>';
+    }
+}
+
+function setBookingMode(mode) {
+    selectedBookingMode = mode === 'offline' ? 'offline' : 'online';
+    document.querySelectorAll('.pooja-booking-mode-card').forEach(card => {
+        card.classList.toggle('hawan-selected', card.dataset.bookingMode === selectedBookingMode);
+    });
+    document.getElementById('offlinePoojaLocation').style.display = selectedBookingMode === 'offline' ? '' : 'none';
 }
 
 function selectDonation(el, amount) {
@@ -524,6 +606,10 @@ function selectSlot(el, slot) {
 
 function saveBookingDraft() {
     const draft = {
+        pooja_type: selectedPoojaType,
+        booking_mode: selectedBookingMode,
+        state: document.getElementById('poojaState')?.value || '',
+        city: document.getElementById('poojaCity')?.value || '',
         selectedPackage,
         selectedPackagePrice,
         selectedDonation,
@@ -554,19 +640,31 @@ function restoreBookingDraft() {
         if (input) input.value = draft[key] || '';
     });
 
-    selectedPackage = savedBookingMode || draft.selectedPackage || selectedPackage;
-    selectedPackagePrice = parseInt(draft.selectedPackagePrice) || selectedPackagePrice;
+    const restoredType = poojaTypes.find(type => type.key === savedPoojaType)
+        || poojaTypes.find(type => type.key === draft.pooja_type)
+        || poojaTypes.find(type => type.title === savedPackageMode)
+        || poojaTypes.find(type => type.title === draft.selectedPackage);
+    if (restoredType) setPoojaType(restoredType.key);
+    setBookingMode(savedBookingMode || draft.booking_mode || selectedBookingMode);
     selectedDonation = parseInt(draft.selectedDonation) || selectedDonation;
     selectedSlot = savedBookingSlot || draft.selectedSlot || selectedSlot;
     selectedPurpose = draft.selectedPurpose || selectedPurpose;
 
     const dateInput = document.getElementById('poojaDate');
     if (dateInput) dateInput.value = savedBookingDate || draft.bookingDate || dateInput.value;
+    document.getElementById('poojaState').value = savedBookingState || draft.state || '';
+    document.getElementById('poojaCity').value = savedBookingCity || draft.city || '';
 
     updateSummary();
 }
 
 function choosePandit() {
+    if (selectedPoojaType === 'digital') {
+        saveBookingDraft();
+        nextStep(5);
+        return;
+    }
+
     const bookingDate = document.getElementById('poojaDate')?.value;
 
     if (!bookingDate) {
@@ -579,12 +677,25 @@ function choosePandit() {
         return;
     }
 
+    const state = document.getElementById('poojaState')?.value.trim() || '';
+    const city = document.getElementById('poojaCity')?.value.trim() || '';
+    if (selectedBookingMode === 'offline' && (!state || !city)) {
+        alert('Please enter state and city for offline Pooja.');
+        return;
+    }
+
     saveBookingDraft();
 
     const url = new URL(@json(route('pooja.pandits', ['slug' => $pooja['slug']])), window.location.origin);
     url.searchParams.set('date', bookingDate);
     url.searchParams.set('slot', selectedSlot);
     url.searchParams.set('mode', selectedPackage);
+    url.searchParams.set('pooja_type', selectedPoojaType);
+    url.searchParams.set('booking_mode', selectedBookingMode);
+    if (selectedBookingMode === 'offline') {
+        url.searchParams.set('state', state);
+        url.searchParams.set('city', city);
+    }
     window.location.href = url.toString();
 }
 
@@ -682,7 +793,8 @@ async function proceedToPay() {
     const fullName = getSankalpValue('full_name');
     const mobile = document.getElementById('mobileNumber')?.value || getSankalpValue('mobile');
     const otp = Array.from(document.querySelectorAll('.hawan-otp-box')).map(box => box.value).join('');
-    const bookingDate = document.getElementById('poojaDate')?.value || new Date().toISOString().slice(0, 10);
+    const digital = selectedPoojaType === 'digital';
+    const bookingDate = digital ? null : (document.getElementById('poojaDate')?.value || '');
 
     if (!fullName) {
         alert('Please enter full name in sankalp details');
@@ -699,12 +811,17 @@ async function proceedToPay() {
         return;
     }
 
-    if (!selectedSlot) {
+    if (!digital && !bookingDate) {
+        alert('Please select pooja date');
+        return;
+    }
+
+    if (!digital && !selectedSlot) {
         alert('Please select a time slot');
         return;
     }
 
-    if (!selectedPanditId) {
+    if (!digital && !selectedPanditId) {
         alert('Please select a pandit first');
         choosePandit();
         return;
@@ -713,8 +830,8 @@ async function proceedToPay() {
     const bookingData = {
         pooja_slug: @json($pooja['slug']),
         pooja_name: @json($pooja['name']),
+        pooja_type: selectedPoojaType,
         package_name: selectedPackage,
-        package_amount: selectedPackagePrice,
         full_name: fullName,
         gotra: getSankalpValue('gotra'),
         dob: getSankalpValue('dob'),
@@ -728,9 +845,8 @@ async function proceedToPay() {
         purpose: selectedPurpose,
         mannokamna: getSankalpValue('mannokamna'),
         donation_amount: selectedDonation,
-        total_amount: selectedPackagePrice + selectedDonation,
         booking_date: bookingDate,
-        slot: selectedSlot,
+        slot: digital ? null : selectedSlot,
         otp: otp || 'demo',
     };
 
@@ -774,6 +890,7 @@ async function proceedToPay() {
 
 restoreBookingDraft();
 renderAllowedSlots();
+syncPoojaTypeUi();
 if (openReviewStep) {
     nextStep(5);
     updateReviewSummary();

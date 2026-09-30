@@ -39,6 +39,7 @@ class PanditLiveSessionController extends Controller
             ->map(fn (Model $booking) => $this->liveSessionRow($booking, 'hawan'));
 
         $poojaSessions = PoojaSession::with(['sankalp', 'user', 'service', 'videoMeeting'])
+            ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
             ->where('pandit_id', $pandit->id)
             ->where('payment_status', 'paid')
             ->where('status', 'confirmed')
@@ -118,7 +119,7 @@ class PanditLiveSessionController extends Controller
     {
         return match ($type) {
             'hawan' => HawanSession::findOrFail($id),
-            'pooja' => PoojaSession::findOrFail($id),
+            'pooja' => PoojaSession::where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))->findOrFail($id),
         };
     }
 

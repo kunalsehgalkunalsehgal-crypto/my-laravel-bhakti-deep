@@ -292,11 +292,61 @@
     z-index: 12;
 }
 
-.pandit-dashboard-brand {
+/* .pandit-dashboard-brand {
     display: inline-flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 26px;
+} */
+ .pandit-dashboard-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.pandit-sidebar-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 26px;
+}
+
+.pandit-sidebar-close {
+    display: none;
+}
+
+@media (max-width: 991px) {
+    .pandit-sidebar-close {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(199, 141, 34, 0.35);
+    border-radius: 50%;
+
+    background: #fff;
+    color: var(--saffron-dark);
+
+    font-size: 18px;
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.pandit-sidebar-close:hover {
+    background: var(--saffron);
+    border-color: var(--saffron);
+    color: #fff;
+}
 }
 
 .pandit-sidebar nav {
@@ -346,7 +396,8 @@
 .pandit-dashboard-main {
     min-width: 0;
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
+    /* overflow: hidden; */
 }
 
 .pandit-topbar {
@@ -361,8 +412,9 @@
     padding: 14px 28px;
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 15;
 }
+
 
 .pandit-menu-toggle {
     display: none;
@@ -1898,5 +1950,113 @@
 @media (max-width: 575px) {
     .pandit-booking-actions .pandit-muted-action {
         width: 100%;
+    }
+}
+
+
+/* =========================================================
+   PANDIT TOPBAR - TABLET / MOBILE FIX
+   ========================================================= */
+
+@media (max-width: 991px) {
+
+    .pandit-topbar {
+        display: flex;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start;
+        flex-wrap: nowrap !important;
+
+        gap: 10px;
+
+        min-height: 76px;
+
+        padding: 10px 14px;
+    }
+
+
+    /* Hamburger */
+    .pandit-menu-button {
+        flex: 0 0 42px;
+    }
+
+
+    /* BhaktiDeep logo */
+    .pandit-mobile-brand {
+        display: inline-flex;
+        align-items: center;
+
+        min-width: 0;
+        flex: 0 1 auto;
+
+        gap: 8px;
+    }
+
+    .pandit-mobile-brand .brand-title {
+        white-space: nowrap;
+    }
+
+
+    /* Right side */
+    .pandit-topbar-profile {
+        margin-left: auto;
+
+        display: flex;
+        align-items: center;
+
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+
+        gap: 8px;
+    }
+
+
+    /* Hide logout on tablet/mobile */
+    .pandit-topbar-logout {
+        display: none !important;
+    }
+
+
+    /* Hide profile / diya image */
+    .pandit-topbar-profile > img {
+        display: none !important;
+    }
+
+
+    /* Hide pandit name + verified */
+    .pandit-topbar-profile > div {
+        display: none !important;
+    }
+}
+
+
+/* Extra small screens */
+@media (max-width: 575px) {
+
+    .pandit-topbar {
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+
+        gap: 8px;
+
+        padding: 10px 12px;
+    }
+
+
+    .pandit-mobile-brand .brand-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+
+    .pandit-mobile-brand .brand-title {
+        font-size: 15px;
+    }
+
+
+    .pandit-icon-button {
+        width: 38px;
+        height: 38px;
     }
 }

@@ -54,6 +54,7 @@ class PanditSelectionController extends Controller
             'slot' => ['required', 'string'],
             'mode' => ['nullable', 'string'],
             'hawan_type' => ['nullable', 'in:samuhik,special'],
+            'pooja_type' => $serviceType === 'pooja' ? ['required', 'in:live'] : ['nullable', 'in:live'],
             'language' => ['nullable', 'string'],
             'experience' => ['nullable', 'integer'],
             'qualification' => ['nullable', 'string'],
@@ -65,6 +66,9 @@ class PanditSelectionController extends Controller
         ]);
 
         $hawan = $this->findRitual($slug, $serviceType);
+        if ($serviceType === 'pooja') {
+            $this->selectedPoojaType($hawan, $request->input('pooja_type'));
+        }
         $this->ensureRitualSlot($hawan, $request->slot, $request->date);
         $slotTimes = app(PanditBookingService::class)->slotTimes($request->slot);
         $day = Carbon::parse($request->date)->format('l');
@@ -95,6 +99,9 @@ class PanditSelectionController extends Controller
     private function profileShow(Request $request, string $slug, int $pandit, string $serviceType)
     {
         $hawan = $this->findRitual($slug, $serviceType);
+        if ($serviceType === 'pooja') {
+            $this->selectedPoojaType($hawan, $request->input('pooja_type'));
+        }
 
         $pandit = Pandit::with([
             'qualification',
@@ -130,6 +137,7 @@ class PanditSelectionController extends Controller
             'slot' => ['required', 'string'],
             'mode' => ['nullable', 'string'],
             'hawan_type' => ['nullable', 'in:samuhik,special'],
+            'pooja_type' => $serviceType === 'pooja' ? ['required', 'in:live'] : ['nullable', 'in:live'],
             'booking_mode' => ['nullable', 'in:online,offline'],
             'state' => ['nullable', 'string'],
             'city' => ['nullable', 'string'],
@@ -140,6 +148,9 @@ class PanditSelectionController extends Controller
         $this->ensureRitualSlot($hawan, $request->slot, $request->date);
         $selectedHawanType = $serviceType === 'hawan'
             ? $this->selectedHawanType($hawan, $request->input('hawan_type'))
+            : null;
+        $selectedPoojaType = $serviceType === 'pooja'
+            ? $this->selectedPoojaType($hawan, $request->input('pooja_type'))
             : null;
         $bookingService = app(PanditBookingService::class);
         $serviceNames = $this->serviceNames($hawan['name'], $serviceType);
@@ -176,7 +187,7 @@ class PanditSelectionController extends Controller
             $sessionKey.'.pandit_name' => $matchedPandit->pandit_name ?: $matchedPandit->full_name,
             $sessionKey.'.date' => $request->date,
             $sessionKey.'.slot' => $request->slot,
-            $sessionKey.'.mode' => $selectedHawanType['title'] ?? ($request->mode ?: 'Live + Replay'),
+            $sessionKey.'.mode' => $selectedHawanType['title'] ?? $selectedPoojaType['title'] ?? ($request->mode ?: 'Live + Replay'),
             $sessionKey.'.booking_mode' => $bookingMode,
             $sessionKey.'.state' => $bookingMode === 'offline' ? $request->state : null,
             $sessionKey.'.city' => $bookingMode === 'offline' ? $request->city : null,
@@ -187,6 +198,14 @@ class PanditSelectionController extends Controller
                 $sessionKey.'.hawan_type' => $selectedHawanType['key'],
                 $sessionKey.'.hawan_type_title' => $selectedHawanType['title'],
                 $sessionKey.'.hawan_type_price' => $selectedHawanType['price'],
+            ]);
+        }
+
+        if ($selectedPoojaType) {
+            session([
+                $sessionKey.'.pooja_type' => $selectedPoojaType['key'],
+                $sessionKey.'.pooja_type_title' => $selectedPoojaType['title'],
+                $sessionKey.'.pooja_type_price' => $selectedPoojaType['price'],
             ]);
         }
 
@@ -527,6 +546,15 @@ class PanditSelectionController extends Controller
             : $enabledTypes->first();
 
         abort_unless($selectedType, 404);
+
+        return $selectedType;
+    }
+
+    private function selectedPoojaType(array $pooja, ?string $type): array
+    {
+        $selectedType = collect($pooja['types'] ?? [])->firstWhere('key', $type);
+
+        abort_unless($type === 'live' && $selectedType, 404);
 
         return $selectedType;
     }

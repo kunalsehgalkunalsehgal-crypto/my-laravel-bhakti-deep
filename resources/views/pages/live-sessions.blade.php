@@ -86,14 +86,103 @@
         gap: 12px;
     }
 
-    .live-info-row {
+    /* .live-info-row {
         display: grid;
         grid-template-columns: minmax(0, 1.4fr) minmax(110px, .7fr) minmax(110px, .8fr);
         gap: 12px;
         align-items: center;
         padding: 14px 0;
         border-bottom: 1px solid rgba(199, 141, 34, .18);
-    }
+    } */
+.live-info-row {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.4fr)
+        minmax(120px, .75fr)
+        minmax(90px, .55fr)
+        auto;
+
+    gap: 12px;
+    align-items: center;
+
+    padding: 14px 0;
+
+    border-bottom: 1px solid rgba(199, 141, 34, .18);
+}.live-info-row strong small {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.live-info-row .btn {
+    justify-self: end;
+    white-space: nowrap;
+}
+
+
+/* Empty schedule */
+
+.live-schedule-empty {
+    margin-top: 18px;
+
+    padding: 24px;
+
+    border: 1px dashed rgba(199, 141, 34, .34);
+    border-radius: 16px;
+
+    background: rgba(251, 244, 223, .06);
+}
+
+.live-schedule-empty-icon {
+    width: 46px;
+    height: 46px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: rgba(199, 141, 34, .16);
+
+    color: var(--gold);
+    font-size: 21px;
+}
+
+.live-schedule-empty h3 {
+    margin: 14px 0 7px;
+
+    font-size: 20px;
+}
+
+.live-schedule-empty p {
+    max-width: 620px;
+
+    margin: 0;
+
+    color: var(--muted);
+
+    line-height: 1.65;
+}
+
+.live-schedule-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 18px;
+}
+
+
+
+
 
     .live-info-row:last-child {
         border-bottom: 0;
@@ -160,6 +249,27 @@
         .live-steps {
             grid-template-columns: 1fr;
         }
+        .live-info-row {
+    grid-template-columns: 1fr;
+    gap: 7px;
+}
+
+.live-info-row .btn {
+    justify-self: start;
+}
+
+.live-schedule-empty {
+    padding: 18px;
+}
+
+.live-schedule-empty-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+.live-schedule-empty-actions .btn {
+    width: 100%;
+}
     }
 </style>
 @endpush
@@ -214,12 +324,17 @@
         ],
     ];
 
-    $schedule = [
-        ['Morning Aarti', '6:00 AM', 'Free'],
-        ['Evening Aarti', '7:00 PM', 'Free'],
-        ['Booked Pooja Sessions', 'As per selected slot', 'Booking Required'],
-        ['Booked Hawan Sessions', 'As per selected slot', 'Booking Required'],
-    ];
+    // $schedule = [
+    //     ['Morning Aarti', '6:00 AM', 'Free'],
+    //     ['Evening Aarti', '7:00 PM', 'Free'],
+    //     ['Booked Pooja Sessions', 'As per selected slot', 'Booking Required'],
+    //     ['Booked Hawan Sessions', 'As per selected slot', 'Booking Required'],
+    // ];
+$todaySchedule = $todaySchedule ?? collect();
+
+
+
+
 
     $steps = [
         'Choose Live Session',
@@ -304,7 +419,7 @@
                 <div class="glass side-panel h-100">
                     <div class="section-kicker"><i class="bi bi-calendar2-heart"></i> Today</div>
                     <h2>Today's <span class="gold-text">Live Schedule</span></h2>
-                    <div class="live-info-list mt-3">
+                    {{-- <div class="live-info-list mt-3">
                         @foreach ($schedule as $item)
                             <div class="live-info-row">
                                 <strong>{{ $item[0] }}</strong>
@@ -312,7 +427,94 @@
                                 <em>{{ $item[2] }}</em>
                             </div>
                         @endforeach
-                    </div>
+                    </div> --}}
+                    @if ($todaySchedule->isNotEmpty())
+
+    <div class="live-info-list mt-3">
+
+        @foreach ($todaySchedule as $item)
+
+            <div class="live-info-row">
+
+                <strong>
+                    {{ $item['title'] }}
+
+                    <small>
+                        {{ $item['type'] }}
+                    </small>
+                </strong>
+
+                <span>
+                    {{ $item['time'] }}
+                </span>
+
+                <em>
+                    {{ $item['mode'] }}
+                </em>
+
+                <a
+                    href="{{ $item['url'] }}"
+                    class="btn btn-ghost-gold btn-sm"
+                >
+                    Open
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+
+            </div>
+
+        @endforeach
+
+    </div>
+
+@else
+
+    <div class="live-schedule-empty">
+
+        <span class="live-schedule-empty-icon">
+            <i class="bi bi-calendar2-heart"></i>
+        </span>
+
+        <h3>
+            No Pooja or Hawan booked for today
+        </h3>
+
+        <p>
+            You do not have a confirmed live Pooja or Hawan
+            scheduled for today. Book a session for a date and
+            time that suits you, or join a free Aarti anytime.
+        </p>
+
+        <div class="live-schedule-empty-actions">
+
+            <a
+                href="{{ $poojaBookingUrl }}"
+                class="btn btn-saffron btn-sm"
+            >
+                <i class="bi bi-stars"></i>
+                Book Pooja
+            </a>
+
+            <a
+                href="{{ $hawanBookingUrl }}"
+                class="btn btn-ghost-gold btn-sm"
+            >
+                <i class="bi bi-fire"></i>
+                Book Hawan
+            </a>
+
+            <a
+                href="{{ route('aarti.index') }}"
+                class="btn btn-ghost-gold btn-sm"
+            >
+                <i class="bi bi-broadcast"></i>
+                Join Free Aarti
+            </a>
+
+        </div>
+
+    </div>
+
+@endif
                 </div>
             </div>
             <div class="col-lg-5">

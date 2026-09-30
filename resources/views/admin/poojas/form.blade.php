@@ -41,6 +41,76 @@
                 <input type="number" name="base_price" value="{{ old('base_price', $record->base_price ?: 0) }}" min="0" required>
                 @error('base_price') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
             </div>
+            <div class="full" style="border:1px solid #eadfd3;border-radius:10px;padding:18px;margin-top:8px;">
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <input style="width:auto" type="checkbox" name="live_pooja_enabled" value="1" @checked(old('live_pooja_enabled', $record->exists ? $record->live_pooja_enabled : true))>
+                    Enable Live Pooja
+                </label>
+                <div class="form-grid">
+                    <div>
+                        <label>Live Pooja Title</label>
+                        <input type="text" name="live_pooja_title" value="{{ old('live_pooja_title', $record->live_pooja_title ?: 'Live Pooja') }}">
+                        @error('live_pooja_title') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label>Live Pooja Price</label>
+                        <input type="number" name="live_pooja_price" value="{{ old('live_pooja_price', $record->live_pooja_price ?: $record->base_price) }}" min="0">
+                        @error('live_pooja_price') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="full">
+                        <label>Live Pooja Description</label>
+                        <textarea name="live_pooja_description">{{ old('live_pooja_description', $record->live_pooja_description) }}</textarea>
+                        @error('live_pooja_description') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+            </div>
+            <div class="full" style="border:1px solid #eadfd3;border-radius:10px;padding:18px;margin-top:8px;">
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <input style="width:auto" type="checkbox" name="digital_pooja_enabled" value="1" @checked(old('digital_pooja_enabled', $record->exists ? $record->digital_pooja_enabled : true))>
+                    Enable Digital Pooja
+                </label>
+                <div class="form-grid">
+                    <div>
+                        <label>Digital Pooja Title</label>
+                        <input type="text" name="digital_pooja_title" value="{{ old('digital_pooja_title', $record->digital_pooja_title ?: 'Digital Pooja') }}">
+                        @error('digital_pooja_title') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label>Digital Pooja Price</label>
+                        <input type="number" name="digital_pooja_price" value="{{ old('digital_pooja_price', $record->digital_pooja_price ?: $record->base_price) }}" min="0">
+                        @error('digital_pooja_price') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label>Digital Access Duration (minutes)</label>
+                        <input type="number" name="digital_pooja_access_minutes" value="{{ old('digital_pooja_access_minutes', $record->digital_pooja_access_minutes ?: 120) }}" min="1" required>
+                        @error('digital_pooja_access_minutes') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="full">
+                        <label>Digital Pooja Description</label>
+                        <textarea name="digital_pooja_description">{{ old('digital_pooja_description', $record->digital_pooja_description) }}</textarea>
+                        @error('digital_pooja_description') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="full">
+                        <label>Digital Pooja Video</label>
+                        <input type="file" name="digital_pooja_video" accept="video/mp4,video/webm,video/quicktime">
+                        @if($record->digital_pooja_video)
+                            <p style="margin-top:8px;"><a href="{{ asset('storage/'.$record->digital_pooja_video) }}" target="_blank" style="color:#8a3ffc;">View current video</a></p>
+                        @endif
+                        @error('digital_pooja_video') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="full">
+                        <label>Digital Mantra Audio</label>
+                        <select name="digital_pooja_audio_id">
+                            <option value="">Select mantra audio</option>
+                            @foreach($digitalAudioOptions as $audioId => $audioTitle)
+                                <option value="{{ $audioId }}" @selected((string) old('digital_pooja_audio_id', $record->digital_pooja_audio_id) === (string) $audioId)>{{ $audioTitle }}</option>
+                            @endforeach
+                        </select>
+                        <p style="color:#667085;font-size:12px;margin:6px 0 0">Uses an active mantra from the existing Audio Library.</p>
+                        @error('digital_pooja_audio_id') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+            </div>
             <div>
                 <label>Duration</label>
                 <input type="text" name="duration" value="{{ old('duration', $record->duration) }}" placeholder="45 min">

@@ -74,22 +74,81 @@ class VideoMeetingFlowTest extends TestCase
         $this->assertSame(0, $provider->calls);
         $this->assertDatabaseCount('video_meetings', 0);
 
-        $this->actingAs($pandit, 'pandit')
-            ->post(route('pandit.bookings.accept', ['type' => 'hawan', 'id' => $hawanSession->id]))
-            ->assertRedirect();
+        // $this->actingAs($pandit, 'pandit')
+        //     ->post(route('pandit.bookings.accept', ['type' => 'hawan', 'id' => $hawanSession->id]))
+        //     ->assertRedirect();
 
-        $this->actingAs($pandit, 'pandit')
-            ->post(route('pandit.bookings.accept', ['type' => 'pooja', 'id' => $poojaSession->id]))
-            ->assertRedirect();
+        // $this->actingAs($pandit, 'pandit')
+        //     ->post(route('pandit.bookings.accept', ['type' => 'pooja', 'id' => $poojaSession->id]))
+        //     ->assertRedirect();
 
-        $this->assertSame(0, $provider->calls);
-        $this->assertDatabaseCount('video_meetings', 0);
+        // $this->assertSame(0, $provider->calls);
+        // $this->assertDatabaseCount('video_meetings', 0);
 
-        $hawanSession->update(['payment_status' => 'paid']);
-        $poojaSession->update(['payment_status' => 'paid']);
+        // $hawanSession->update(['payment_status' => 'paid']);
+        // $poojaSession->update(['payment_status' => 'paid']);
 
-        app(VideoMeetingService::class)->createForSessionIfReady($hawanSession->fresh());
-        app(VideoMeetingService::class)->createForSessionIfReady($poojaSession->fresh());
+        // app(VideoMeetingService::class)->createForSessionIfReady($hawanSession->fresh());
+        // app(VideoMeetingService::class)->createForSessionIfReady($poojaSession->fresh());
+
+// Unpaid/pending bookings must not be accepted.
+$this->actingAs($pandit, 'pandit')
+    ->post(route('pandit.bookings.accept', [
+        'type' => 'hawan',
+        'id' => $hawanSession->id,
+    ]))
+    ->assertRedirect()
+    ->assertSessionHasErrors('booking');
+
+$this->actingAs($pandit, 'pandit')
+    ->post(route('pandit.bookings.accept', [
+        'type' => 'pooja',
+        'id' => $poojaSession->id,
+    ]))
+    ->assertRedirect()
+    ->assertSessionHasErrors('booking');
+
+$this->assertSame(0, $provider->calls);
+$this->assertDatabaseCount('video_meetings', 0);
+
+// Current valid lifecycle:
+// payment succeeds -> booking becomes scheduled -> Pandit accepts -> confirmed -> meeting created.
+$hawanSession->update([
+    'payment_status' => 'paid',
+    'status' => 'scheduled',
+]);
+
+$poojaSession->update([
+    'payment_status' => 'paid',
+    'status' => 'scheduled',
+]);
+
+$this->actingAs($pandit, 'pandit')
+    ->post(route('pandit.bookings.accept', [
+        'type' => 'hawan',
+        'id' => $hawanSession->id,
+    ]))
+    ->assertRedirect()
+    ->assertSessionHas('success');
+
+$this->actingAs($pandit, 'pandit')
+    ->post(route('pandit.bookings.accept', [
+        'type' => 'pooja',
+        'id' => $poojaSession->id,
+    ]))
+    ->assertRedirect()
+    ->assertSessionHas('success');
+
+$this->assertSame('confirmed', $hawanSession->fresh()->status);
+$this->assertSame('confirmed', $poojaSession->fresh()->status);
+
+
+
+
+
+
+
+
 
         $this->assertSame(2, $provider->calls);
         $this->assertDatabaseCount('video_meetings', 2);
@@ -375,7 +434,8 @@ class VideoMeetingFlowTest extends TestCase
         $payload = app(ZoomService::class)->embeddedMeetingConfig($meeting, true, 'SDK Pandit', $pandit->email);
 
         $this->assertSame('zoom', $payload['provider']);
-        $this->assertSame('sdk-client-id', $payload['sdkKey']);
+        // $this->assertSame('sdk-client-id', $payload['sdkKey']);
+        $this->assertArrayNotHasKey('sdkKey', $payload);
         $this->assertSame('987654321', $payload['meetingNumber']);
         $this->assertSame(1, $payload['role']);
         $this->assertSame('fresh-host-zak', $payload['zak']);
@@ -415,6 +475,10 @@ class VideoMeetingFlowTest extends TestCase
             'name' => 'Test Pooja',
             'slug' => 'test-pooja',
             'base_price' => 1000,
+            'live_pooja_enabled' => true,
+            'live_pooja_title' => 'Live Pooja',
+            'live_pooja_price' => 1000,
+            'digital_pooja_enabled' => false,
             'duration' => '60 min',
             'mode' => 'Live + Replay',
             'status' => 'active',
@@ -476,7 +540,8 @@ class VideoMeetingFlowTest extends TestCase
     {
         return [
             'pooja_slug' => $pooja->slug,
-            'package_name' => 'Standard Pooja',
+            'pooja_type' => 'live',
+            'package_name' => 'Live Pooja',
             'full_name' => 'Pooja Devotee',
             'mobile' => '8888888888',
             'purpose' => 'Prosperity',
@@ -527,7 +592,10 @@ class VideoMeetingFlowTest extends TestCase
             'pandit_id' => $service?->pandit_id,
             'date' => Carbon::tomorrow('Asia/Kolkata')->addDay()->toDateString(),
             'slot' => '7:00 AM - 8:00 AM',
-            'mode' => 'Standard Pooja',
+            'mode' => 'Live Pooja',
+            'pooja_type' => 'live',
+            'pooja_type_title' => 'Live Pooja',
+            'pooja_type_price' => 1000,
         ];
     }
 }

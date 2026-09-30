@@ -158,11 +158,12 @@
                 <input type="hidden" name="slot" value="{{ request('slot') }}">
                 <input type="hidden" name="mode" value="{{ request('mode', 'Live + Replay') }}">
                 <input type="hidden" name="hawan_type" value="{{ request('hawan_type') }}">
+                <input type="hidden" name="pooja_type" value="{{ request('pooja_type') }}">
                 <input type="hidden" name="booking_mode" value="{{ request('booking_mode', 'online') }}">
                 <input type="hidden" name="state" value="{{ request('state') }}">
                 <input type="hidden" name="city" value="{{ request('city') }}">
                 <button class="btn btn-saffron w-100" type="submit">Select Pandit</button>
-                <a class="btn btn-ghost-gold w-100 mt-2" href="{{ route($serviceType.'.pandits', ['slug' => $hawan['slug'], 'date' => request('date'), 'slot' => request('slot'), 'mode' => request('mode', 'Live + Replay'), 'hawan_type' => request('hawan_type'), 'booking_mode' => request('booking_mode', 'online'), 'state' => request('state'), 'city' => request('city')]) }}">Back to Pandits</a>
+                <a class="btn btn-ghost-gold w-100 mt-2" href="{{ route($serviceType.'.pandits', ['slug' => $hawan['slug'], 'date' => request('date'), 'slot' => request('slot'), 'mode' => request('mode', 'Live + Replay'), 'hawan_type' => request('hawan_type'), 'pooja_type' => request('pooja_type'), 'booking_mode' => request('booking_mode', 'online'), 'state' => request('state'), 'city' => request('city')]) }}">Back to Pandits</a>
             </form>
         </aside>
     </section>

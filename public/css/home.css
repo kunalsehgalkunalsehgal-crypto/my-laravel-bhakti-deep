@@ -1519,4 +1519,15 @@ margin: 0px;
         min-height: fit-content;
         margin-top: 18px;
     }
+} 
+.temple-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+
+.temple-card-link:hover,
+.temple-card-link:focus {
+    text-decoration: none;
+    color: inherit;
 }

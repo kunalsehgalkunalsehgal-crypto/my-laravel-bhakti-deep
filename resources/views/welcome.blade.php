@@ -289,7 +289,7 @@
                     <p>Dynamic themes, mantras, ambiences &amp; visuals for every pooja and hawan.</p>
                 </div>
 
-                <div class="row g-4 horizontal-scroll">
+                {{-- <div class="row g-4 horizontal-scroll">
                     @foreach ([['assets/lakshmi-hero.jpg', 'Lakshmi Pooja', 'Gold · Lotus · Prosperity'], ['assets/shiv.jpg', 'Shiv Pooja', 'Kailash · Om Namah Shivaya'], ['assets/hanuman.jpg', 'Hanuman Pooja', 'Saffron · Power · Bhakti'], ['assets/hanuman.jpg', 'Hanuman Pooja', 'Saffron · Power · Bhakti'], ['assets/hanuman.jpg', 'Hanuman Pooja', 'Saffron · Power · Bhakti'], ['assets/hanuman.jpg', 'Hanuman Pooja', 'Saffron · Power · Bhakti'], ['assets/hanuman.jpg', 'Hanuman Pooja', 'Saffron · Power · Bhakti'], ['assets/havan-live.jpg', 'Hawan Experience', 'Fire · Mantra · Shanti']] as $item)
                         <div class="col-sm-6 col-lg-3">
                             <div class="temple-card">
@@ -302,7 +302,49 @@
                             </div>
                         </div>
                     @endforeach
+                </div> --}}
+                <div class="row g-4 horizontal-scroll">
+
+    @forelse ($homePoojas as $pooja)
+
+        <div class="col-sm-6 col-lg-3">
+
+            <a
+                href="{{ route('pooja.show', $pooja->slug) }}"
+                class="temple-card-link"
+                aria-label="Book {{ $pooja->name }}"
+            >
+                <div class="temple-card">
+
+                    <img
+                        src="{{ $pooja->imageUrl() }}"
+                        alt="{{ $pooja->name }}"
+                    >
+
+                    <div>
+                        <h3>{{ $pooja->name }}</h3>
+
+                        <p>
+                            {{ $pooja->short_description ?: 'Personalized Pooja' }}
+                        </p>
+                    </div>
+
                 </div>
+            </a>
+
+        </div>
+
+    @empty
+
+        <div class="col-12">
+            <p class="text-center mb-0">
+                No pooja services are available right now.
+            </p>
+        </div>
+
+    @endforelse
+
+</div>
             </div>
         </section>
 

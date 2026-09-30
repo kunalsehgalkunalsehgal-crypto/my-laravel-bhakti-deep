@@ -41,6 +41,7 @@ use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\VideoMeetingSdkController;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\DiyaSession;
+use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Models\VideoMeetingAttendance;
@@ -95,8 +96,17 @@ Route::get('/', function () {
             ->whereDate('start_at', today())
             ->count();
     }
+$homePoojas = Pooja::active()
+    ->latest()
+    ->get();
 
-    return view('welcome', compact('liveDiyas', 'liveDiyaCount', 'diyaLitToday'));
+return view('welcome', compact(
+    'liveDiyas',
+    'liveDiyaCount',
+    'diyaLitToday',
+    'homePoojas'
+));
+    // return view('welcome', compact('liveDiyas', 'liveDiyaCount', 'diyaLitToday'));
 })->name('home');
 
 Route::get('/light-diya', [DiyaController::class, 'index'])->middleware('auth')->name('light-diya');
@@ -151,6 +161,7 @@ Route::post('/live-family/{token}/meeting-sdk', [LiveSessionController::class, '
 Route::post('/live-family/{token}/leave', [LiveSessionController::class, 'leaveInvite'])->name('live.family.leave');
 Route::get('/live-sessions', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
+        ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
         // ->where('payment_status', 'paid')
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
@@ -199,13 +210,171 @@ Route::get('/live-sessions', function () {
         }
     }
 
-    $poojaBookings = $poojaBookings->latest()->limit(6)->get();
-    $hawanBookings = $hawanBookings->latest()->limit(6)->get();
+    // $poojaBookings = $poojaBookings->latest()->limit(6)->get();
+    // $hawanBookings = $hawanBookings->latest()->limit(6)->get();
 
-    return view('pages.live-sessions', compact('poojaBookings', 'hawanBookings'));
+    // return view('pages.live-sessions', compact('poojaBookings', 'hawanBookings'));
+
+    /*
+|--------------------------------------------------------------------------
+| Today's Live Schedule
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+| Ye code existing authentication filtering ke BAAD hai.
+| Isliye normal user ko sirf uski bookings,
+| aur pandit ko sirf usko assigned bookings milengi.
+|
+*/
+
+$todayDate = \Illuminate\Support\Carbon::now('Asia/Kolkata')
+    ->toDateString();
+
+
+/*
+|--------------------------------------------------------------------------
+| Today's Pooja bookings
+|--------------------------------------------------------------------------
+*/
+
+$todayPoojaBookings = (clone $poojaBookings)
+    ->whereDate('booking_date', $todayDate)
+    ->orderBy('slot_start_time')
+    ->orderBy('id')
+    ->get();
+
+
+/*
+|--------------------------------------------------------------------------
+| Today's Hawan bookings
+|--------------------------------------------------------------------------
+*/
+
+$todayHawanBookings = (clone $hawanBookings)
+    ->whereDate('booking_date', $todayDate)
+    ->orderBy('slot_start_time')
+    ->orderBy('id')
+    ->get();
+
+
+/*
+|--------------------------------------------------------------------------
+| Build combined today's schedule
+|--------------------------------------------------------------------------
+*/
+
+$todaySchedule = $todayPoojaBookings
+    ->map(function ($booking) {
+
+        $meta = $booking->admin_note
+            ? (json_decode($booking->admin_note, true) ?: [])
+            : [];
+
+        return [
+
+            'type' => 'Pooja',
+
+            'title' => $meta['pooja_name']
+                ?? (
+                    $booking->ritual_slug
+                        ? \Illuminate\Support\Str::headline(
+                            $booking->ritual_slug
+                        )
+                        : 'Personalized Pooja'
+                ),
+
+            'time' => $booking->slot
+                ?: 'Time not available',
+
+            'mode' => $booking->booking_mode === 'offline'
+                ? 'Offline'
+                : 'Online',
+
+            'sort_time' => $booking->slot_start_time
+                ?: '23:59:59',
+
+            'url' => route('live.session', [
+                'type' => 'pooja',
+                'id' => $booking->id,
+            ]),
+        ];
+    })
+
+    ->concat(
+
+        $todayHawanBookings->map(function ($booking) {
+
+            $meta = $booking->admin_note
+                ? (json_decode($booking->admin_note, true) ?: [])
+                : [];
+
+            return [
+
+                'type' => 'Hawan',
+
+                'title' => $meta['hawan_name']
+                    ?? (
+                        $booking->ritual_slug
+                            ? \Illuminate\Support\Str::headline(
+                                $booking->ritual_slug
+                            )
+                            : 'Personalized Hawan'
+                    ),
+
+                'time' => $booking->slot
+                    ?: 'Time not available',
+
+                'mode' => $booking->booking_mode === 'offline'
+                    ? 'Offline'
+                    : 'Online',
+
+                'sort_time' => $booking->slot_start_time
+                    ?: '23:59:59',
+
+                'url' => route('live.session', [
+                    'type' => 'hawan',
+                    'id' => $booking->id,
+                ]),
+            ];
+        })
+    )
+
+    ->sortBy('sort_time')
+    ->values();
+
+
+/*
+|--------------------------------------------------------------------------
+| Existing recent bookings
+|--------------------------------------------------------------------------
+*/
+
+$poojaBookings = $poojaBookings
+    ->latest()
+    ->limit(6)
+    ->get();
+
+$hawanBookings = $hawanBookings
+    ->latest()
+    ->limit(6)
+    ->get();
+
+
+/*
+|--------------------------------------------------------------------------
+| Send data to Blade
+|--------------------------------------------------------------------------
+*/
+
+return view('pages.live-sessions', compact(
+    'poojaBookings',
+    'hawanBookings',
+    'todaySchedule'
+));
 })->name('live.sessions');
 Route::get('/live-sessions/pooja', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
+        ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
         // ->where('payment_status', 'paid')
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
@@ -273,7 +442,9 @@ Route::get('/live-sessions/hawan', function () {
 Route::redirect('/live/session/hawan', '/live-sessions/hawan')->name('live.session.hawan.index');
 Route::get('/live-sessions/{type}/{id}/join', function (string $type, string $id) {
     $bookingRecord = $type === 'pooja'
-        ? PoojaSession::with('videoMeeting')->findOrFail($id)
+        ? PoojaSession::with('videoMeeting')
+            ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
+            ->findOrFail($id)
         : HawanSession::with('videoMeeting')->findOrFail($id);
 
     abort_unless(
@@ -308,7 +479,9 @@ Route::get('/live-sessions/{type}/{id}/join', function (string $type, string $id
 })->whereIn('type', ['pooja', 'hawan'])->name('live.session.join');
 Route::get('/live-sessions/{type}/{id}/start', function (string $type, string $id) {
     $bookingRecord = $type === 'pooja'
-        ? PoojaSession::with('videoMeeting')->findOrFail($id)
+        ? PoojaSession::with('videoMeeting')
+            ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
+            ->findOrFail($id)
         : HawanSession::with('videoMeeting')->findOrFail($id);
 
     abort_unless(
@@ -380,7 +553,9 @@ Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
     }
 
     if ($type === 'pooja') {
-        $bookingRecord = PoojaSession::with(['sankalp', 'user', 'pandit', 'videoMeeting'])->findOrFail($id);
+        $bookingRecord = PoojaSession::with(['sankalp', 'user', 'pandit', 'videoMeeting'])
+            ->where(fn ($query) => $query->where('pooja_type', 'live')->orWhereNull('pooja_type'))
+            ->findOrFail($id);
     }
 
     abort_unless(
@@ -431,6 +606,13 @@ Route::get('/pandit/register', [AuthController::class, 'showPanditRegister'])->n
 Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.nocache'])->group(function () {
     Route::post('/logout', [PanditController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [PanditController::class, 'dashboard'])->name('dashboard');
+
+
+    Route::get('/earnings', [PanditController::class, 'earnings'])->name('earnings');
+
+Route::get('/reviews', [PanditController::class, 'reviews'])
+    ->name('reviews.index');
+
     Route::get('/bookings', [PanditController::class, 'bookings'])->name('bookings.index');
     Route::get('/bookings/{type}/{id}', [PanditController::class, 'showBooking'])
         ->whereIn('type', ['pooja', 'hawan'])
@@ -665,6 +847,10 @@ Route::middleware('auth')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
 Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
+Route::get('/digital-pooja/{session}', [PoojaController::class, 'digital'])->name('pooja.digital.show');
+Route::get('/digital-pooja/{session}/media/{media}', [PoojaController::class, 'digitalMedia'])
+    ->whereIn('media', ['video', 'audio'])
+    ->name('pooja.digital.media');
 Route::get('/notifications', [UserNotificationController::class, 'index'])->name('user.notifications.index');
 Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllRead'])->name('user.notifications.read-all');
 Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markRead'])->name('user.notifications.read');

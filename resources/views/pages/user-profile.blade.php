@@ -531,7 +531,7 @@
                                 @endphp
 
                                 <div class="booking-item">
-                                    <span>{{ $booking->booking_date?->format('d M Y') ?? '-' }}</span>
+                                    <span>{{ $type === 'Pooja' && $booking->pooja_type === 'digital' ? 'Digital Pooja' : ($booking->booking_date?->format('d M Y') ?? '-') }}</span>
                                     <strong>{{ $title }}</strong>
                                     <div class="booking-meta">
                                         <em class="booking-pill">{{ ucfirst($booking->status) }}</em>
@@ -550,8 +550,16 @@
                                             <div><small>Start Time</small><b>{{ $booking->start_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                             <div><small>End Time</small><b>{{ $booking->end_at?->format('d M Y, h:i A') ?? '-' }}</b></div>
                                         </div>
+                                    @elseif($type === 'Pooja' && $booking->pooja_type === 'digital')
+                                        <div class="booking-details">
+                                            <div><small>Type</small><b>Digital Pooja</b></div>
+                                            <div><small>Package</small><b>{{ $booking->pooja_type_title ?: 'Digital Pooja' }}</b></div>
+                                        </div>
                                     @else
                                         <div class="booking-details">
+                                            @if($type === 'Pooja')
+                                                <div><small>Type</small><b>Live Pooja</b></div>
+                                            @endif
                                             <div><small>Pandit</small><b>{{ $booking->pandit?->pandit_name ?: ($booking->pandit?->full_name ?: ($meta['pandit_name'] ?? '-')) }}</b></div>
                                             <div><small>Date and Time</small><b>{{ $booking->booking_date?->format('d M Y') ?? '-' }} {{ $booking->slot ?: '' }}</b></div>
                                             <div><small>Mode</small><b>{{ ucfirst($booking->booking_mode ?: ($meta['booking_mode'] ?? 'online')) }}</b></div>
@@ -566,9 +574,15 @@
                                             <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('diya.session', $booking) }}">
                                                 <i class="bi bi-eye"></i> View Diya
                                             </a>
+                                        @elseif($type === 'Pooja' && $booking->pooja_type === 'digital')
+                                            @if($booking->payment_status === 'paid')
+                                                <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('pooja.digital.show', $booking) }}">
+                                                    <i class="bi bi-play-circle"></i> Watch Pooja
+                                                </a>
+                                            @endif
                                         @else
                                             <a class="btn btn-outline-saffron btn-sm rounded-pill" href="{{ route('live.session', ['type' => strtolower($type), 'id' => $booking->id]) }}">
-                                                <i class="bi bi-eye"></i> View Details
+                                                <i class="bi bi-eye"></i> {{ $type === 'Pooja' ? 'View / Join Live Session' : 'View Details' }}
                                             </a>
 
                                             @if($booking->status === 'completed')

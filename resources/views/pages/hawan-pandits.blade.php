@@ -18,6 +18,7 @@
     $slot = request('slot');
     $mode = request('mode', 'Live + Replay');
     $hawanType = request('hawan_type');
+    $poojaType = request('pooja_type');
     $bookingMode = request('booking_mode', 'online');
     $switchOnlineUrl = route($serviceType.'.pandits', [
         'slug' => $hawan['slug'],
@@ -25,6 +26,7 @@
         'slot' => $slot,
         'mode' => $mode,
         'hawan_type' => $hawanType,
+        'pooja_type' => $poojaType,
         'booking_mode' => 'online',
         'language' => request('language'),
         'experience' => request('experience'),
@@ -54,6 +56,7 @@
             <input type="hidden" name="slot" value="{{ $slot }}">
             <input type="hidden" name="mode" value="{{ $mode }}">
             <input type="hidden" name="hawan_type" value="{{ $hawanType }}">
+            <input type="hidden" name="pooja_type" value="{{ $poojaType }}">
             <input type="hidden" name="view" value="{{ request('view') }}">
 
             <label>Language
@@ -124,7 +127,7 @@
 
         <div class="row g-4 mt-2">
             @forelse($recommendedPandits as $pandit)
-                @include('pages.partials.pandit-card', ['pandit' => $pandit, 'hawan' => $hawan, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawanType' => $hawanType, 'bookingMode' => $bookingMode, 'serviceType' => $serviceType])
+                @include('pages.partials.pandit-card', ['pandit' => $pandit, 'hawan' => $hawan, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawanType' => $hawanType, 'poojaType' => $poojaType, 'bookingMode' => $bookingMode, 'serviceType' => $serviceType])
             @empty
                 <div class="col-12">
                     <div class="empty-pandit-box">
@@ -151,7 +154,7 @@
             <h2>All Matching Pandits</h2>
             <div class="row g-4 mt-2">
                 @foreach($pandits as $pandit)
-                    @include('pages.partials.pandit-card', ['pandit' => $pandit, 'hawan' => $hawan, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawanType' => $hawanType, 'bookingMode' => $bookingMode, 'serviceType' => $serviceType])
+                    @include('pages.partials.pandit-card', ['pandit' => $pandit, 'hawan' => $hawan, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawanType' => $hawanType, 'poojaType' => $poojaType, 'bookingMode' => $bookingMode, 'serviceType' => $serviceType])
                 @endforeach
             </div>
             <div class="mt-4">

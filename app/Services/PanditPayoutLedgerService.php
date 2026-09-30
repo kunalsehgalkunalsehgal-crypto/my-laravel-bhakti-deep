@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BookingUserConfirmation;
+use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Models\PanditPayout;
 use App\Models\PaymentAttempt;
@@ -145,7 +146,7 @@ class PanditPayoutLedgerService
 
     private function upsert(Model $booking, PaymentAttempt $attempt, string $status, string $reason): ?PanditPayout
     {
-        if (! $booking->pandit_id) {
+        if (($booking instanceof PoojaSession && $booking->pooja_type === 'digital') || ! $booking->pandit_id) {
             return null;
         }
 

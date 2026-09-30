@@ -28,9 +28,11 @@
         ['Reports', 'bi-exclamation-triangle', route('pandit.reports.index'), $activeMenu === 'reports'],
         ['Live Sessions', 'bi-camera-video', route('pandit.live-sessions.index'), $activeMenu === 'live-sessions'],
         ['Availability', 'bi-clock-history', route('pandit.availability'), $activeMenu === 'availability'],
-        ['Earnings', 'bi-currency-rupee', '#', $activeMenu === 'earnings'],
-        ['Dakshina', 'bi-gift', '#', $activeMenu === 'dakshina'],
-        ['Reviews', 'bi-chat-heart', '#', $activeMenu === 'reviews'],
+        // ['Earnings', 'bi-currency-rupee', '#', $activeMenu === 'earnings'],
+        // ['Dakshina', 'bi-gift', '#', $activeMenu === 'dakshina'],
+        ['Earnings', 'bi-currency-rupee', route('pandit.earnings'), $activeMenu === 'earnings'],
+        // ['Reviews', 'bi-chat-heart', '#', $activeMenu === 'reviews'],
+        ['Reviews', 'bi-chat-heart', route('pandit.reviews.index'), $activeMenu === 'reviews'],
         ['Documents', 'bi-file-earmark-lock', route('pandit.documents'), $activeMenu === 'documents'],
         ['Bank Details', 'bi-bank', route('pandit.bank-details'), $activeMenu === 'bank-details'],
         ['Notifications', 'bi-bell', route('pandit.notifications'), $activeMenu === 'notifications'],
@@ -53,13 +55,42 @@
 <input type="checkbox" id="panditMenuToggle" class="pandit-menu-toggle">
 <div class="pandit-dashboard-shell">
     <aside class="pandit-sidebar">
-        <a class="pandit-dashboard-brand" href="{{ route('home') }}">
+        {{-- <a class="pandit-dashboard-brand" href="{{ route('home') }}">
             <span class="brand-icon"><i class="bi bi-fire"></i></span>
             <span>
                 <span class="brand-title gold-text">BhaktiDeep</span>
                 <span class="brand-tagline">Pandit Portal</span>
             </span>
+        </a> --}}
+        <div class="pandit-sidebar-brand-row">
+
+        <a class="pandit-dashboard-brand" href="{{ route('home') }}">
+            <span class="brand-icon">
+                <i class="bi bi-fire"></i>
+            </span>
+
+            <span>
+                <span class="brand-title gold-text">
+                    BhaktiDeep
+                </span>
+
+                <span class="brand-tagline">
+                    Pandit Portal
+                </span>
+            </span>
         </a>
+
+        {{-- Mobile sidebar close button --}}
+        <label
+            for="panditMenuToggle"
+            class="pandit-sidebar-close"
+            aria-label="Close menu"
+            title="Close menu"
+        >
+            <i class="bi bi-x-lg"></i>
+        </label>
+
+    </div>
         <nav>
             @foreach($sidebarItems as [$label, $icon, $url, $active])
                 @if($label === 'Logout')

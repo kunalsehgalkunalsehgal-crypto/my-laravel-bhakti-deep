@@ -31,11 +31,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-
+use App\Models\PanditPayout;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 use Illuminate\Pagination\LengthAwarePaginator;
 
 use App\Events\PanditMessageSent;
+
+
+use App\Models\Review;
 
 class PanditController extends Controller
 {
@@ -143,6 +147,666 @@ class PanditController extends Controller
 
     //     return view('pandit.bookings.index', compact('pandit', 'bookings'));
     // }
+    public function earnings(Request $request)
+{
+    $pandit = $this->getPandit();
+
+    if (!$pandit) {
+        return redirect()->route('pandit.login');
+    }
+
+    $validated = $request->validate([
+        'date_filter' => [
+            'nullable',
+            'in:all,today,yesterday,last_7_days,last_30_days,custom'
+        ],
+        'from_date' => ['nullable', 'date'],
+        'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+        'service_type' => ['nullable', 'in:all,hawan,pooja'],
+        'status' => [
+            'nullable',
+            'in:all,hold,ready,processing,paid,cancelled,failed'
+        ],
+        'per_page' => ['nullable', 'integer', 'in:10,15'],
+    ]);
+
+    $dateFilter = $validated['date_filter'] ?? 'all';
+    $fromDate = $validated['from_date'] ?? null;
+    $toDate = $validated['to_date'] ?? null;
+    $serviceType = $validated['service_type'] ?? 'all';
+    $status = $validated['status'] ?? 'all';
+    $perPage = (int) ($validated['per_page'] ?? 15);
+
+    $scope = PanditPayout::query()
+        ->where('pandit_id', $pandit->id)
+        ->whereIn('payout_type', [
+            PanditPayout::TYPE_BOOKING,
+            PanditPayout::TYPE_QUICK_DAKSHINA,
+        ]);
+
+    if ($serviceType === 'hawan') {
+
+        $scope->where(
+            'session_type',
+            HawanSession::class
+        );
+
+    } elseif ($serviceType === 'pooja') {
+
+        $scope->where(
+            'session_type',
+            PoojaSession::class
+        );
+    }
+
+    $bookingDateFilter = function ($query) use (
+        $dateFilter,
+        $fromDate,
+        $toDate
+    ) {
+
+        if ($dateFilter === 'today') {
+
+            $query->whereDate(
+                'booking_date',
+                Carbon::today()
+            );
+
+        } elseif ($dateFilter === 'yesterday') {
+
+            $query->whereDate(
+                'booking_date',
+                Carbon::yesterday()
+            );
+
+        } elseif ($dateFilter === 'last_7_days') {
+
+            $query->whereBetween(
+                'booking_date',
+                [
+                    Carbon::today()->subDays(6),
+                    Carbon::today()
+                ]
+            );
+
+        } elseif ($dateFilter === 'last_30_days') {
+
+            $query->whereBetween(
+                'booking_date',
+                [
+                    Carbon::today()->subDays(29),
+                    Carbon::today()
+                ]
+            );
+
+        } elseif ($dateFilter === 'custom') {
+
+            if ($fromDate) {
+                $query->whereDate(
+                    'booking_date',
+                    '>=',
+                    $fromDate
+                );
+            }
+
+            if ($toDate) {
+                $query->whereDate(
+                    'booking_date',
+                    '<=',
+                    $toDate
+                );
+            }
+        }
+    };
+
+    if ($dateFilter !== 'all') {
+
+        $scope->whereHasMorph(
+            'session',
+            [
+                HawanSession::class,
+                PoojaSession::class
+            ],
+            $bookingDateFilter
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Valid earning statuses
+    |--------------------------------------------------------------------------
+    |
+    | Cancelled / failed payouts should not be counted
+    | inside actual earnings.
+    |
+    */
+
+    $earningStatuses = [
+        PanditPayout::STATUS_HOLD,
+        PanditPayout::STATUS_READY,
+        PanditPayout::STATUS_PROCESSING,
+        PanditPayout::STATUS_PAID,
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Earnings summary
+    |--------------------------------------------------------------------------
+    */
+
+    $totalEarnings = (float) (clone $scope)
+        ->whereIn('status', $earningStatuses)
+        ->sum('payout_amount');
+
+    $totalDakshina = (float) (clone $scope)
+        ->whereIn('status', $earningStatuses)
+        ->sum('dakshina_amount');
+
+    $serviceEarnings = max(
+        $totalEarnings - $totalDakshina,
+        0
+    );
+
+    $paidToBank = (float) (clone $scope)
+        ->where(
+            'status',
+            PanditPayout::STATUS_PAID
+        )
+        ->sum('payout_amount');
+
+    $pendingPayout = (float) (clone $scope)
+        ->whereIn('status', [
+            PanditPayout::STATUS_HOLD,
+            PanditPayout::STATUS_READY,
+            PanditPayout::STATUS_PROCESSING,
+        ])
+        ->sum('payout_amount');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Earnings history
+    |--------------------------------------------------------------------------
+    */
+
+    $rowsQuery = (clone $scope)
+        ->with([
+            'session' => function (MorphTo $morphTo) {
+
+                $morphTo->morphWith([
+
+                    HawanSession::class => [
+                        'user',
+                        'service',
+                        'sankalp'
+                    ],
+
+                    PoojaSession::class => [
+                        'user',
+                        'service',
+                        'sankalp'
+                    ],
+                ]);
+            },
+        ])
+        ->when(
+            $status !== 'all',
+            fn ($query) =>
+                $query->where('status', $status)
+        )
+        ->latest('created_at');
+
+    $payouts = $rowsQuery
+        ->paginate($perPage)
+        ->withQueryString();
+
+    $payouts
+        ->getCollection()
+        ->transform(
+            fn (PanditPayout $payout) =>
+                $this->formatEarningRow($payout)
+        );
+
+    return view(
+        'pandit.earnings.index',
+        [
+            'pandit' => $pandit,
+
+            'payouts' => $payouts,
+
+            'summary' => [
+                'total' => $totalEarnings,
+                'service' => $serviceEarnings,
+                'dakshina' => $totalDakshina,
+                'paid' => $paidToBank,
+                'pending' => $pendingPayout,
+            ],
+
+            'filters' => [
+                'date_filter' => $dateFilter,
+                'from_date' => $fromDate,
+                'to_date' => $toDate,
+                'service_type' => $serviceType,
+                'status' => $status,
+                'per_page' => $perPage,
+            ],
+        ]
+    );
+}
+
+
+private function formatEarningRow(
+    PanditPayout $payout
+): array {
+
+    $session = $payout->session;
+
+    $meta = $session?->admin_note
+        ? (
+            json_decode(
+                $session->admin_note,
+                true
+            ) ?: []
+        )
+        : [];
+
+    $type = $session instanceof HawanSession
+        ? 'hawan'
+        : (
+            $session instanceof PoojaSession
+                ? 'pooja'
+                : null
+        );
+
+    $serviceName = $type
+        ? (
+            $meta[$type . '_name']
+            ?? $session?->service?->name
+            ?? ucfirst($type) . ' Booking'
+        )
+        : 'Dakshina';
+
+    $dakshina =
+        (float) $payout->dakshina_amount;
+
+    $payoutAmount =
+        (float) $payout->payout_amount;
+
+    $serviceEarning =
+        $payout->payout_type
+        === PanditPayout::TYPE_QUICK_DAKSHINA
+
+        ? 0.0
+
+        : max(
+            $payoutAmount - $dakshina,
+            0
+        );
+
+    return [
+
+        'id' => $payout->id,
+
+        'booking_id' =>
+            $type && $session
+
+            ? strtoupper($type)
+                . '-'
+                . $session->id
+
+            : 'DAKSHINA-'
+                . $payout->id,
+
+        'type' => $type,
+
+        'service_name' =>
+            $serviceName,
+
+        'yajman' =>
+            $session?->sankalp?->full_name
+            ?? $session?->user?->name
+            ?? 'Not added',
+
+        'booking_date' =>
+            $session?->booking_date,
+
+        'booking_status' =>
+            $session?->status
+            ?? 'not_available',
+
+        'payment_status' =>
+            $session?->payment_status
+            ?? (
+                $payout->donation_id
+                    ? 'paid'
+                    : 'not_available'
+            ),
+
+        'payout_status' =>
+            $payout->status,
+
+        'payout_type' =>
+            $payout->payout_type,
+
+        'service_earning' =>
+            $serviceEarning,
+
+        'dakshina' =>
+            $dakshina,
+
+        'total' =>
+            $payoutAmount,
+
+        'currency' =>
+            $payout->currency ?: 'INR',
+
+        'paid_at' =>
+            $payout->paid_at,
+
+        'cancel_reason' =>
+            $session?->pandit_cancel_reason,
+
+        'detail_url' =>
+            $type && $session
+
+            ? route(
+                'pandit.bookings.show',
+                [
+                    'type' => $type,
+                    'id' => $session->id
+                ]
+            )
+
+            : null,
+    ];
+}
+public function reviews(Request $request)
+{
+    $pandit = $this->getPandit();
+
+    if (!$pandit) {
+        return redirect()->route('pandit.login');
+    }
+
+    $validated = $request->validate([
+        'rating' => ['nullable', 'integer', 'between:1,5'],
+        'service_type' => ['nullable', 'in:all,pooja,hawan'],
+        'per_page' => ['nullable', 'integer', 'in:10,15'],
+    ]);
+
+    $rating = isset($validated['rating'])
+        ? (int) $validated['rating']
+        : null;
+
+    $serviceType = $validated['service_type'] ?? 'all';
+    $perPage = (int) ($validated['per_page'] ?? 10);
+
+    /*
+     * Only reviews RECEIVED by the logged-in Pandit.
+     *
+     * review_by = user:
+     * Yajman reviewed Pandit.
+     *
+     * review_by = pandit:
+     * Pandit reviewed Yajman.
+     * Those are NOT shown here.
+     */
+    $baseQuery = Review::query()
+        ->where('pandit_id', $pandit->id)
+        ->where('review_by', 'user');
+
+    $ratingCounts = (clone $baseQuery)
+        ->selectRaw('rating, COUNT(*) as total')
+        ->groupBy('rating')
+        ->pluck('total', 'rating');
+
+    $totalReviews = (int) (clone $baseQuery)->count();
+
+    $averageRating = $totalReviews > 0
+        ? round((float) (clone $baseQuery)->avg('rating'), 1)
+        : 0.0;
+
+    $summary = [
+        'total' => $totalReviews,
+
+        'average' => $averageRating,
+
+        'five_star' => (int) ($ratingCounts[5] ?? 0),
+
+        'pooja' => (int) (clone $baseQuery)
+            ->where('booking_type', 'pooja')
+            ->count(),
+
+        'hawan' => (int) (clone $baseQuery)
+            ->where('booking_type', 'hawan')
+            ->count(),
+    ];
+
+    $distribution = collect(range(5, 1))
+        ->mapWithKeys(
+            fn (int $star) => [
+                $star => (int) ($ratingCounts[$star] ?? 0)
+            ]
+        );
+
+    $reviews = (clone $baseQuery)
+
+        ->when(
+            $rating,
+            fn ($query) =>
+                $query->where('rating', $rating)
+        )
+
+        ->when(
+            $serviceType !== 'all',
+            fn ($query) =>
+                $query->where(
+                    'booking_type',
+                    $serviceType
+                )
+        )
+
+        ->latest('created_at')
+
+        ->paginate($perPage)
+
+        ->withQueryString();
+
+
+    /*
+     * Booking IDs from current page.
+     */
+
+    $poojaIds = $reviews
+        ->getCollection()
+        ->where('booking_type', 'pooja')
+        ->pluck('booking_id')
+        ->filter()
+        ->unique()
+        ->values();
+
+    $hawanIds = $reviews
+        ->getCollection()
+        ->where('booking_type', 'hawan')
+        ->pluck('booking_id')
+        ->filter()
+        ->unique()
+        ->values();
+
+
+    /*
+     * Load bookings in batches.
+     *
+     * This avoids one query for every review.
+     */
+
+    $poojaBookings = PoojaSession::query()
+
+        ->with([
+            'user',
+            'service',
+            'sankalp'
+        ])
+
+        ->where(
+            'pandit_id',
+            $pandit->id
+        )
+
+        ->whereIn(
+            'id',
+            $poojaIds
+        )
+
+        ->get()
+
+        ->keyBy('id');
+
+
+    $hawanBookings = HawanSession::query()
+
+        ->with([
+            'user',
+            'service',
+            'sankalp'
+        ])
+
+        ->where(
+            'pandit_id',
+            $pandit->id
+        )
+
+        ->whereIn(
+            'id',
+            $hawanIds
+        )
+
+        ->get()
+
+        ->keyBy('id');
+
+
+    /*
+     * Prepare data for Blade.
+     */
+
+    $reviews->getCollection()->transform(
+        function (Review $review)
+        use (
+            $poojaBookings,
+            $hawanBookings
+        ) {
+
+            $booking =
+                $review->booking_type === 'pooja'
+                    ? $poojaBookings->get(
+                        $review->booking_id
+                    )
+                    : $hawanBookings->get(
+                        $review->booking_id
+                    );
+
+            $meta = $this->decodeBookingMeta(
+                $booking?->admin_note
+            );
+
+            $serviceKey =
+                $review->booking_type === 'pooja'
+                    ? 'pooja_name'
+                    : 'hawan_name';
+
+
+            return [
+
+                'id' =>
+                    $review->id,
+
+                'type' =>
+                    $review->booking_type,
+
+                'booking_id' =>
+                    strtoupper(
+                        $review->booking_type
+                    )
+                    . '-'
+                    . $review->booking_id,
+
+                'service_name' =>
+                    $meta[$serviceKey]
+                    ?? $booking?->service?->name
+                    ?? ucfirst(
+                        $review->booking_type
+                    ) . ' Booking',
+
+                'yajman' =>
+                    $booking?->sankalp?->full_name
+                    ?? $booking?->user?->name
+                    ?? 'Yajman',
+
+                'rating' =>
+                    (int) $review->rating,
+
+                'comment' =>
+                    $review->comment,
+
+                'image_path' =>
+                    $review->image_path,
+
+                'reviewed_at' =>
+                    $review->created_at,
+
+                'booking_date' =>
+                    $booking?->booking_date,
+
+                'detail_url' =>
+                    $booking
+                        ? route(
+                            'pandit.bookings.show',
+                            [
+                                'type' =>
+                                    $review->booking_type,
+
+                                'id' =>
+                                    $booking->id,
+                            ]
+                        )
+                        : null,
+            ];
+        }
+    );
+
+
+    return view(
+        'pandit.reviews.index',
+        [
+
+            'pandit' =>
+                $pandit,
+
+            'reviews' =>
+                $reviews,
+
+            'summary' =>
+                $summary,
+
+            'distribution' =>
+                $distribution,
+
+            'filters' => [
+
+                'rating' =>
+                    $rating,
+
+                'service_type' =>
+                    $serviceType,
+
+                'per_page' =>
+                    $perPage,
+            ],
+        ]
+    );
+}
+
+
 public function bookings(Request $request)
 {
     $pandit = $this->getPandit();

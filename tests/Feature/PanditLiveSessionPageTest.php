@@ -79,7 +79,17 @@ class PanditLiveSessionPageTest extends TestCase
             ->assertSee('Present')
             ->assertSee('Left')
             ->assertSee('Not Joined')
-            ->assertSee(route('live.session.sdk', ['type' => 'hawan', 'id' => $booking->id, 'mode' => 'host']), false)
+            // ->assertSee(route('live.session.sdk', ['type' => 'hawan', 'id' => $booking->id, 'mode' => 'host']), false)
+            ->assertSee(route('live.session.client', [
+    'type' => 'hawan',
+    'id' => $booking->id,
+    'mode' => 'host',
+], false), false)
+->assertDontSee(route('live.session.sdk', [
+    'type' => 'hawan',
+    'id' => $booking->id,
+    'mode' => 'host',
+], false), false)
             ->assertSee(route('live.session.start', ['type' => 'hawan', 'id' => $booking->id]), false)
             ->assertDontSee('Report an Issue')
             ->assertDontSee('Family Invite')

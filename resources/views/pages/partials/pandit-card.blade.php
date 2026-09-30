@@ -11,6 +11,7 @@
     $languageText = $pandit->languages->pluck('language')->join(', ');
     $slotText = $pandit->availabilitySlots->map(fn($slot) => substr($slot->start_time, 0, 5).' - '.substr($slot->end_time, 0, 5))->join(', ');
     $hawanType = $hawanType ?? request('hawan_type');
+    $poojaType = $poojaType ?? request('pooja_type');
 @endphp
 
 <div class="col-md-6 col-xl-3">
@@ -37,7 +38,7 @@
             <p><i class="bi bi-clock"></i> {{ $slotText ?: 'Available' }}</p>
 
             <div class="pandit-card-actions">
-                <a class="btn btn-ghost-gold" href="{{ route($serviceType.'.pandits.show', ['slug' => $hawan['slug'], 'pandit' => $pandit->id, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawan_type' => $hawanType, 'booking_mode' => $bookingMode, 'state' => request('state'), 'city' => request('city'), 'service_id' => $service?->id]) }}">View Profile</a>
+                <a class="btn btn-ghost-gold" href="{{ route($serviceType.'.pandits.show', ['slug' => $hawan['slug'], 'pandit' => $pandit->id, 'date' => $date, 'slot' => $slot, 'mode' => $mode, 'hawan_type' => $hawanType, 'pooja_type' => $poojaType, 'booking_mode' => $bookingMode, 'state' => request('state'), 'city' => request('city'), 'service_id' => $service?->id]) }}">View Profile</a>
                 <form method="POST" action="{{ route($serviceType.'.pandits.select', ['slug' => $hawan['slug'], 'pandit' => $pandit->id]) }}" data-pandit-select-form>
                     @csrf
                     <input type="hidden" name="pandit_service_id" value="{{ $service?->id }}">
@@ -45,6 +46,7 @@
                     <input type="hidden" name="slot" value="{{ $slot }}">
                     <input type="hidden" name="mode" value="{{ $mode }}">
                     <input type="hidden" name="hawan_type" value="{{ $hawanType }}">
+                    <input type="hidden" name="pooja_type" value="{{ $poojaType }}">
                     <input type="hidden" name="booking_mode" value="{{ $bookingMode }}" data-select-booking-mode>
                     <input type="hidden" name="state" value="{{ request('state') }}" data-select-state>
                     <input type="hidden" name="city" value="{{ request('city') }}" data-select-city>

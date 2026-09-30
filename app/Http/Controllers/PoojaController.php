@@ -12,6 +12,7 @@ use App\Services\PanditBookingService;
 use App\Services\RazorpayPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class PoojaController extends Controller
@@ -87,6 +88,49 @@ class PoojaController extends Controller
             'selectedPandit' => $selectedPandit,
             'openReviewStep' => true,
         ]);
+    }
+
+    public function digital(Request $request, PoojaSession $session)
+    {
+        $this->ensureDigitalAccess($request, $session);
+
+        $session->load('sankalp');
+
+        return view('pages.digital-pooja', compact('session'));
+    }
+
+    public function digitalMedia(Request $request, PoojaSession $session, string $media)
+    {
+        $this->ensureDigitalAccess($request, $session);
+
+        $path = $media === 'video'
+            ? $session->digital_video_path
+            : $session->digital_audio_path;
+
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    private function ensureDigitalAccess(Request $request, PoojaSession $session): void
+    {
+        abort_unless(
+            (int) $session->user_id === (int) $request->user()->id
+            && $session->pooja_type === 'digital'
+            && $session->payment_status === 'paid',
+            403
+        );
+
+        if (! $session->expires_at || $session->expires_at->lte(now())) {
+            $session->update([
+                'status' => 'completed',
+                'completed_at' => $session->completed_at ?: now(),
+            ]);
+
+            abort(403, 'Digital Pooja access has expired.');
+        }
     }
 
     private function defaultPoojas(): array
@@ -251,7 +295,8 @@ class PoojaController extends Controller
     {
         $validated = $request->validate([
             'pooja_slug' => 'required|string',
-            'package_name' => 'required|string',
+            'pooja_type' => 'required|string|in:live,digital',
+            'package_name' => 'nullable|required_if:pooja_type,live|string',
             'full_name' => 'required|string|max:255',
             'gotra' => 'nullable|string',
             'dob' => 'nullable|date',
@@ -265,10 +310,26 @@ class PoojaController extends Controller
             'purpose' => 'required|string',
             'mannokamna' => 'nullable|string',
             'donation_amount' => 'nullable|numeric|min:0',
-            'booking_date' => 'required|date',
-            'slot' => 'required|string',
+            'booking_date' => 'nullable|required_if:pooja_type,live|date',
+            'slot' => 'nullable|required_if:pooja_type,live|string',
             'otp' => 'nullable|string',
         ]);
+
+        $pooja = Pooja::active()->where('slug', $validated['pooja_slug'])->first();
+
+        if (!$pooja) {
+            throw ValidationException::withMessages(['pooja_slug' => 'Selected Pooja is no longer active.']);
+        }
+
+        $selectedPoojaType = $pooja->enabledPoojaType($validated['pooja_type']);
+
+        if (! $selectedPoojaType) {
+            throw ValidationException::withMessages(['pooja_type' => 'Selected Pooja type is no longer available.']);
+        }
+
+        if ($selectedPoojaType['key'] === 'digital') {
+            return $this->storeDigitalPooja($request, $pooja, $validated, $selectedPoojaType);
+        }
 
         $booking = session('pooja_booking', []);
         $selectedPanditId = $booking['pandit_id'] ?? null;
@@ -281,12 +342,6 @@ class PoojaController extends Controller
             ], 422);
         }
 
-        $pooja = Pooja::active()->where('slug', $validated['pooja_slug'] ?? null)->first();
-
-        if (!$pooja) {
-            throw ValidationException::withMessages(['pooja_slug' => 'Selected Pooja is no longer active.']);
-        }
-
         $bookingService = app(PanditBookingService::class);
         $bookingService->ensureRitualSlot($pooja, $validated['slot'], $validated['booking_date']);
 
@@ -294,20 +349,22 @@ class PoojaController extends Controller
             ($booking['service_type'] ?? null) !== 'pooja'
             || (int) ($booking['service_id'] ?? 0) !== (int) $pooja->id
             || ($booking['service_slug'] ?? null) !== $pooja->slug
+            || ($booking['pooja_type'] ?? null) !== $selectedPoojaType['key']
             || (int) ($booking['pandit_id'] ?? 0) !== (int) $selectedPanditId
             || ($booking['date'] ?? null) !== $validated['booking_date']
             || ($booking['slot'] ?? null) !== $validated['slot']
-            || ($booking['mode'] ?? null) !== $validated['package_name']
+            || ($booking['mode'] ?? null) !== $selectedPoojaType['title']
         ) {
             throw ValidationException::withMessages(['booking' => 'Pandit selection does not match this Pooja booking. Please select pandit again.']);
         }
 
-        $packageAmount = $bookingService->packageAmount($pooja, $validated['package_name'], 'pooja');
+        $packageName = $selectedPoojaType['title'];
+        $packageAmount = (float) $selectedPoojaType['price'];
         $dakshina = (float) ($validated['donation_amount'] ?? 0);
         $totalAmount = $packageAmount + $dakshina;
         [$holdStart, $holdEnd] = $bookingService->holdTimes();
 
-        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $bookingMode, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
+        $session = DB::transaction(function () use ($bookingService, $pooja, $validated, $selectedPanditId, $booking, $bookingMode, $selectedPoojaType, $packageName, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
             Pandit::whereKey($selectedPanditId)->lockForUpdate()->firstOrFail();
 
             [$pandit, $panditService, $slotTimes] = $bookingService->ensurePanditCanServe(
@@ -345,10 +402,13 @@ class PoojaController extends Controller
                     'pooja_id' => $pooja->id,
                     'pooja_slug' => $pooja->slug,
                     'pooja_name' => $pooja->name,
-                    'package_name' => $validated['package_name'],
+                    'pooja_type' => $selectedPoojaType['key'],
+                    'pooja_type_title' => $packageName,
+                    'pooja_type_price' => $packageAmount,
+                    'package_name' => $packageName,
                     'package_amount' => $packageAmount,
                     'demo_otp' => $validated['otp'] ?? null,
-                    'server_amount_source' => 'poojas.base_price',
+                    'server_amount_source' => 'poojas.live_pooja_price',
                 ],
             ]);
 
@@ -360,6 +420,9 @@ class PoojaController extends Controller
                 'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
                 'ritual_id' => $pooja->id,
                 'ritual_slug' => $pooja->slug,
+                'pooja_type' => $selectedPoojaType['key'],
+                'pooja_type_title' => $packageName,
+                'pooja_type_price' => $packageAmount,
                 'sankalp_form_id' => $sankalp->id,
                 'pandit_id' => $pandit->id,
                 'pandit_service_id' => $panditService->id,
@@ -381,7 +444,10 @@ class PoojaController extends Controller
                     'booking_mode' => $bookingMode,
                     'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
                     'city' => $bookingMode === 'offline' ? ($booking['city'] ?? null) : null,
-                    'package_name' => $validated['package_name'],
+                    'pooja_type' => $selectedPoojaType['key'],
+                    'pooja_type_title' => $packageName,
+                    'pooja_type_price' => $packageAmount,
+                    'package_name' => $packageName,
                     'package_amount' => $packageAmount,
                     'dakshina' => $dakshina,
                     'total_amount' => $totalAmount,
@@ -394,7 +460,9 @@ class PoojaController extends Controller
                     'pooja_id' => $pooja->id,
                     'pooja_slug' => $pooja->slug,
                     'pooja_name' => $pooja->name,
-                    'package_name' => $validated['package_name'],
+                    'pooja_type' => $selectedPoojaType['key'],
+                    'pooja_type_price' => $packageAmount,
+                    'package_name' => $packageName,
                     'package_amount' => $packageAmount,
                     'booking_mode' => $bookingMode,
                     'state' => $bookingMode === 'offline' ? ($booking['state'] ?? null) : null,
@@ -403,7 +471,134 @@ class PoojaController extends Controller
                     'donor_name' => $validated['full_name'],
                     'donor_mobile' => $validated['mobile'],
                     'dakshina' => $dakshina,
-                    'server_amount_source' => 'poojas.base_price',
+                    'server_amount_source' => 'poojas.live_pooja_price',
+            ]);
+
+            return $session->fresh('latestPaymentAttempt');
+        });
+
+        session()->forget('pooja_booking');
+        $payment = app(RazorpayPaymentService::class)->createOrder($session->latestPaymentAttempt, $session, $request->user());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking held for 10 minutes. Complete payment to confirm.',
+            'session_id' => $session->id,
+            'payment_status' => $session->payment_status,
+            'hold_expires_at' => $session->payment_hold_expires_at?->toISOString(),
+            'payment' => $payment,
+            'redirect_url' => route('user.profile'),
+        ]);
+    }
+
+    private function storeDigitalPooja(Request $request, Pooja $pooja, array $validated, array $poojaType)
+    {
+        $bookingService = app(PanditBookingService::class);
+        $pooja->loadMissing('digitalPoojaAudio');
+        $digitalAudio = $pooja->digitalPoojaAudio;
+        $packageName = $poojaType['title'];
+        $packageAmount = (float) $poojaType['price'];
+        $dakshina = (float) ($validated['donation_amount'] ?? 0);
+        $totalAmount = $packageAmount + $dakshina;
+        [$holdStart, $holdEnd] = $bookingService->holdTimes();
+
+        $session = DB::transaction(function () use ($bookingService, $pooja, $digitalAudio, $validated, $packageName, $packageAmount, $dakshina, $totalAmount, $holdStart, $holdEnd) {
+            $sankalp = SankalpForm::create([
+                'user_id' => auth()->id(),
+                'full_name' => $validated['full_name'],
+                'mobile' => $validated['mobile'],
+                'gotra' => $validated['gotra'] ?? null,
+                'dob' => $validated['dob'] ?? null,
+                'birth_time' => $validated['birth_time'] ?? null,
+                'birth_place' => $validated['birth_place'] ?? null,
+                'father_name' => $validated['father_name'] ?? null,
+                'mother_name' => $validated['mother_name'] ?? null,
+                'spouse_name' => $validated['spouse_name'] ?? null,
+                'family_names' => $validated['family_names'] ?? null,
+                'purpose' => $validated['purpose'],
+                'mannokamna' => $validated['mannokamna'] ?? null,
+                'metadata' => [
+                    'pooja_id' => $pooja->id,
+                    'pooja_slug' => $pooja->slug,
+                    'pooja_name' => $pooja->name,
+                    'pooja_type' => 'digital',
+                    'pooja_type_title' => $packageName,
+                    'pooja_type_price' => $packageAmount,
+                    'digital_video_path' => $pooja->digital_pooja_video,
+                    'digital_audio_id' => $digitalAudio?->id,
+                    'digital_audio_title' => $digitalAudio?->title,
+                    'digital_audio_path' => $digitalAudio?->audio_file,
+                    'package_name' => $packageName,
+                    'package_amount' => $packageAmount,
+                    'demo_otp' => $validated['otp'] ?? null,
+                    'server_amount_source' => 'poojas.digital_pooja_price',
+                ],
+            ]);
+
+            $session = PoojaSession::create([
+                'user_id' => auth()->id(),
+                'service_type' => 'pooja',
+                'ritual_id' => $pooja->id,
+                'ritual_slug' => $pooja->slug,
+                'pooja_type' => 'digital',
+                'pooja_type_title' => $packageName,
+                'pooja_type_price' => $packageAmount,
+                'digital_video_path' => $pooja->digital_pooja_video,
+                'digital_audio_id' => $digitalAudio?->id,
+                'digital_audio_title' => $digitalAudio?->title,
+                'digital_audio_path' => $digitalAudio?->audio_file,
+                'digital_access_minutes' => $pooja->digital_pooja_access_minutes,
+                'sankalp_form_id' => $sankalp->id,
+                'booking_mode' => null,
+                'state' => null,
+                'city' => null,
+                'pandit_id' => null,
+                'pandit_service_id' => null,
+                'booking_date' => null,
+                'slot' => null,
+                'slot_start_time' => null,
+                'slot_end_time' => null,
+                'status' => 'pending',
+                'payment_status' => 'pending',
+                'payment_hold_started_at' => $holdStart,
+                'payment_hold_expires_at' => $holdEnd,
+                'admin_note' => json_encode([
+                    'pooja_id' => $pooja->id,
+                    'pooja_name' => $pooja->name,
+                    'pooja_slug' => $pooja->slug,
+                    'pooja_type' => 'digital',
+                    'pooja_type_title' => $packageName,
+                    'pooja_type_price' => $packageAmount,
+                    'digital_video_path' => $pooja->digital_pooja_video,
+                    'digital_audio_id' => $digitalAudio?->id,
+                    'digital_audio_title' => $digitalAudio?->title,
+                    'digital_audio_path' => $digitalAudio?->audio_file,
+                    'package_name' => $packageName,
+                    'package_amount' => $packageAmount,
+                    'dakshina' => $dakshina,
+                    'total_amount' => $totalAmount,
+                ]),
+            ]);
+
+            $bookingService->createPendingPayment($session, $totalAmount, [
+                'booking_type' => 'pooja',
+                'pooja_session_id' => $session->id,
+                'pooja_id' => $pooja->id,
+                'pooja_slug' => $pooja->slug,
+                'pooja_name' => $pooja->name,
+                'pooja_type' => 'digital',
+                'pooja_type_price' => $packageAmount,
+                'digital_video_path' => $pooja->digital_pooja_video,
+                'digital_audio_id' => $digitalAudio?->id,
+                'digital_audio_title' => $digitalAudio?->title,
+                'digital_audio_path' => $digitalAudio?->audio_file,
+                'package_name' => $packageName,
+                'package_amount' => $packageAmount,
+                'sankalp_form_id' => $sankalp->id,
+                'donor_name' => $validated['full_name'],
+                'donor_mobile' => $validated['mobile'],
+                'dakshina' => $dakshina,
+                'server_amount_source' => 'poojas.digital_pooja_price',
             ]);
 
             return $session->fresh('latestPaymentAttempt');

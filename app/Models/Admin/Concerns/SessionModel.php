@@ -13,9 +13,9 @@ use App\Models\PaymentAttempt;
 use App\Models\PaymentDispute;
 use App\Models\Review;
 use App\Models\SessionCompletionProof;
+use App\Models\User;
 use App\Models\VideoMeetingAttendance;
 use App\Models\VideoMeeting;
-use App\Models\User;
 use App\Models\Admin\HawanSession;
 
 trait SessionModel
@@ -34,6 +34,14 @@ trait SessionModel
             'hawan_type',
             'hawan_type_title',
             'hawan_type_price',
+            'pooja_type',
+            'pooja_type_title',
+            'pooja_type_price',
+            'digital_video_path',
+            'digital_audio_id',
+            'digital_audio_title',
+            'digital_audio_path',
+            'digital_access_minutes',
             'diya_id',
             'deity_id',
             'sankalp_form_id',
@@ -73,6 +81,8 @@ trait SessionModel
             'payment_hold_expires_at' => 'datetime',
             'pandit_cancelled_at' => 'datetime',
             'hawan_type_price' => 'decimal:2',
+            'pooja_type_price' => 'decimal:2',
+            'digital_access_minutes' => 'integer',
         ];
     }
 

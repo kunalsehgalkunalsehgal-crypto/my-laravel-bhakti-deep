@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\VideoMeetingProvider;
+use App\Models\Admin\PoojaSession;
 use App\Models\VideoMeeting;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -86,7 +87,8 @@ class VideoMeetingService
 
     private function isReadyForMeeting(Model $session): bool
     {
-        return $session->status === 'confirmed'
+        return ! ($session instanceof PoojaSession && $session->pooja_type === 'digital')
+            && $session->status === 'confirmed'
             && $session->payment_status === 'paid'
             && ($session->booking_mode ?: 'online') === 'online'
             && filled($session->pandit_id);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Admin\Audio;
 use App\Models\Admin\Pooja;
 use App\Support\WeeklyBookingAvailability;
 use Illuminate\Database\Eloquent\Model;
@@ -11,10 +12,15 @@ use Illuminate\Support\Str;
 class AdminPoojaController extends BaseAdminResourceController
 {
     protected string $modelClass = Pooja::class;
+
     protected string $routePrefix = 'admin.poojas';
+
     protected string $viewTitle = 'Poojas';
+
     protected string $permission = 'manage-services';
+
     protected array $search = ['name', 'short_description'];
+
     protected array $fields = [
         'name' => ['label' => 'Name', 'rules' => ['required', 'string', 'max:255']],
         'slug' => ['label' => 'Slug', 'rules' => ['nullable', 'string', 'max:255'], 'unique' => true],
@@ -22,6 +28,17 @@ class AdminPoojaController extends BaseAdminResourceController
         'full_description' => ['label' => 'Full Description', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
         'featured_image' => ['label' => 'Featured Image', 'type' => 'file', 'path' => 'poojas', 'rules' => ['nullable', 'image', 'max:2048']],
         'base_price' => ['label' => 'Base Price', 'type' => 'number', 'rules' => ['required', 'numeric', 'min:0']],
+        'live_pooja_enabled' => ['label' => 'Enable Live Pooja', 'type' => 'checkbox', 'rules' => ['nullable', 'boolean']],
+        'live_pooja_title' => ['label' => 'Live Pooja Title', 'rules' => ['nullable', 'required_if:live_pooja_enabled,1', 'string', 'max:255']],
+        'live_pooja_description' => ['label' => 'Live Pooja Description', 'type' => 'textarea', 'rules' => ['nullable', 'required_if:live_pooja_enabled,1', 'string']],
+        'live_pooja_price' => ['label' => 'Live Pooja Price', 'type' => 'number', 'rules' => ['nullable', 'required_if:live_pooja_enabled,1', 'numeric', 'min:0']],
+        'digital_pooja_enabled' => ['label' => 'Enable Digital Pooja', 'type' => 'checkbox', 'rules' => ['nullable', 'boolean']],
+        'digital_pooja_title' => ['label' => 'Digital Pooja Title', 'rules' => ['nullable', 'required_if:digital_pooja_enabled,1', 'string', 'max:255']],
+        'digital_pooja_description' => ['label' => 'Digital Pooja Description', 'type' => 'textarea', 'rules' => ['nullable', 'required_if:digital_pooja_enabled,1', 'string']],
+        'digital_pooja_price' => ['label' => 'Digital Pooja Price', 'type' => 'number', 'rules' => ['nullable', 'required_if:digital_pooja_enabled,1', 'numeric', 'min:0']],
+        'digital_pooja_video' => ['label' => 'Digital Pooja Video', 'type' => 'file', 'path' => 'poojas/videos', 'rules' => ['nullable', 'file', 'mimes:mp4,webm,mov', 'max:51200']],
+        'digital_pooja_audio_id' => ['label' => 'Digital Mantra Audio', 'type' => 'select', 'rules' => ['nullable', 'exists:audio_library,id']],
+        'digital_pooja_access_minutes' => ['label' => 'Digital Access Duration (minutes)', 'type' => 'number', 'rules' => ['nullable', 'integer', 'min:1']],
         'duration' => ['label' => 'Duration', 'rules' => ['nullable', 'string', 'max:255']],
         'mode' => ['label' => 'Mode', 'rules' => ['required', 'string', 'max:255']],
         'benefits' => ['label' => 'Benefits', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
@@ -55,7 +72,7 @@ class AdminPoojaController extends BaseAdminResourceController
 
     public function create()
     {
-        return view('admin.poojas.form', $this->viewData(['record' => new Pooja(), 'mode' => 'create']));
+        return view('admin.poojas.form', $this->viewData(['record' => new Pooja, 'mode' => 'create']));
     }
 
     public function edit(string $id)
@@ -63,11 +80,28 @@ class AdminPoojaController extends BaseAdminResourceController
         return view('admin.poojas.form', $this->viewData(['record' => Pooja::findOrFail($id), 'mode' => 'edit']));
     }
 
+    protected function viewData(array $data = []): array
+    {
+        return parent::viewData($data + [
+            'digitalAudioOptions' => Audio::active()
+                ->where('category', 'mantra')
+                ->orderBy('title')
+                ->pluck('title', 'id')
+                ->all(),
+        ]);
+    }
+
     protected function prepareData(Request $request, array $data, ?Model $record = null): array
     {
         $data = parent::prepareData($request, $data, $record);
         $data['slug'] = Str::slug($data['slug'] ?: $data['name']);
         $data['status'] = $data['status'] ?: 'active';
+
+        foreach (['live_pooja_price', 'digital_pooja_price'] as $field) {
+            $data[$field] = (float) ($data[$field] ?? 0);
+        }
+
+        $data['digital_pooja_access_minutes'] = (int) ($data['digital_pooja_access_minutes'] ?? $record?->digital_pooja_access_minutes ?? 120);
 
         foreach (['benefits', 'included_items'] as $field) {
             $data[$field] = $this->lines($data[$field] ?? '');
@@ -84,6 +118,7 @@ class AdminPoojaController extends BaseAdminResourceController
         $data['session_timeline'] = collect($this->lines($data['session_timeline'] ?? ''))
             ->map(function ($line) {
                 [$title, $duration] = array_pad(array_map('trim', explode('|', $line, 2)), 2, '');
+
                 return ['title' => $title, 'duration' => $duration];
             })
             ->filter(fn ($item) => $item['title'] !== '')
