@@ -141,7 +141,7 @@
             </div>
         </section>
 
-        <section class="diya-wall-section" id="diya-wall">
+        {{-- <section class="diya-wall-section" id="diya-wall">
             <div class="container">
                 <div class="glass diya-panel">
                     <div class="row g-5 align-items-center">
@@ -250,7 +250,190 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </section> --}}
+        <section class="diya-wall-section" id="diya-wall">
+    <div class="container">
+        <div class="glass diya-panel">
+
+            <div class="row g-5 align-items-center">
+
+                {{-- LEFT SIDE --}}
+                <div class="col-lg-6">
+
+                    <div class="section-kicker">
+                        <span class="pulse-dot"></span>
+                        Live Diya Wall
+                    </div>
+
+                    <h2>
+                        <span class="gold-text">
+                            {{ number_format($liveDiyaCount ?? 0) }}
+                        </span>
+                        Diyas Glowing Right Now
+                    </h2>
+
+                    <p>
+                        Every flame carries a devotee's intention.
+                        Light yours and join a global circle of bhakti.
+                    </p>
+
+                    {{-- @if(($liveDiyas ?? collect())->isNotEmpty())
+
+                        <div class="diya-grid home-diya-grid">
+
+                            @foreach($liveDiyas as $index => $liveDiya)
+
+                                <span
+                                    class="home-diya-item"
+                                    title="{{ $liveDiya->diya?->name ?? 'Diya' }}"
+                                    style="animation-delay: {{ fmod($index * 0.15, 3) }}s;"
+                                >
+                                    <img
+                                        src="{{ asset('assets/small-deep.png') }}"
+                                        alt="Glowing diya"
+                                    >
+                                </span>
+
+                            @endforeach
+
+                        </div>
+
+                    @else
+
+                        <p class="small-note mt-4">
+                            No paid diyas are currently glowing.
+                        </p>
+
+                    @endif --}}
+<div class="diya-grid home-diya-grid">
+
+    @for($i = 0; $i < 44; $i++)
+
+        <span
+            class="home-diya-item"
+            style="animation-delay: {{ fmod($i * 0.15, 3) }}s;"
+        >
+            <img
+                src="{{ asset('assets/small-deep.png') }}"
+                alt="Glowing diya"
+            >
+        </span>
+
+    @endfor
+
+</div>
+
+                    <div class="row g-3 mt-2">
+
+                        @foreach ([
+                            ['bi-fire', number_format($diyaLitToday ?? 0), 'lit today'],
+                            ['bi-people', number_format($liveDiyaCount ?? 0), 'glowing now'],
+                            ['bi-heart', number_format(($liveDiyas ?? collect())->count()), 'shown here']
+                        ] as $stat)
+
+                            <div class="col-4">
+                                <div class="stat-box">
+
+                                    <i class="bi {{ $stat[0] }}"></i>
+
+                                    <strong>
+                                        {{ $stat[1] }}
+                                    </strong>
+
+                                    <span>
+                                        {{ $stat[2] }}
+                                    </span>
+
+                                </div>
+                            </div>
+
+                        @endforeach
+
+                    </div>
+
+                </div>
+
+
+                {{-- RIGHT SIDE --}}
+                <div class="col-lg-6">
+
+                    <div class="diya-form diya-guide">
+
+                        <span class="diya-guide-label">
+                            LIGHT YOUR DIYA
+                        </span>
+
+                        <h3>Your diya can join this wall</h3>
+
+                        <p>
+                            Complete your real BhaktiDeep Diya journey.
+                        </p>
+
+
+                        @foreach ([
+                            [
+                                '01',
+                                'Choose Diya & Deity',
+                                'Select from active temple offerings.'
+                            ],
+                            [
+                                '02',
+                                'Add Your Sankalp',
+                                'Add your name, purpose and mannokamna.'
+                            ],
+                            [
+                                '03',
+                                'Offer & Light',
+                                'Complete payment and light your diya.'
+                            ]
+                        ] as $step)
+
+                            <div class="diya-guide-step">
+
+                                <b>
+                                    {{ $step[0] }}
+                                </b>
+
+                                <div>
+                                    <strong>
+                                        {{ $step[1] }}
+                                    </strong>
+
+                                    <small>
+                                        {{ $step[2] }}
+                                    </small>
+                                </div>
+
+                            </div>
+
+                        @endforeach
+
+
+                        <div class="note-box">
+                            <i class="bi bi-stars"></i>
+
+                            After payment, your diya appears on the
+                            Live Diya Wall.
+                        </div>
+
+
+                        <a
+                            href="{{ route('light-diya') }}"
+                            class="btn btn-saffron w-100 mt-3"
+                        >
+                            <i class="bi bi-fire"></i>
+                            Light My Diya
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</section>
 
         <section class="category-section" id="categories">
             <div class="container">
@@ -412,7 +595,7 @@
             </div>
         </section>
 
-        <section class="festival-section">
+        {{-- <section class="festival-section">
             <div class="container">
                 <div class="glass festival-panel">
                     <div class="row g-5 align-items-center">
@@ -451,7 +634,130 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </section> --}}
+        <section class="festival-section">
+
+    @php
+        $festival = $festival ?? \App\Models\Admin\PlatformSetting::whereIn('key', [
+            'home_festival_heading',
+            'home_festival_subheading',
+            'home_festival_image',
+        ])->pluck('value', 'key')->all();
+
+        $festivalLines = preg_split(
+            '/\R/u',
+            $festival['home_festival_heading'] ?? "Guru Purnima\nMahotsav"
+        );
+
+        $festivalImage = !empty($festival['home_festival_image'])
+            ? asset('storage/' . $festival['home_festival_image'])
+            : asset('assets/pornima.jpeg');
+    @endphp
+
+
+    <div class="container">
+
+        <div class="glass festival-panel">
+
+            <div class="row g-5 align-items-center">
+
+
+                {{-- LEFT CONTENT --}}
+                <div class="col-lg-6">
+
+                    <span class="festival-badge">
+                        <i class="bi bi-stars"></i>
+                        Festival Special
+                    </span>
+
+
+                    <h2 class="festival-title">
+
+                        <span class="gold-text">
+                            {{ $festivalLines[0] ?? 'Guru Purnima' }}
+                        </span>
+
+                        <span>
+                            {{ $festivalLines[1] ?? 'Mahotsav' }}
+                        </span>
+
+                    </h2>
+
+
+                    <p class="festival-description">
+                        {{ $festival['home_festival_subheading']
+                            ?? 'Celebrate with personalized pooja, live aarti and sacred diya lighting from home.' }}
+                    </p>
+
+
+                    <div class="festival-buttons">
+
+                        <button class="btn btn-saffron btn-lg">
+                            <i class="bi bi-fire"></i>
+                            Book Pooja
+                        </button>
+
+                        <button class="btn btn-gold btn-lg">
+                            <i class="bi bi-fire"></i>
+                            Light Diya
+                        </button>
+
+                    </div>
+
+
+                    <div class="row g-3 festival-features">
+
+                        @foreach ([
+                            ['bi-music-note', 'Live Aarti'],
+                            ['bi-people', 'Family Join'],
+                            ['bi-sparkles', 'Personalized Sankalp']
+                        ] as $feature)
+
+                            <div class="col-sm-6 col-lg-4 W-100">
+
+                                <div class="festival-feature">
+
+                                    <span>
+                                        <i class="bi {{ $feature[0] }}"></i>
+                                    </span>
+
+                                    <strong>
+                                        {{ $feature[1] }}
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        @endforeach
+
+                    </div>
+
+                </div>
+
+
+                {{-- RIGHT IMAGE --}}
+                <div class="col-lg-6">
+
+                    <div class="festival-image">
+
+                        <img
+                            src="{{ $festivalImage }}"
+                            alt="{{ implode(' ', $festivalLines) }}"
+                        >
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
 
         <section class="scroll-section">
             <div class="container">

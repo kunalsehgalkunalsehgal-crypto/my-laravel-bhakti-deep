@@ -9,6 +9,9 @@ use App\Models\Admin\PoojaSession;
 use App\Models\PaymentAttempt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+
+use App\Mail\BookingLifecycleMail;
+
 use Throwable;
 use App\Models\Admin\NotificationLog;
 use App\Models\Dispute;
@@ -557,6 +560,358 @@ private function paymentMailDetails(
             $actionLabel,
     ];
 }
+
+public function newPaidBookingForPandit(Model $session, PaymentAttempt $attempt): void
+{
+    if (!($session instanceof PoojaSession) && !($session instanceof HawanSession)) {
+        return;
+    }
+
+    if ($session instanceof PoojaSession && $session->pooja_type === 'digital') {
+        return;
+    }
+
+    $session->loadMissing(['user', 'pandit', 'sankalp', 'service']);
+
+    if (!$session->pandit?->email || $session->payment_status !== 'paid') {
+        return;
+    }
+
+    $type = $session instanceof HawanSession ? 'hawan' : 'pooja';
+    $base = $this->bookingLifecycleBaseDetails($session, $type);
+
+    $details = [
+        'subject' => 'New paid '.ucfirst($type).' booking - '.$base['service_name'].' | BhaktiDeep',
+        'eyebrow' => 'NEW PAID BOOKING',
+        'heading' => 'A New Booking Is Waiting For You',
+        'greeting_name' => $base['pandit_name'],
+        'intro' => 'A new paid booking has been assigned to you. Please review the details and accept the booking from your Pandit Dashboard.',
+        'rows' => array_values(array_filter([
+            ['label' => 'Booking Ref.', 'value' => $base['booking_reference']],
+            ['label' => 'Seva', 'value' => $base['service_name']],
+            ['label' => 'Devotee', 'value' => $base['devotee_name']],
+            ['label' => 'Mode', 'value' => $base['mode_label']],
+            ['label' => 'Date', 'value' => $base['booking_date']],
+            ['label' => 'Time', 'value' => $base['slot']],
+            $base['location'] ? ['label' => 'Location', 'value' => $base['location']] : null,
+            ['label' => 'Payment', 'value' => 'Paid'],
+        ])),
+        'notice' => 'Please open the booking and accept it only if you can perform the seva at the scheduled date and time.',
+        'action_url' => route('pandit.bookings.show', [
+            'type' => $type,
+            'id' => $session->id,
+        ]),
+        'action_label' => 'View & Accept Booking',
+    ];
+
+    $this->sendBookingLifecycleEmailOnce(
+        null,
+        $session->pandit->email,
+        'pandit_new_paid_booking_'.$type.'_'.$session->id.'_'.$attempt->id,
+        $details
+    );
+}
+
+public function bookingAcceptedForUser(Model $session): void
+{
+    if (!($session instanceof PoojaSession) && !($session instanceof HawanSession)) {
+        return;
+    }
+
+    if ($session instanceof PoojaSession && $session->pooja_type === 'digital') {
+        return;
+    }
+
+    $session->loadMissing([
+        'user',
+        'pandit',
+        'sankalp',
+        'service',
+        'videoMeeting',
+    ]);
+
+    if (
+        !$session->user?->email
+        || $session->payment_status !== 'paid'
+        || $session->status !== 'confirmed'
+    ) {
+        return;
+    }
+
+    $type = $session instanceof HawanSession ? 'hawan' : 'pooja';
+
+    $base = $this->bookingLifecycleBaseDetails(
+        $session,
+        $type
+    );
+
+    $isOffline = $session->booking_mode === 'offline';
+
+    $meetingReady =
+        !$isOffline
+        && (bool) $session->videoMeeting;
+
+    $notice = $isOffline
+        ? 'Your booking is confirmed. Please be ready at the booked location before the scheduled time.'
+        : (
+            $meetingReady
+                ? 'Your booking is confirmed and the live-session room is ready. Please open My Bookings before the scheduled time.'
+                : 'Your booking is confirmed. Live-session details will appear in My Bookings as soon as the meeting room is ready.'
+        );
+
+    $details = [
+        'subject' =>
+            ucfirst($type)
+            .' booking accepted - '
+            .$base['service_name']
+            .' | BhaktiDeep',
+
+        'eyebrow' =>
+            'BOOKING CONFIRMED',
+
+        'heading' =>
+            'Pandit Ji Has Accepted Your Booking',
+
+        'greeting_name' =>
+            $base['devotee_name'],
+
+        'intro' =>
+            $base['pandit_name']
+            .' has accepted your '
+            .$base['service_name']
+            .' booking.',
+
+        'rows' => array_values(array_filter([
+            [
+                'label' => 'Booking Ref.',
+                'value' => $base['booking_reference'],
+            ],
+            [
+                'label' => 'Seva',
+                'value' => $base['service_name'],
+            ],
+            [
+                'label' => 'Pandit',
+                'value' => $base['pandit_name'],
+            ],
+            [
+                'label' => 'Mode',
+                'value' => $base['mode_label'],
+            ],
+            [
+                'label' => 'Date',
+                'value' => $base['booking_date'],
+            ],
+            [
+                'label' => 'Time',
+                'value' => $base['slot'],
+            ],
+
+            $base['location']
+                ? [
+                    'label' => 'Location',
+                    'value' => $base['location'],
+                ]
+                : null,
+
+            [
+                'label' => 'Status',
+                'value' => 'Confirmed',
+            ],
+        ])),
+
+        'notice' =>
+            $notice,
+
+        'action_url' =>
+            route('user.profile'),
+
+        'action_label' =>
+            'View My Booking',
+    ];
+
+    $this->sendBookingLifecycleEmailOnce(
+        $session->user_id,
+        $session->user->email,
+        'user_booking_accepted_'.$type.'_'.$session->id,
+        $details
+    );
+}
+
+private function bookingLifecycleBaseDetails(
+    Model $session,
+    string $type
+): array {
+    $meta = $session->admin_note
+        ? (
+            json_decode(
+                $session->admin_note,
+                true
+            ) ?: []
+        )
+        : [];
+
+    $serviceKey =
+        $type === 'hawan'
+            ? 'hawan_name'
+            : 'pooja_name';
+
+    $serviceName =
+        $meta[$serviceKey]
+        ?? $session->service?->name
+        ?? (
+            $type === 'hawan'
+                ? $session->hawan_type_title
+                : $session->pooja_type_title
+        )
+        ?? ucfirst($type);
+
+    $mode =
+        $session->booking_mode
+        ?: 'online';
+
+    $location =
+        $mode === 'offline'
+            ? collect([
+                $session->city,
+                $session->state,
+            ])
+                ->filter()
+                ->implode(', ')
+            : null;
+
+    return [
+        'service_name' =>
+            $serviceName,
+
+        'booking_reference' =>
+            'BD-'
+            .strtoupper($type)
+            .'-'
+            .$session->id,
+
+        'devotee_name' =>
+            $session->sankalp?->full_name
+            ?: (
+                $session->user?->name
+                ?: 'Devotee'
+            ),
+
+        'pandit_name' =>
+            $session->pandit?->pandit_name
+            ?: (
+                $session->pandit?->full_name
+                ?: 'Pandit Ji'
+            ),
+
+        'mode_label' =>
+            ucfirst($mode),
+
+        'booking_date' =>
+            $session->booking_date
+                ?->format('d M Y'),
+
+        'slot' =>
+            $session->slot,
+
+        'location' =>
+            $location,
+    ];
+}
+
+private function sendBookingLifecycleEmailOnce(
+    ?int $userId,
+    string $recipient,
+    string $messageType,
+    array $details
+): void {
+    $notification = null;
+
+    try {
+        $notification =
+            NotificationLog::firstOrCreate(
+                [
+                    'user_id' =>
+                        $userId,
+
+                    'channel' =>
+                        self::EMAIL_CHANNEL,
+
+                    'message_type' =>
+                        $messageType,
+                ],
+                [
+                    'recipient' =>
+                        $recipient,
+
+                    'subject' =>
+                        $details['subject'],
+
+                    'message' =>
+                        $details['heading'],
+
+                    'delivery_status' =>
+                        'pending',
+                ]
+            );
+
+        if (!$notification->wasRecentlyCreated) {
+            return;
+        }
+
+        Mail::to($recipient)->send(
+            new BookingLifecycleMail(
+                $details
+            )
+        );
+
+        $notification->update([
+            'delivery_status' => 'sent',
+            'failure_reason' => null,
+            'sent_at' => now(),
+        ]);
+
+    } catch (Throwable $e) {
+
+        if ($notification?->exists) {
+
+            try {
+                $notification->update([
+                    'delivery_status' =>
+                        'failed',
+
+                    'failure_reason' =>
+                        substr(
+                            $e->getMessage(),
+                            0,
+                            2000
+                        ),
+
+                    'sent_at' =>
+                        null,
+                ]);
+
+            } catch (Throwable) {
+                // Mail logging must never break booking/payment flow.
+            }
+        }
+
+        Log::warning(
+            'BhaktiDeep booking lifecycle email failed',
+            [
+                'message_type' =>
+                    $messageType,
+
+                'recipient' =>
+                    $recipient,
+
+                'error' =>
+                    $e->getMessage(),
+            ]
+        );
+    }
+}
+
     private function diyaName(DiyaSession $session): string
     {
         $meta = $session->admin_note ? (json_decode($session->admin_note, true) ?: []) : [];

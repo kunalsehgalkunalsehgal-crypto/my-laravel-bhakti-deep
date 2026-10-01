@@ -486,6 +486,31 @@ if (
         ])
     );
 }
+
+if (
+    $attempt->purpose === PaymentAttempt::PURPOSE_BOOKING
+    && (
+        $session instanceof PoojaSession
+        || $session instanceof HawanSession
+    )
+    && !$this->isDigitalPooja($session)
+) {
+    app(
+        UserBookingNotificationService::class
+    )->newPaidBookingForPandit(
+        $session->fresh([
+            'user',
+            'pandit',
+            'sankalp',
+            'service',
+        ]),
+
+        $attempt->fresh([
+            'donation',
+            'user',
+        ])
+    );
+}
     }
 
     private function isDigitalPooja(Model $session): bool

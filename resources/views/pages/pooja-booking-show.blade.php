@@ -385,10 +385,38 @@
                                 </div>
                             </div>
 
-                            <label class="consent-checkbox mb-3">
+                            {{-- <label class="consent-checkbox mb-3">
                                 <input type="checkbox" id="poojaConsentCheckbox" onchange="checkPaymentReadiness()">
                                 I agree to BhaktiDeep's terms and consent to my sankalp being used for this pooja booking.
-                            </label>
+                            </label> --}}
+                            <label class="consent-checkbox mb-3">
+
+    <input type="checkbox"
+           id="poojaConsentCheckbox"
+           onchange="checkPaymentReadiness()">
+
+    <span>
+        I agree to BhaktiDeep's
+
+        <a href="{{ route('terms-and-conditions') }}"
+           target="_blank"
+           rel="noopener noreferrer">
+            Terms & Conditions
+        </a>
+
+        and acknowledge the
+
+        <a href="{{ route('privacy-policy') }}"
+           target="_blank"
+           rel="noopener noreferrer">
+            Privacy Policy
+        </a>.
+
+        I consent to my sankalp being used
+        for this pooja booking.
+    </span>
+
+</label>
                             <button class="hawan-btn hawan-btn-saffron w-100" id="payButton" disabled onclick="proceedToPay()">
                                 <i class="bi bi-credit-card me-2"></i>Confirm & Pay
                             </button>

@@ -1,13 +1,15 @@
 <?php
 
+use App\Http\Controllers\AartiController;
+use App\Http\Controllers\AartiDonationController;
 use App\Http\Controllers\Admin\AdminAudioController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminBlogController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminDeityController;
-use App\Http\Controllers\Admin\AdminDiyaController;
 use App\Http\Controllers\Admin\AdminDisputeController;
+use App\Http\Controllers\Admin\AdminDiyaController;
 use App\Http\Controllers\Admin\AdminDonationController;
 use App\Http\Controllers\Admin\AdminHawanController;
 use App\Http\Controllers\Admin\AdminMessageController;
@@ -32,6 +34,7 @@ use App\Http\Controllers\PanditController;
 use App\Http\Controllers\PanditLiveSessionController;
 use App\Http\Controllers\PanditReportController;
 use App\Http\Controllers\PanditSelectionController;
+use App\Http\Controllers\PanditZoomController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PoojaController;
 use App\Http\Controllers\ReviewController;
@@ -39,8 +42,8 @@ use App\Http\Controllers\UserNotificationController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\UserReportController;
 use App\Http\Controllers\VideoMeetingSdkController;
-use App\Models\Admin\HawanSession;
 use App\Models\Admin\DiyaSession;
+use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
 use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
@@ -50,20 +53,12 @@ use App\Services\VideoMeetingProviderManager;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use App\Http\Controllers\AartiController;
-use App\Http\Controllers\AartiDonationController;
 
+// use Carbon\Carbon;
+use Illuminate\Support\Carbon;
 
-
-
-use App\Http\Controllers\PanditZoomController;
-
-
-
-
-
-
-
+use App\Http\Controllers\Admin\AdminHomeFestivalController;
+use App\Models\Admin\PlatformSetting;
 
 Route::get('/check-pandit-auth', function () {
 
@@ -75,17 +70,52 @@ Route::get('/check-pandit-auth', function () {
 
 })->middleware('auth:pandit');
 
+// Route::get('/', function () {
+//     $liveDiyas = collect();
+//     $liveDiyaCount = 0;
+//     $diyaLitToday = 0;
+
+//     if (Schema::hasTable('diya_sessions')) {
+//         $liveDiyas = DiyaSession::with(['diya', 'deity'])
+//             ->where('payment_status', 'paid')
+//             ->currentlyGlowing()
+//             ->latest()
+//             ->limit(6)
+//             ->get();
+
+//         $liveDiyaCount = DiyaSession::where('payment_status', 'paid')
+//             ->currentlyGlowing()
+//             ->count();
+
+//         $diyaLitToday = DiyaSession::where('payment_status', 'paid')
+//             ->whereDate('start_at', today())
+//             ->count();
+//     }
+//     $homePoojas = Pooja::active()
+//         ->latest()
+//         ->get();
+
+//     return view('welcome', compact(
+//         'liveDiyas',
+//         'liveDiyaCount',
+//         'diyaLitToday',
+//         'homePoojas'
+//     ));
+//     // return view('welcome', compact('liveDiyas', 'liveDiyaCount', 'diyaLitToday'));
+// })->name('home');
 Route::get('/', function () {
+
     $liveDiyas = collect();
     $liveDiyaCount = 0;
     $diyaLitToday = 0;
 
     if (Schema::hasTable('diya_sessions')) {
+
         $liveDiyas = DiyaSession::with(['diya', 'deity'])
             ->where('payment_status', 'paid')
             ->currentlyGlowing()
             ->latest()
-            ->limit(6)
+            ->limit(44)
             ->get();
 
         $liveDiyaCount = DiyaSession::where('payment_status', 'paid')
@@ -96,17 +126,35 @@ Route::get('/', function () {
             ->whereDate('start_at', today())
             ->count();
     }
-$homePoojas = Pooja::active()
+
+    // $homePoojas = Pooja::active()
+    //     ->latest()
+    //     ->get();
+
+    // return view('welcome', compact(
+    //     'liveDiyas',
+    //     'liveDiyaCount',
+    //     'diyaLitToday',
+    //     'homePoojas'
+    // ));
+    $homePoojas = Pooja::active()
     ->latest()
     ->get();
+
+$festival = PlatformSetting::whereIn('key', [
+    'home_festival_heading',
+    'home_festival_subheading',
+    'home_festival_image',
+])->pluck('value', 'key')->all();
 
 return view('welcome', compact(
     'liveDiyas',
     'liveDiyaCount',
     'diyaLitToday',
-    'homePoojas'
+    'homePoojas',
+    'festival'
 ));
-    // return view('welcome', compact('liveDiyas', 'liveDiyaCount', 'diyaLitToday'));
+
 })->name('home');
 
 Route::get('/light-diya', [DiyaController::class, 'index'])->middleware('auth')->name('light-diya');
@@ -115,14 +163,10 @@ Route::get('/diya-session/{session}', [DiyaController::class, 'session'])->name(
 Route::get('/personalized-pooja', [PoojaController::class, 'index'])->name('personalized-pooja');
 Route::get('/hawan', [HawanController::class, 'index'])->name('hawan');
 
-
-
-
 // Route::get(
 //     '/aarti',
 //     [AartiController::class, 'index']
 // )->name('aarti.index');
-
 
 // Route::get(
 //     '/aarti/{slug}',
@@ -134,12 +178,10 @@ Route::get(
     [AartiController::class, 'index']
 )->name('aarti.index');
 
-
 Route::get(
     '/aarti/{slug}/session',
     [AartiController::class, 'session']
 )->name('aarti.session');
-
 
 Route::get(
     '/aarti/{slug}',
@@ -156,7 +198,6 @@ Route::get(
     [LiveSessionController::class, 'inviteClientView']
 )->name('live.family.client');
 
-
 Route::post('/live-family/{token}/meeting-sdk', [LiveSessionController::class, 'inviteSdkConfig'])->name('live.family.sdk');
 Route::post('/live-family/{token}/leave', [LiveSessionController::class, 'leaveInvite'])->name('live.family.leave');
 Route::get('/live-sessions', function () {
@@ -166,38 +207,38 @@ Route::get('/live-sessions', function () {
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-    ->where('status', 'confirmed')
-    ->where(function ($query) {
-        $query->where('booking_mode', 'offline')
-            ->orWhere(function ($onlineQuery) {
-                $onlineQuery
-                    ->where(function ($modeQuery) {
-                        $modeQuery->where('booking_mode', 'online')
-                            ->orWhereNull('booking_mode');
-                    })
-                    ->whereHas('videoMeeting');
-            });
-    });
+        ->where('status', 'confirmed')
+        ->where(function ($query) {
+            $query->where('booking_mode', 'offline')
+                ->orWhere(function ($onlineQuery) {
+                    $onlineQuery
+                        ->where(function ($modeQuery) {
+                            $modeQuery->where('booking_mode', 'online')
+                                ->orWhereNull('booking_mode');
+                        })
+                        ->whereHas('videoMeeting');
+                });
+        });
 
     $hawanBookings = HawanSession::with(['sankalp', 'videoMeeting'])
         // ->where('payment_status', 'paid')
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-->where('status', 'confirmed')
-->where(function ($query) {
-    $query->where('booking_mode', 'offline')
-        ->orWhere(function ($onlineQuery) {
-            $onlineQuery
-                ->where(function ($modeQuery) {
-                    $modeQuery->where('booking_mode', 'online')
-                        ->orWhereNull('booking_mode');
-                })
-                ->whereHas('videoMeeting');
+        ->where('status', 'confirmed')
+        ->where(function ($query) {
+            $query->where('booking_mode', 'offline')
+                ->orWhere(function ($onlineQuery) {
+                    $onlineQuery
+                        ->where(function ($modeQuery) {
+                            $modeQuery->where('booking_mode', 'online')
+                                ->orWhereNull('booking_mode');
+                        })
+                        ->whereHas('videoMeeting');
+                });
         });
-});
 
-    if (!Auth::guard('admin')->check()) {
+    if (! Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
             $poojaBookings->where('pandit_id', Auth::guard('pandit')->id());
             $hawanBookings->where('pandit_id', Auth::guard('pandit')->id());
@@ -227,82 +268,41 @@ Route::get('/live-sessions', function () {
 |
 */
 
-$todayDate = \Illuminate\Support\Carbon::now('Asia/Kolkata')
-    ->toDateString();
+    $todayDate = Carbon::now('Asia/Kolkata')
+        ->toDateString();
 
+    /*
+    |--------------------------------------------------------------------------
+    | Today's Pooja bookings
+    |--------------------------------------------------------------------------
+    */
 
-/*
-|--------------------------------------------------------------------------
-| Today's Pooja bookings
-|--------------------------------------------------------------------------
-*/
+    $todayPoojaBookings = (clone $poojaBookings)
+        ->whereDate('booking_date', $todayDate)
+        ->orderBy('slot_start_time')
+        ->orderBy('id')
+        ->get();
 
-$todayPoojaBookings = (clone $poojaBookings)
-    ->whereDate('booking_date', $todayDate)
-    ->orderBy('slot_start_time')
-    ->orderBy('id')
-    ->get();
+    /*
+    |--------------------------------------------------------------------------
+    | Today's Hawan bookings
+    |--------------------------------------------------------------------------
+    */
 
+    $todayHawanBookings = (clone $hawanBookings)
+        ->whereDate('booking_date', $todayDate)
+        ->orderBy('slot_start_time')
+        ->orderBy('id')
+        ->get();
 
-/*
-|--------------------------------------------------------------------------
-| Today's Hawan bookings
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Build combined today's schedule
+    |--------------------------------------------------------------------------
+    */
 
-$todayHawanBookings = (clone $hawanBookings)
-    ->whereDate('booking_date', $todayDate)
-    ->orderBy('slot_start_time')
-    ->orderBy('id')
-    ->get();
-
-
-/*
-|--------------------------------------------------------------------------
-| Build combined today's schedule
-|--------------------------------------------------------------------------
-*/
-
-$todaySchedule = $todayPoojaBookings
-    ->map(function ($booking) {
-
-        $meta = $booking->admin_note
-            ? (json_decode($booking->admin_note, true) ?: [])
-            : [];
-
-        return [
-
-            'type' => 'Pooja',
-
-            'title' => $meta['pooja_name']
-                ?? (
-                    $booking->ritual_slug
-                        ? \Illuminate\Support\Str::headline(
-                            $booking->ritual_slug
-                        )
-                        : 'Personalized Pooja'
-                ),
-
-            'time' => $booking->slot
-                ?: 'Time not available',
-
-            'mode' => $booking->booking_mode === 'offline'
-                ? 'Offline'
-                : 'Online',
-
-            'sort_time' => $booking->slot_start_time
-                ?: '23:59:59',
-
-            'url' => route('live.session', [
-                'type' => 'pooja',
-                'id' => $booking->id,
-            ]),
-        ];
-    })
-
-    ->concat(
-
-        $todayHawanBookings->map(function ($booking) {
+    $todaySchedule = $todayPoojaBookings
+        ->map(function ($booking) {
 
             $meta = $booking->admin_note
                 ? (json_decode($booking->admin_note, true) ?: [])
@@ -310,15 +310,15 @@ $todaySchedule = $todayPoojaBookings
 
             return [
 
-                'type' => 'Hawan',
+                'type' => 'Pooja',
 
-                'title' => $meta['hawan_name']
+                'title' => $meta['pooja_name']
                     ?? (
                         $booking->ritual_slug
-                            ? \Illuminate\Support\Str::headline(
+                            ? Str::headline(
                                 $booking->ritual_slug
                             )
-                            : 'Personalized Hawan'
+                            : 'Personalized Pooja'
                     ),
 
                 'time' => $booking->slot
@@ -332,45 +332,81 @@ $todaySchedule = $todayPoojaBookings
                     ?: '23:59:59',
 
                 'url' => route('live.session', [
-                    'type' => 'hawan',
+                    'type' => 'pooja',
                     'id' => $booking->id,
-                ]),
+            ]),
             ];
         })
-    )
 
-    ->sortBy('sort_time')
-    ->values();
+        ->concat(
 
+            $todayHawanBookings->map(function ($booking) {
 
-/*
-|--------------------------------------------------------------------------
-| Existing recent bookings
-|--------------------------------------------------------------------------
-*/
+                $meta = $booking->admin_note
+                    ? (json_decode($booking->admin_note, true) ?: [])
+                    : [];
 
-$poojaBookings = $poojaBookings
-    ->latest()
-    ->limit(6)
-    ->get();
+                return [
 
-$hawanBookings = $hawanBookings
-    ->latest()
-    ->limit(6)
-    ->get();
+                    'type' => 'Hawan',
 
+                    'title' => $meta['hawan_name']
+                        ?? (
+                            $booking->ritual_slug
+                                ? Str::headline(
+                                    $booking->ritual_slug
+                                )
+                                : 'Personalized Hawan'
+                        ),
 
-/*
-|--------------------------------------------------------------------------
-| Send data to Blade
-|--------------------------------------------------------------------------
-*/
+                    'time' => $booking->slot
+                        ?: 'Time not available',
 
-return view('pages.live-sessions', compact(
-    'poojaBookings',
-    'hawanBookings',
-    'todaySchedule'
-));
+                    'mode' => $booking->booking_mode === 'offline'
+                        ? 'Offline'
+                        : 'Online',
+
+                    'sort_time' => $booking->slot_start_time
+                        ?: '23:59:59',
+
+                    'url' => route('live.session', [
+                        'type' => 'hawan',
+                        'id' => $booking->id,
+                ]),
+                ];
+            })
+        )
+
+        ->sortBy('sort_time')
+        ->values();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Existing recent bookings
+    |--------------------------------------------------------------------------
+    */
+
+    $poojaBookings = $poojaBookings
+        ->latest()
+        ->limit(6)
+        ->get();
+
+    $hawanBookings = $hawanBookings
+        ->latest()
+        ->limit(6)
+        ->get();
+
+    /*
+    |--------------------------------------------------------------------------
+    | Send data to Blade
+    |--------------------------------------------------------------------------
+    */
+
+    return view('pages.live-sessions', compact(
+        'poojaBookings',
+        'hawanBookings',
+        'todaySchedule'
+    ));
 })->name('live.sessions');
 Route::get('/live-sessions/pooja', function () {
     $poojaBookings = PoojaSession::with(['sankalp', 'videoMeeting'])
@@ -379,20 +415,20 @@ Route::get('/live-sessions/pooja', function () {
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-->where('status', 'confirmed')
-->where(function ($query) {
-    $query->where('booking_mode', 'offline')
-        ->orWhere(function ($onlineQuery) {
-            $onlineQuery
-                ->where(function ($modeQuery) {
-                    $modeQuery->where('booking_mode', 'online')
-                        ->orWhereNull('booking_mode');
-                })
-                ->whereHas('videoMeeting');
+        ->where('status', 'confirmed')
+        ->where(function ($query) {
+            $query->where('booking_mode', 'offline')
+                ->orWhere(function ($onlineQuery) {
+                    $onlineQuery
+                        ->where(function ($modeQuery) {
+                            $modeQuery->where('booking_mode', 'online')
+                                ->orWhereNull('booking_mode');
+                        })
+                        ->whereHas('videoMeeting');
+                });
         });
-});
 
-    if (!Auth::guard('admin')->check()) {
+    if (! Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
             $poojaBookings->where('pandit_id', Auth::guard('pandit')->id());
         } elseif (Auth::check()) {
@@ -412,20 +448,20 @@ Route::get('/live-sessions/hawan', function () {
         // ->where('status', 'confirmed')
         // ->whereHas('videoMeeting');
         ->where('payment_status', 'paid')
-->where('status', 'confirmed')
-->where(function ($query) {
-    $query->where('booking_mode', 'offline')
-        ->orWhere(function ($onlineQuery) {
-            $onlineQuery
-                ->where(function ($modeQuery) {
-                    $modeQuery->where('booking_mode', 'online')
-                        ->orWhereNull('booking_mode');
-                })
-                ->whereHas('videoMeeting');
+        ->where('status', 'confirmed')
+        ->where(function ($query) {
+            $query->where('booking_mode', 'offline')
+                ->orWhere(function ($onlineQuery) {
+                    $onlineQuery
+                        ->where(function ($modeQuery) {
+                            $modeQuery->where('booking_mode', 'online')
+                                ->orWhereNull('booking_mode');
+                        })
+                        ->whereHas('videoMeeting');
+                });
         });
-});
 
-    if (!Auth::guard('admin')->check()) {
+    if (! Auth::guard('admin')->check()) {
         if (Auth::guard('pandit')->check()) {
             $hawanBookings->where('pandit_id', Auth::guard('pandit')->id());
         } elseif (Auth::check()) {
@@ -518,7 +554,6 @@ Route::post('/live-sessions/{type}/{id}/meeting-sdk', [VideoMeetingSdkController
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.session.sdk');
 
-
 Route::get(
     '/live-sessions/{type}/{id}/meeting-client',
     [VideoMeetingSdkController::class, 'clientView']
@@ -526,12 +561,10 @@ Route::get(
     ->whereIn('type', ['pooja', 'hawan'])
     ->name('live.session.client');
 
-
 Route::get(
     '/zoom/meeting-exit',
     [VideoMeetingSdkController::class, 'clientExit']
 )->name('live.session.client.exit');
-
 
 Route::get('/live-sessions/{type}/{id}', function (string $type, string $id) {
     $bookingRecord = null;
@@ -592,10 +625,98 @@ Route::get('/contact', function () {
     return view('pages.contact');
 })->name('contact');
 
-Route::post('/contact', function () {
-    // Handle form submission
-    return redirect()->back()->with('success', 'Message sent!');
-})->name('contact.submit');
+// Terms & Conditions
+Route::view(
+    '/terms-and-conditions',
+    'pages.terms-and-conditions'
+)->name('terms-and-conditions');
+
+// Privacy Policy
+Route::view(
+    '/privacy-policy',
+    'pages.privacy-policy'
+)->name('privacy-policy');
+
+// Route::post('/contact', function () {
+//     // Handle form submission
+//     return redirect()->back()->with('success', 'Message sent!');
+// })->name('contact.submit');
+Route::post('/contact', function (Request $request) {
+
+    $data = $request->validate([
+        'full_name' => 'required|string|max:255',
+        'mobile' => 'required|string|min:8|max:20',
+        'email' => 'nullable|email|max:255',
+
+        'query_type' => [
+            'required',
+            Rule::in([
+                'Pooja Booking',
+                'Live Aarti',
+                'Diya Offering',
+                'Hawan Booking',
+                'Personalized Pooja',
+                'Payment Help',
+                'Technical Support',
+                'General Query',
+            ]),
+        ],
+
+        'preferred_service' => [
+            'nullable',
+            Rule::in([
+                'Diya',
+                'Pooja',
+                'Hawan',
+                'Live Aarti',
+                'Personalized Pooja',
+                'Not Sure',
+            ]),
+        ],
+
+        'message' => 'required|string|min:5|max:5000',
+    ]);
+
+    try {
+
+        Mail::send(
+            'emails.contact-query',
+            ['details' => $data],
+            function ($mail) use ($data) {
+
+                $mail->to(config('mail.from.address'))
+                    ->subject(
+                        'BhaktiDeep Contact: '.$data['query_type']
+                    );
+
+                if (! empty($data['email'])) {
+                    $mail->replyTo(
+                        $data['email'],
+                        $data['full_name']
+                    );
+                }
+            }
+        );
+
+        return back()->with(
+            'success',
+            'Your message has been sent successfully!'
+        );
+
+    } catch (Throwable $e) {
+
+        report($e);
+
+        return back()
+            ->withInput()
+            ->with(
+                'error',
+                'Unable to send your message. Please try again.'
+            );
+    }
+
+})->middleware('throttle:5,1')->name('contact.submit');
+
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::redirect('/registration', '/signup')->name('registration');
 Route::post('/payments/razorpay/webhook', [PaymentController::class, 'webhook'])->name('payments.razorpay.webhook');
@@ -607,11 +728,10 @@ Route::prefix('pandit')->name('pandit.')->middleware(['auth:pandit', 'pandit.noc
     Route::post('/logout', [PanditController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [PanditController::class, 'dashboard'])->name('dashboard');
 
-
     Route::get('/earnings', [PanditController::class, 'earnings'])->name('earnings');
 
-Route::get('/reviews', [PanditController::class, 'reviews'])
-    ->name('reviews.index');
+    Route::get('/reviews', [PanditController::class, 'reviews'])
+        ->name('reviews.index');
 
     Route::get('/bookings', [PanditController::class, 'bookings'])->name('bookings.index');
     Route::get('/bookings/{type}/{id}', [PanditController::class, 'showBooking'])
@@ -659,20 +779,11 @@ Route::get('/reviews', [PanditController::class, 'reviews'])
     Route::post('/reports/{dispute}/response', [PanditReportController::class, 'respond'])->name('reports.respond');
     Route::get('/reports/{dispute}/evidences/{evidence}', [PanditReportController::class, 'evidence'])->name('reports.evidence');
 
-
-
-
-
-
-
-
-
-
     Route::get('/zoom/connect', [PanditZoomController::class, 'connect'])
-    ->name('zoom.connect');
+        ->name('zoom.connect');
 
-Route::get('/zoom/callback', [PanditZoomController::class, 'callback'])
-    ->name('zoom.callback');
+    Route::get('/zoom/callback', [PanditZoomController::class, 'callback'])
+        ->name('zoom.callback');
 });
 
 Route::post('/login/send-otp', [AuthController::class, 'sendOTP'])->name('login.send-otp');
@@ -830,88 +941,93 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->middleware('admin.permission:view-reports')
             ->name('disputes.evidence');
 
+Route::get(
+    '/home-festival',
+    [AdminHomeFestivalController::class, 'edit']
+)
+    ->middleware('admin.permission:manage-settings')
+    ->name('home-festival.edit');
+
+Route::post(
+    '/home-festival',
+    [AdminHomeFestivalController::class, 'update']
+)
+    ->middleware('admin.permission:manage-settings')
+    ->name('home-festival.update');
+
         Route::resource('/settings', AdminSettingController::class)
             ->middleware('admin.permission:manage-settings');
     });
 });
 
-
-
-
 Route::middleware('auth')->group(function () {
     Route::post(
-    '/aarti/{deity}/donation',
-    [AartiDonationController::class, 'create']
-)->name('aarti.donation.create');
+        '/aarti/{deity}/donation',
+        [AartiDonationController::class, 'create']
+    )->name('aarti.donation.create');
 
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
-Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
-Route::get('/digital-pooja/{session}', [PoojaController::class, 'digital'])->name('pooja.digital.show');
-Route::get('/digital-pooja/{session}/media/{media}', [PoojaController::class, 'digitalMedia'])
-    ->whereIn('media', ['video', 'audio'])
-    ->name('pooja.digital.media');
-Route::get('/notifications', [UserNotificationController::class, 'index'])->name('user.notifications.index');
-Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllRead'])->name('user.notifications.read-all');
-Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markRead'])->name('user.notifications.read');
-Route::post('/payments/bookings/{type}/{id}/retry', [PaymentController::class, 'retry'])
-    ->whereIn('type', ['pooja', 'hawan', 'diya'])
-    ->name('payments.bookings.retry');
-Route::post('/payments/razorpay/verify', [PaymentController::class, 'verify'])->name('payments.razorpay.verify');
-Route::post('/payments/razorpay/failure', [PaymentController::class, 'failure'])->name('payments.razorpay.failure');
-Route::post('/live-sessions/{type}/{id}/family-invites', [LiveSessionController::class, 'storeInvite'])
-    ->whereIn('type', ['pooja', 'hawan'])
-    ->name('live.family.store');
-Route::post('/live-sessions/{type}/{id}/family-invites/{invite}/revoke', [LiveSessionController::class, 'revokeInvite'])
-    ->whereIn('type', ['pooja', 'hawan'])
-    ->name('live.family.revoke');
-Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class, 'payDakshina'])
-    ->whereIn('type', ['pooja', 'hawan'])
-    ->name('live.dakshina.pay');
-Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::class, 'storeIssueReport'])
-    ->whereIn('type', ['pooja', 'hawan'])
-    ->name('live.issue-report.store');
-Route::post('/live-sessions/{type}/{id}/confirm-completion', [LiveSessionController::class, 'confirmCompletion'])
-    ->whereIn('type', ['pooja', 'hawan'])
-    ->name('live.completion.confirm');
-Route::post('/reviews/image-otp', [ReviewController::class, 'sendImageOtp'])->name('reviews.image-otp');
-Route::post('/reviews/image-otp/verify', [ReviewController::class, 'verifyImageOtp'])->name('reviews.image-otp.verify');
-Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
-Route::get('/reports/{dispute}', [UserReportController::class, 'show'])->name('user.reports.show');
-Route::get('/reports/{dispute}/evidences/{evidence}', [UserReportController::class, 'evidence'])->name('user.reports.evidence');
-Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/profile', [UserProfileController::class, 'show'])->name('user.profile');
+    Route::put('/profile', [UserProfileController::class, 'update'])->name('user.profile.update');
+    Route::get('/digital-pooja/{session}', [PoojaController::class, 'digital'])->name('pooja.digital.show');
+    Route::get('/digital-pooja/{session}/media/{media}', [PoojaController::class, 'digitalMedia'])
+        ->whereIn('media', ['video', 'audio'])
+        ->name('pooja.digital.media');
+    Route::get('/notifications', [UserNotificationController::class, 'index'])->name('user.notifications.index');
+    Route::post('/notifications/read-all', [UserNotificationController::class, 'markAllRead'])->name('user.notifications.read-all');
+    Route::post('/notifications/{notification}/read', [UserNotificationController::class, 'markRead'])->name('user.notifications.read');
+    Route::post('/payments/bookings/{type}/{id}/retry', [PaymentController::class, 'retry'])
+        ->whereIn('type', ['pooja', 'hawan', 'diya'])
+        ->name('payments.bookings.retry');
+    Route::post('/payments/razorpay/verify', [PaymentController::class, 'verify'])->name('payments.razorpay.verify');
+    Route::post('/payments/razorpay/failure', [PaymentController::class, 'failure'])->name('payments.razorpay.failure');
+    Route::post('/live-sessions/{type}/{id}/family-invites', [LiveSessionController::class, 'storeInvite'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live.family.store');
+    Route::post('/live-sessions/{type}/{id}/family-invites/{invite}/revoke', [LiveSessionController::class, 'revokeInvite'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live.family.revoke');
+    Route::post('/live-sessions/{type}/{id}/dakshina', [LiveSessionController::class, 'payDakshina'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live.dakshina.pay');
+    Route::post('/live-sessions/{type}/{id}/issue-report', [LiveSessionController::class, 'storeIssueReport'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live.issue-report.store');
+    Route::post('/live-sessions/{type}/{id}/confirm-completion', [LiveSessionController::class, 'confirmCompletion'])
+        ->whereIn('type', ['pooja', 'hawan'])
+        ->name('live.completion.confirm');
+    Route::post('/reviews/image-otp', [ReviewController::class, 'sendImageOtp'])->name('reviews.image-otp');
+    Route::post('/reviews/image-otp/verify', [ReviewController::class, 'verifyImageOtp'])->name('reviews.image-otp.verify');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::get('/reports/{dispute}', [UserReportController::class, 'show'])->name('user.reports.show');
+    Route::get('/reports/{dispute}/evidences/{evidence}', [UserReportController::class, 'evidence'])->name('user.reports.evidence');
+    Route::post('/light-diya', [DiyaController::class, 'store'])->name('diya.store');
 
-Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
-Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');
-Route::get('/book-hawan/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'show'])->name('hawan.pandits.show');
-Route::post('/book-hawan/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'select'])->name('hawan.pandits.select');
-Route::get('/book-hawan/{slug}/review', [HawanController::class, 'review'])->name('hawan.review');
-Route::post('/book-hawan', [HawanController::class, 'store'])->name('hawan.store');
-Route::get('/book-pooja/{slug}', [PoojaController::class, 'show'])->name('pooja.show');
-Route::get('/book-pooja/{slug}/pandits', [PanditSelectionController::class, 'poojaIndex'])->name('pooja.pandits');
-Route::get('/book-pooja/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'poojaShow'])->name('pooja.pandits.show');
-Route::post('/book-pooja/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'poojaSelect'])->name('pooja.pandits.select');
-Route::get('/book-pooja/{slug}/review', [PoojaController::class, 'review'])->name('pooja.review');
-Route::post('/book-pooja', [PoojaController::class, 'store'])->name('pooja.store');
-
+    Route::get('/book-hawan/{slug}', [HawanController::class, 'show'])->name('hawan.show');
+    Route::get('/book-hawan/{slug}/pandits', [PanditSelectionController::class, 'index'])->name('hawan.pandits');
+    Route::get('/book-hawan/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'show'])->name('hawan.pandits.show');
+    Route::post('/book-hawan/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'select'])->name('hawan.pandits.select');
+    Route::get('/book-hawan/{slug}/review', [HawanController::class, 'review'])->name('hawan.review');
+    Route::post('/book-hawan', [HawanController::class, 'store'])->name('hawan.store');
+    Route::get('/book-pooja/{slug}', [PoojaController::class, 'show'])->name('pooja.show');
+    Route::get('/book-pooja/{slug}/pandits', [PanditSelectionController::class, 'poojaIndex'])->name('pooja.pandits');
+    Route::get('/book-pooja/{slug}/pandits/{pandit}', [PanditSelectionController::class, 'poojaShow'])->name('pooja.pandits.show');
+    Route::post('/book-pooja/{slug}/pandits/{pandit}/select', [PanditSelectionController::class, 'poojaSelect'])->name('pooja.pandits.select');
+    Route::get('/book-pooja/{slug}/review', [PoojaController::class, 'review'])->name('pooja.review');
+    Route::post('/book-pooja', [PoojaController::class, 'store'])->name('pooja.store');
 
 });
-
-
-
-
 
 // Route::get('/pandit/zoom/callback', function () {
 //     return 'Zoom callback working';
 // })->name('pandit.zoom.callback');
 
-
-
-
-
-
-
 use App\Http\Controllers\ZoomWebhookController;
+use Illuminate\Http\Request;
+// use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 Route::post('/zoom/webhook', [ZoomWebhookController::class, 'handle'])
     ->name('zoom.webhook');

@@ -78,9 +78,19 @@
                     @if ($otpPending)
                         <input type="hidden" name="terms" value="1">
                     @endif
-                    <label for="termsCheckbox">
+                    {{-- <label for="termsCheckbox">
                         I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>
-                    </label>
+                    </label> --}}
+                    <label for="termsCheckbox">
+    I agree to the
+    <a href="{{ route('terms-and-conditions') }}" target="_blank" rel="noopener">
+        Terms & Conditions
+    </a>
+    and
+    <a href="{{ route('privacy-policy') }}" target="_blank" rel="noopener">
+        Privacy Policy
+    </a>
+</label>
                 </div>
             </div>
 

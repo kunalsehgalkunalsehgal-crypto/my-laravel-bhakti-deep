@@ -21,7 +21,28 @@
             ] as $col)
                 <div class="col-sm-6 col-lg-2 footer-links">
                     <h4 class="gold-text">{{ $col[0] }}</h4>
-                    @foreach ($col[1] as $link)<a>{{ $link }}</a>@endforeach
+                    {{-- @foreach ($col[1] as $link)<a>{{ $link }}</a>@endforeach --}}
+                    @foreach ($col[1] as $link)
+
+    @if ($link === 'Privacy Policy')
+
+        <a href="{{ route('privacy-policy') }}">
+            {{ $link }}
+        </a>
+
+    @elseif ($link === 'Terms & Conditions')
+
+        <a href="{{ route('terms-and-conditions') }}">
+            {{ $link }}
+        </a>
+
+    @else
+
+        <a>{{ $link }}</a>
+
+    @endif
+
+@endforeach
                 </div>
             @endforeach
             <div class="col-lg-3">

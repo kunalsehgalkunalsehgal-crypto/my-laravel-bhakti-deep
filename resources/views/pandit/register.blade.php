@@ -78,9 +78,23 @@
                     @if ($otpPending)
                         <input type="hidden" name="terms" value="1">
                     @endif
-                    <label for="panditTermsCheckbox">
+                    {{-- <label for="panditTermsCheckbox">
                         I agree to BhaktiDeep Pandit Terms, verification rules and Privacy Policy
-                    </label>
+                    </label> --}}
+                    <label for="panditTermsCheckbox">
+    I agree to the
+    <a href="{{ route('terms-and-conditions') }}"
+       target="_blank"
+       rel="noopener noreferrer">
+        Terms & Conditions
+    </a>,
+    pandit verification requirements and
+    <a href="{{ route('privacy-policy') }}"
+       target="_blank"
+       rel="noopener noreferrer">
+        Privacy Policy
+    </a>.
+</label>
                 </div>
             </div>
 

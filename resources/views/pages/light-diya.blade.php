@@ -250,10 +250,39 @@
                                     </div>
                                 </div>
 
-                                <label class="ld-consent mt-4">
+                                {{-- <label class="ld-consent mt-4">
                                     <input type="checkbox" name="consent" value="1" id="diyaConsent">
                                     <span>I agree to use my sankalp for this diya offering.</span>
-                                </label>
+                                </label> --}}
+                                <label class="ld-consent mt-4">
+
+    <input type="checkbox"
+           name="consent"
+           value="1"
+           id="diyaConsent">
+
+    <span>
+        I agree to BhaktiDeep's
+
+        <a href="{{ route('terms-and-conditions') }}"
+           target="_blank"
+           rel="noopener noreferrer">
+            Terms & Conditions
+        </a>
+
+        and acknowledge the
+
+        <a href="{{ route('privacy-policy') }}"
+           target="_blank"
+           rel="noopener noreferrer">
+            Privacy Policy
+        </a>.
+
+        I consent to my sankalp being used
+        for this diya offering.
+    </span>
+
+</label>
 
                                 <button type="submit" class="btn btn-saffron w-100 py-3 rounded-3 mt-4 fw-semibold" id="payButton">
                                     <i class="bi bi-fire me-2"></i> Continue to Test Payment

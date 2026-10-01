@@ -26,6 +26,7 @@
         ['Admin Roles', 'admin.roles.index', 'manage-roles'],
         ['Permissions', 'admin.permissions.index', 'manage-permissions'],
         ['Admin Users', 'admin.admins.index', 'manage-admins'],
+        ['Homepage Festival', 'admin.home-festival.edit', 'manage-settings'],
         ['Settings', 'admin.settings.index', 'manage-settings'],
     ];
 @endphp

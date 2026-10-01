@@ -189,8 +189,28 @@
 
                 {{-- Right Column - Form --}}
                 <div class="col-lg-7">
-                    <form class="contact-form-right" action="{{ route('contact.submit') }}" method="POST" onsubmit="return handleContactSubmit(event)">
+                    <form class="contact-form-right" action="{{ route('contact.submit') }}" method="POST" >
+                    {{-- <form class="contact-form-right" action="{{ route('contact.submit') }}" method="POST" onsubmit="return handleContactSubmit(event)"> --}}
                         @csrf
+                        @if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="alert alert-danger">
+        @foreach($errors->all() as $error)
+            <p>{{ $error }}</p>
+        @endforeach
+    </div>
+@endif
                         <div class="row g-3">
                             {{-- Full Name --}}
                             <div class="col-sm-6">
@@ -321,37 +341,37 @@
 
 @push('scripts')
 <script>
-function handleContactSubmit(event) {
-    event.preventDefault();
+// function handleContactSubmit(event) {
+//     event.preventDefault();
 
-    const form = event.target;
-    const formData = new FormData(form);
+//     const form = event.target;
+//     const formData = new FormData(form);
 
-    // Show loading state
-    const submitBtn = form.querySelector('.contact-submit-btn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Sending...';
-    submitBtn.disabled = true;
+//     // Show loading state
+//     const submitBtn = form.querySelector('.contact-submit-btn');
+//     const originalText = submitBtn.innerHTML;
+//     submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Sending...';
+//     submitBtn.disabled = true;
 
-    // Simulate form submission (replace with actual AJAX call)
-    setTimeout(() => {
-        submitBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Message Sent!';
-        submitBtn.style.background = 'linear-gradient(135deg, #2fb66d, #1a8f4c)';
+//     // Simulate form submission (replace with actual AJAX call)
+//     setTimeout(() => {
+//         submitBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Message Sent!';
+//         submitBtn.style.background = 'linear-gradient(135deg, #2fb66d, #1a8f4c)';
 
-        // Reset form after 2 seconds
-        setTimeout(() => {
-            form.reset();
-            submitBtn.innerHTML = originalText;
-            submitBtn.style.background = '';
-            submitBtn.disabled = false;
+//         // Reset form after 2 seconds
+//         setTimeout(() => {
+//             form.reset();
+//             submitBtn.innerHTML = originalText;
+//             submitBtn.style.background = '';
+//             submitBtn.disabled = false;
 
-            // Show success message
-            alert('Thank you! Your message has been sent. Our team will contact you soon.');
-        }, 2000);
-    }, 1500);
+//             // Show success message
+//             alert('Thank you! Your message has been sent. Our team will contact you soon.');
+//         }, 2000);
+//     }, 1500);
 
-    return false;
-}
+//     return false;
+// }
 
 function scrollToForm(event) {
     event.preventDefault();

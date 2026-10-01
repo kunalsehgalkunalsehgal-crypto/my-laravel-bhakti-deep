@@ -12,8 +12,10 @@ use App\Models\PaymentAttempt;
 use App\Models\PaymentRefund;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class PanditBookingCancellationService
 {
@@ -132,21 +134,45 @@ if ($session->status !== 'scheduled' || $session->payment_status !== 'paid') {
 
     private function notifyUser(Model $session, string $message): void
     {
-        if (!$session->user) {
+        if (! $session->user?->email) {
             return;
         }
 
-        NotificationLog::create([
+        $notification = NotificationLog::create([
             'user_id' => $session->user_id,
             'channel' => 'my_bookings',
             'message_type' => 'booking_refund',
             'recipient' => $session->user->email,
             'subject' => 'BhaktiDeep booking refund update',
             'message' => $message,
-            'delivery_status' => 'sent',
-            'sent_at' => now(),
+            'delivery_status' => 'pending',
         ]);
 
-        Mail::to($session->user->email)->send(new BookingRefundMail($message));
+        try {
+            Mail::to($session->user->email)->send(new BookingRefundMail($message));
+
+            $notification->update([
+                'delivery_status' => 'sent',
+                'failure_reason' => null,
+                'sent_at' => now(),
+            ]);
+        } catch (Throwable $exception) {
+            try {
+                $notification->update([
+                    'delivery_status' => 'failed',
+                    'failure_reason' => substr($exception->getMessage(), 0, 2000),
+                    'sent_at' => null,
+                ]);
+            } catch (Throwable) {
+                // Mail logging must never roll back a valid cancellation/refund.
+            }
+
+            Log::warning('BhaktiDeep booking refund email failed', [
+                'booking_type' => class_basename($session),
+                'booking_id' => $session->getKey(),
+                'recipient' => $session->user->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

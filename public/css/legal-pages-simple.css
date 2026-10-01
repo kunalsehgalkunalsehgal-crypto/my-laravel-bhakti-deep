@@ -1,0 +1,144 @@
+/* BhaktiDeep policy pages. Minimal, screenshot-inspired, single-column layout.
+   Scoped rules: this CSS does not change the site's existing header or footer. */
+.bd-policy-page {
+    background: #fffcf8;
+    color: #312720;
+    padding: 42px 0 78px;
+    font-family: "Inter", Arial, sans-serif;
+}
+.bd-policy-page *, .bd-policy-page *::before, .bd-policy-page *::after {
+    box-sizing: border-box;
+}
+.bd-policy-page .bd-policy-container {
+    width: min(100% - 32px, 850px);
+    max-width: 850px;
+    padding: 0;
+    margin-inline: auto;
+}
+.bd-policy-page .bd-policy-heading {
+    text-align: center;
+    margin: 0 auto 35px;
+}
+.bd-policy-page .bd-policy-heading h1 {
+    font-family: "Inter", Arial, sans-serif;
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 750;
+    line-height: 1.25;
+    color: #994719;
+    margin: 0 0 10px;
+    letter-spacing: -.025em;
+}
+.bd-policy-page .bd-policy-heading p {
+    font-size: 14px;
+    line-height: 1.75;
+    margin: 0 auto 6px;
+    max-width: 640px;
+    color: #5f5b58;
+}
+.bd-policy-page .bd-policy-heading small {
+    display: block;
+    color: #8a8078;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.bd-policy-page .bd-policy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.bd-policy-page .bd-policy-block {
+    width: 100%;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid #eee7e0;
+    border-left: 3px solid #db793a;
+    border-radius: 7px;
+    box-shadow: 0 3px 10px rgba(49, 39, 32, .07);
+    padding: 23px 26px 22px;
+    scroll-margin-top: 105px;
+}
+.bd-policy-page .bd-policy-block h2 {
+    font-family: "Inter", Arial, sans-serif;
+    margin: 0 0 12px;
+    color: #794019;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+.bd-policy-page .bd-policy-block h2 span {
+    color: inherit;
+    font: inherit;
+}
+.bd-policy-page .bd-policy-block p,
+.bd-policy-page .bd-policy-block li {
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.8;
+    font-weight: 400;
+    color: #48433f;
+    overflow-wrap: anywhere;
+}
+.bd-policy-page .bd-policy-block p { margin: 0 0 12px; }
+.bd-policy-page .bd-policy-block p:last-child { margin-bottom: 0; }
+.bd-policy-page .bd-policy-block strong {
+    color: #39302b;
+    font-weight: 650;
+}
+.bd-policy-page .bd-policy-block ul {
+    margin: 9px 0 7px;
+    padding-left: 19px;
+    list-style: disc;
+}
+.bd-policy-page .bd-policy-block li { padding-left: 2px; margin: 5px 0; }
+.bd-policy-page .bd-policy-block li::marker { color: #bb6a31; }
+.bd-policy-page .bd-policy-block a,
+.bd-policy-page .bd-policy-bottom a {
+    color: #a94e19;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.bd-policy-page .bd-policy-block a:hover,
+.bd-policy-page .bd-policy-bottom a:hover { color: #70310b; }
+.bd-policy-page .bd-policy-callout {
+    background: #fff9f3;
+    border-left: 2px solid #e8ac7a;
+    padding: 11px 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 13px 0 0;
+}
+.bd-policy-page .bd-policy-callout i {
+    color: #be6f36;
+    flex-shrink: 0;
+    font-size: 15px;
+    margin-top: 3px;
+}
+.bd-policy-page .bd-policy-callout p { margin: 0; }
+.bd-policy-page .bd-policy-bottom {
+    margin: 27px auto 0;
+    text-align: center;
+    font-size: 13px;
+    color: #66605a;
+    line-height: 1.8;
+}
+.bd-policy-page .bd-policy-bottom p { margin: 3px 0; }
+.bd-policy-page a:focus-visible {
+    outline: 2px solid #a94e19;
+    outline-offset: 3px;
+}
+@media (max-width: 620px) {
+    .bd-policy-page { padding: 30px 0 48px; }
+    .bd-policy-page .bd-policy-container { width: calc(100% - 28px); }
+    .bd-policy-page .bd-policy-heading { margin-bottom: 25px; }
+    .bd-policy-page .bd-policy-heading h1 { font-size: 25px; }
+    .bd-policy-page .bd-policy-heading p { font-size: 13px; }
+    .bd-policy-page .bd-policy-block { padding: 17px 16px 18px; }
+    .bd-policy-page .bd-policy-block h2 { font-size: 16px; }
+    .bd-policy-page .bd-policy-block p,
+    .bd-policy-page .bd-policy-block li { font-size: 12.5px; line-height: 1.75; }
+    .bd-policy-page .bd-policy-list { gap: 13px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    html:has(.bd-policy-page) { scroll-behavior: smooth; }
+}

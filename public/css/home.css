@@ -1531,3 +1531,101 @@ margin: 0px;
     text-decoration: none;
     color: inherit;
 }
+
+
+
+/* HOME LIVE DIYA */
+
+.home-diya-grid {
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+}
+
+
+/* RIGHT CTA */
+
+.diya-guide-label {
+    color: var(--saffron);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .14em;
+}
+
+.diya-guide h3 {
+    margin: 10px 0;
+    font-size: 28px;
+}
+
+.diya-guide-step {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(199, 141, 34, .18);
+}
+
+.diya-guide-step b {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(199, 141, 34, .3);
+    border-radius: 12px;
+    color: var(--saffron);
+}
+
+.diya-guide-step strong,
+.diya-guide-step small {
+    display: block;
+}
+
+.diya-guide-step small {
+    margin-top: 3px;
+    color: var(--muted);
+}
+
+
+/* TABLET - 28 DIYAS */
+
+@media (max-width: 1199px) {
+
+    .home-diya-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .home-diya-item:nth-child(n+29) {
+        display: none;
+    }
+}
+
+
+/* MOBILE - 16 DIYAS */
+
+@media (max-width: 767px) {
+
+    .home-diya-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .home-diya-item:nth-child(n+17) {
+        display: none;
+    }
+}
+
+
+/* SMALL MOBILE - 12 DIYAS */
+
+@media (max-width: 430px) {
+
+    .home-diya-item:nth-child(n+13) {
+        display: none;
+    }
+
+    .diya-guide {
+        padding: 18px;
+    }
+
+    .diya-guide h3 {
+        font-size: 24px;
+    }
+}

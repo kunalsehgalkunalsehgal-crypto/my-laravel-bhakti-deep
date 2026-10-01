@@ -38,6 +38,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 use App\Events\PanditMessageSent;
 
+use App\Services\UserBookingNotificationService;
 
 use App\Models\Review;
 
@@ -1009,6 +1010,16 @@ public function bookings(Request $request)
         if ($session->payment_status === 'paid' && ($session->booking_mode ?: 'online') === 'online') {
             $meeting = app(VideoMeetingService::class)->createForSessionIfReady($session->fresh());
         }
+
+        app(UserBookingNotificationService::class)->bookingAcceptedForUser(
+            $session->fresh([
+                'user',
+                'pandit',
+                'sankalp',
+                'service',
+                'videoMeeting',
+            ])
+        );
 
         if ($session->payment_status === 'paid' && ($session->booking_mode ?: 'online') === 'online' && !$meeting) {
             return back()->with('warning', ucfirst($type).' booking accepted, but the video meeting could not be created yet.');
