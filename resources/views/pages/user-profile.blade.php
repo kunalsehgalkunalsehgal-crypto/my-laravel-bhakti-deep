@@ -477,12 +477,22 @@
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         {{ $notification->message }}
 
-        <button
+        {{-- <button
             type="button"
             class="btn-close"
             data-bs-dismiss="alert"
             aria-label="Close">
-        </button>
+        </button> --}}
+        <form method="POST"
+      action="{{ route('user.notifications.read', $notification) }}">
+    @csrf
+
+    <button
+        type="submit"
+        class="btn-close"
+        aria-label="Close">
+    </button>
+</form>
     </div>
 @endforeach
 

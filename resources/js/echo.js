@@ -1,7 +1,24 @@
-import Echo from 'laravel-echo';
+// import Echo from 'laravel-echo';
 
+// import Pusher from 'pusher-js';
+// window.Pusher = Pusher;
+
+// window.Echo = new Echo({
+//     broadcaster: 'reverb',
+//     key: import.meta.env.VITE_REVERB_APP_KEY,
+//     wsHost: import.meta.env.VITE_REVERB_HOST,
+//     wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+//     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+//     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+//     enabledTransports: ['ws', 'wss'],
+// });
+import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+
 window.Pusher = Pusher;
+
+/*
+OLD REVERB CONFIG - KEEP FOR BACKUP
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
@@ -11,4 +28,15 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
+});
+*/
+
+
+// ACTIVE PUSHER CONFIG
+
+window.Echo = new Echo({
+    broadcaster: 'pusher',
+    key: import.meta.env.VITE_PUSHER_APP_KEY,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+    forceTLS: true,
 });

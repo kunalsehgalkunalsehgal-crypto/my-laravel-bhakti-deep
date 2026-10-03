@@ -33,6 +33,7 @@ class UserProfileController extends Controller
                 ->get(),
             'bookingNotifications' => NotificationLog::where('user_id', $user->id)
                 ->where('channel', 'my_bookings')
+                ->whereNull('read_at')
                 ->latest()
                 ->limit(5)
                 ->get(),

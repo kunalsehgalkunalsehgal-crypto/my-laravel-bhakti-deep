@@ -1334,7 +1334,15 @@
             \App\Models\BookingUserConfirmation::STATUS_CONFIRMED,
             \App\Models\BookingUserConfirmation::STATUS_AUTO_CONFIRMED,
         ], true);
-    $canReportIssue = $canManageFamily && $isPrivateBookedSession && in_array($sessionType, ['pooja', 'hawan'], true) && $bookingRecord;
+    // $canReportIssue = $canManageFamily && $isPrivateBookedSession && in_array($sessionType, ['pooja', 'hawan'], true) && $bookingRecord;
+    $canReportIssue = $canManageFamily
+    && $isPrivateBookedSession
+    && in_array($sessionType, ['pooja', 'hawan'], true)
+    && $bookingRecord
+    && !in_array($userConfirmation?->status, [
+        \App\Models\BookingUserConfirmation::STATUS_CONFIRMED,
+        \App\Models\BookingUserConfirmation::STATUS_AUTO_CONFIRMED,
+    ], true);
     $disputeStatusLabel = $activeDispute ? \Illuminate\Support\Str::of($activeDispute->status)->replace('_', ' ')->title() : null;
     $reportReasons = [
         'pandit_not_joined' => 'Pandit not joined',
@@ -1591,14 +1599,14 @@
                         <div>
                             <h3>{{ $session['completedTitle'] }}</h3>
                             <p>{{ $session['completedText'] }} Donation receipt will be available with your booking record.</p>
-                            <div class="d-flex flex-wrap gap-2">
+                            {{-- <div class="d-flex flex-wrap gap-2">
                                 <button class="btn btn-gold btn-sm"><i class="bi bi-download"></i> Download Receipt</button>
                                 <button class="btn btn-ghost-gold btn-sm"><i class="bi bi-play-circle"></i> View Replay</button>
                                 <button class="btn btn-ghost-gold btn-sm"><i class="bi bi-share"></i> Share Blessings</button>
                                 @if ($sessionType === 'hawan' || ($sessionType === 'pooja' && $isPaidSession))
                                     <button class="btn btn-ghost-gold btn-sm"><i class="bi bi-award"></i> Download Certificate</button>
                                 @endif
-                            </div>
+                            </div> --}}
                             <p class="session-note"><i class="bi bi-people"></i> <span data-family-top-count>{{ $joinedCount }}</span> family members joined this session.</p>
                         </div>
                     </div>
@@ -1834,7 +1842,7 @@
                             <p><a class="btn btn-ghost-gold w-100" href="{{ asset('storage/'.$completionProof->file_path) }}" target="_blank"><i class="bi bi-image"></i> View Completion Image</a></p>
                         @endif
                         <div class="coming-row"><i class="bi bi-card-text"></i><strong>Completion Note<small>{{ $completionProof->notes ?: 'Not added' }}</small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row"><i class="bi bi-clock"></i><strong>Submitted<small>{{ $completionProof->submitted_at?->format('d M Y, h:i A') ?? '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row"><i class="bi bi-clock"></i><strong>Submitted<small>{{ $completionProof->submitted_at?->timezone('Asia/Kolkata')->format('d M Y, h:i A') ?? '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
 
                         @if($userConfirmation)
                             <div class="coming-row"><i class="bi bi-info-circle"></i><strong>Confirmation Status<small>{{ ucfirst(str_replace('_', ' ', $userConfirmation->status)) }}</small></strong><em class="bi bi-check-circle"></em></div>

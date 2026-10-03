@@ -45,6 +45,7 @@ use App\Http\Controllers\VideoMeetingSdkController;
 use App\Models\Admin\DiyaSession;
 use App\Models\Admin\HawanSession;
 use App\Models\Admin\Pooja;
+use App\Models\Admin\Blog;
 use App\Models\Admin\PoojaSession;
 use App\Models\Dispute;
 use App\Models\VideoMeetingAttendance;
@@ -141,6 +142,12 @@ Route::get('/', function () {
     ->latest()
     ->get();
 
+$homeBlogs = Blog::with('category')
+    ->where('status', 'published')
+    ->latest('published_at')
+    ->limit(3)
+    ->get();
+
 $festival = PlatformSetting::whereIn('key', [
     'home_festival_heading',
     'home_festival_subheading',
@@ -148,10 +155,11 @@ $festival = PlatformSetting::whereIn('key', [
 ])->pluck('value', 'key')->all();
 
 return view('welcome', compact(
-    'liveDiyas',
+     'liveDiyas',
     'liveDiyaCount',
     'diyaLitToday',
     'homePoojas',
+    'homeBlogs',
     'festival'
 ));
 
@@ -188,7 +196,8 @@ Route::get(
     [AartiController::class, 'show']
 )->name('aarti.show');
 
-Route::view('/lakshmi-pooja', 'pages.lakshmi-pooja')->name('lakshmi-pooja');
+// Route::view('/lakshmi-pooja', 'pages.lakshmi-pooja')->name('lakshmi-pooja');
+Route::redirect('/lakshmi-pooja', '/personalized-pooja')->name('lakshmi-pooja');
 Route::view('/how-it-works', 'pages.how-it-works')->name('how.works');
 Route::redirect('/live', '/live-sessions')->name('live');
 Route::get('/live-family/{token}', [LiveSessionController::class, 'joinInvite'])->name('live.family.join');

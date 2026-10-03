@@ -275,6 +275,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const timer = document.getElementById('diyaTimer');
     const audioBars = document.querySelector('[data-audio-bars]');
 
+
+function stopDiyaAudio() {
+    document.querySelectorAll('audio').forEach(function (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+    });
+
+    audioBars?.classList.add('is-paused');
+}
     function renderTimer() {
         if (!timer) {
             return;
@@ -285,10 +294,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // if (sessionStatus === 'completed') {
+        //     timer.textContent = '00:00:00';
+        //     return;
+        // }
         if (sessionStatus === 'completed') {
-            timer.textContent = '00:00:00';
-            return;
-        }
+    timer.textContent = '00:00:00';
+    stopDiyaAudio();
+    return;
+}
 
         const targetAt = sessionStatus === 'scheduled' ? startAt : endAt;
 
@@ -299,10 +313,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const remaining = new Date(targetAt).getTime() - Date.now();
 
+        // if (remaining <= 0) {
+        //     timer.textContent = '00:00:00';
+        //     return;
+        // }
         if (remaining <= 0) {
-            timer.textContent = '00:00:00';
-            return;
-        }
+    timer.textContent = '00:00:00';
+    stopDiyaAudio();
+    return;
+}
 
         const totalSeconds = Math.floor(remaining / 1000);
         const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');

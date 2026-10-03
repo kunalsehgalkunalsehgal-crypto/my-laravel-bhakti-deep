@@ -16,7 +16,7 @@
             'icon' => 'bi-telephone-fill',
             'title' => 'Call Support',
             'text' => 'Speak with our team for booking and ritual related help.',
-            'value' => '+91 12345 67890',
+            'value' => '+91 70155 01806',
             'type' => 'phone',
         ],
         [
@@ -123,7 +123,7 @@
                     <a href="#contact-form" class="btn btn-saffron btn-lg">
                         <i class="bi bi-chat-dots-fill"></i> Send Query
                     </a>
-                    <a href="tel:+911234567890" class="btn btn-ghost-gold btn-lg">
+                    <a href="tel:+917015501806" class="btn btn-ghost-gold btn-lg">
                         <i class="bi bi-telephone-fill"></i> Call Now
                     </a>
                 </div>

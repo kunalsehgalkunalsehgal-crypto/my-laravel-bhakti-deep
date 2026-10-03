@@ -94,11 +94,10 @@
         </div>
     </section>
 
-    <section class="container page-section" id="preview">
+    {{-- <section class="container page-section" id="preview">
         <div class="row g-4">
             <div class="col-lg-8">
                 <div class=" live-session-card">
-                    {{-- <img src="{{ asset('assets/havan-live.jpg') }}" alt="Sample live hawan fire preview"> --}}
                     <video autoplay muted loop playsinline>
                                 <source src="{{ asset('assets/havan-live.mp4') }}" type="video/mp4">
                             </video>
@@ -128,7 +127,7 @@
                 <a href="#packages" class="btn btn-gold w-100 mt-4 py-3">Book to Join Live Hawan <i class="bi bi-arrow-right"></i></a>
             </div>
         </div>
-    </section>
+    </section> --}}
 
     {{-- <section class="container page-section hawan-booking-flow">
         <div class="section-heading">

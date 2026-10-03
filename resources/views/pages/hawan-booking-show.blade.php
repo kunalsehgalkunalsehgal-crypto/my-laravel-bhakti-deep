@@ -257,7 +257,7 @@
                     </div> --}}
 
                     <!-- Live Preview -->
-                    <div class="mb-5">
+                    {{-- <div class="mb-5">
                         <h2 class="hawan-section-title">Live Hawan <span class="hawan-highlight">Preview</span></h2>
                         <div class="hawan-preview-section">
                             <div class="row g-4 align-items-center">
@@ -295,7 +295,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
 
 

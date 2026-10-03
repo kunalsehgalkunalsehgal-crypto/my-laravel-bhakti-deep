@@ -867,7 +867,7 @@
                             <p><a class="btn btn-ghost-gold w-100" href="{{ asset('storage/'.$completionProof->file_path) }}" target="_blank"><i class="bi bi-image"></i> View Completion Image</a></p>
                         @endif
                         <div class="coming-row"><i class="bi bi-card-text"></i><strong>Completion Note<small>{{ $completionProof->notes ?: 'Not added' }}</small></strong><em class="bi bi-check-circle"></em></div>
-                        <div class="coming-row"><i class="bi bi-clock"></i><strong>Submitted<small>{{ $completionProof->submitted_at?->format('d M Y, h:i A') ?? '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
+                        <div class="coming-row"><i class="bi bi-clock"></i><strong>Submitted<small>{{ $completionProof->submitted_at?->timezone('Asia/Kolkata')->format('d M Y, h:i A') ?? '-' }}</small></strong><em class="bi bi-check-circle"></em></div>
 
                         @if($userConfirmation)
                             <div class="coming-row"><i class="bi bi-info-circle"></i><strong>Confirmation Status<small>{{ ucfirst(str_replace('_', ' ', $userConfirmation->status)) }}</small></strong><em class="bi bi-check-circle"></em></div>
