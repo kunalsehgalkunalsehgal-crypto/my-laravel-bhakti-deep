@@ -320,7 +320,7 @@
                     </div>
                 </div>
                 <div class="col-lg-8">
-                    @if($liveDiyas->isNotEmpty())
+                    {{-- @if($liveDiyas->isNotEmpty())
                         <div class="diya-grid">
                             @foreach ($liveDiyas as $index => $liveDiya)
                                 <span
@@ -333,11 +333,76 @@
                         </div>
                     @else
                         <p class="text-muted mb-0">No paid diyas are currently glowing.</p>
-                    @endif
+                    @endif --}}
+                    <div class="diya-grid light-diya-demo-grid">
+    @for ($i = 0; $i < 44; $i++)
+        <span
+            class="light-diya-demo-item"
+            style="animation-delay: {{ fmod($i * 0.15, 3) }}s;"
+        >
+            <img
+                src="{{ asset('assets/small-deep.png') }}"
+                alt="Glowing diya"
+            >
+        </span>
+    @endfor
+</div>
                 </div>
             </div>
         </div>
     </section>
+    <style>
+        .light-diya-demo-grid {
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+}
+
+@media (max-width: 1199px) {
+    .light-diya-demo-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .light-diya-demo-item:nth-child(n+29) {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .light-diya-demo-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .light-diya-demo-item:nth-child(n+17) {
+        display: none;
+    }
+}
+
+@media (max-width: 430px) {
+    .light-diya-demo-item:nth-child(n+13) {
+        display: none;
+    }
+}
+/* @media (min-width: 431px) and (max-width: 767px) {
+    .light-diya-demo-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 8px;
+    }
+} */
+ @media (min-width: 431px) and (max-width: 767px) {
+
+    .light-diya-demo-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 8px;
+    }
+
+    .light-diya-demo-item:nth-child(n+17) {
+        display: flex;
+    }
+
+    .light-diya-demo-item:nth-child(n+19) {
+        display: none;
+    }
+}
+    </style>
 </main>
 
 @push('scripts')

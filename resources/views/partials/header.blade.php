@@ -47,6 +47,7 @@
                 </ul>
 
                 <div class="header-actions">
+                    @include('partials.language-switcher')
                     @auth
                         <div class="dropdown notification-menu">
                             <button class="btn btn-outline-saffron notification-bell" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
@@ -80,9 +81,9 @@
                             <i class="bi bi-person-circle"></i> Profile
                         </a>
                     @else
-                        <a href="{{ route('login') }}" class="btn btn-outline-saffron"><i class="bi bi-box-arrow-in-right"></i> Login with OTP</a>
+                        <a href="{{ route('login') }}" class="btn btn-outline-saffron"><i class="bi bi-box-arrow-in-right"></i> Login</a>
                     @endauth
-                    <a class="btn btn-saffron" href="{{ route('personalized-pooja') }}"><i class="bi bi-stars"></i> Start Bhakti Journey</a>
+                    <a class="btn btn-saffron" href="{{ route('personalized-pooja') }}"><i class="bi bi-stars"></i> Begin Bhakti</a>
                 </div>
             </div>
         </div>

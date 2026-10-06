@@ -1,0 +1,321 @@
+/* =========================================================
+   BHAKTIDEEP LANGUAGE SWITCHER
+   ========================================================= */
+
+.bd-language {
+    position: relative;
+    z-index: 2000;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+
+/* ================= LANGUAGE BUTTON ================= */
+
+.bd-language .bd-language-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: 42px;
+    max-width: 100%;
+    padding: 9px 16px;
+
+    border: 1px solid rgba(199, 141, 34, .35);
+    border-radius: 999px;
+
+    background: linear-gradient(135deg, #fffaf0, #fbf4df);
+
+    color: var(--cream, #372016);
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.bd-language .bd-language-toggle:hover,
+.bd-language .bd-language-toggle:focus,
+.bd-language .bd-language-toggle.show {
+    border-color: var(--saffron, #e85b21);
+    background: #fff3db;
+    color: var(--cream, #372016);
+}
+
+.bd-language-toggle > .bi {
+    color: var(--saffron, #e85b21);
+    font-size: 17px;
+}
+
+.bd-language-toggle [data-bd-language-label] {
+    max-width: 60px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+
+/* ================= DROPDOWN ================= */
+
+.bd-language .bd-language-menu {
+    width: 230px;
+    min-width: 230px;
+    max-width: calc(100vw - 32px);
+    max-height: 420px;
+
+    overflow-y: auto;
+
+    padding: 8px;
+    margin-top: 8px;
+
+    border: 1px solid rgba(199, 141, 34, .25);
+    border-radius: 16px;
+
+    background: #fffaf0;
+
+    box-shadow: 0 16px 38px rgba(63, 36, 23, .16);
+
+    font-family: system-ui, sans-serif;
+
+    z-index: 2050 !important;
+}
+
+
+/* ================= DROPDOWN HEADING ================= */
+
+.bd-language-heading {
+    padding: 7px 10px 10px;
+
+    color: var(--muted, #7b604f);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+
+/* ================= LANGUAGE OPTION ================= */
+
+.bd-language .bd-language-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    width: 100%;
+    min-height: 44px;
+
+    padding: 9px 12px;
+    margin: 2px 0;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: var(--cream, #372016);
+
+    font-size: 14px;
+    line-height: 1.4;
+
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.bd-language-option * {
+    pointer-events: none;
+}
+
+
+/* ================= HOVER ================= */
+
+.bd-language .bd-language-option:hover,
+.bd-language .bd-language-option:focus {
+    background: rgba(232, 91, 33, .07) !important;
+    color: var(--saffron-dark, #b83b16) !important;
+}
+
+
+/* ================= ACTIVE LANGUAGE ================= */
+
+.bd-language .bd-language-option.active,
+.bd-language .bd-language-option[aria-pressed="true"] {
+    background: rgba(232, 91, 33, .10) !important;
+    color: var(--saffron-dark, #b83b16) !important;
+    font-weight: 700;
+}
+
+/* Bootstrap blue active remove */
+.bd-language .dropdown-item.active,
+.bd-language .dropdown-item:active {
+    background-color: rgba(232, 91, 33, .10) !important;
+    color: var(--saffron-dark, #b83b16) !important;
+}
+
+
+/* ================= LANGUAGE TEXT ================= */
+
+.bd-language-option small {
+    display: block;
+
+    color: var(--muted, #7b604f);
+
+    font-size: 10px;
+    line-height: 1.25;
+}
+
+.bd-language-option > .bi {
+    visibility: hidden;
+    color: var(--saffron, #e85b21);
+}
+
+.bd-language-option[aria-pressed="true"] > .bi {
+    visibility: visible;
+}
+
+
+/* ================= FOCUS ================= */
+
+.bd-language button:focus-visible {
+    outline: 2px solid var(--saffron, #e85b21);
+    outline-offset: 2px;
+}
+
+
+/* ================= FOOTER ================= */
+
+.bd-language-footer {
+    margin-top: 6px;
+    padding: 8px 10px;
+
+    border-top: 1px solid rgba(199, 141, 34, .20);
+
+    color: var(--muted, #7b604f);
+
+    font-size: 10px;
+    text-align: center;
+}
+
+.bd-language-footer p {
+    margin: 0;
+}
+
+
+/* =========================================================
+   GOOGLE TRANSLATE ENGINE
+   Hidden from UI but still available for translation
+   ========================================================= */
+
+.bd-google-translate-engine,
+#bd-google-translate {
+    position: absolute !important;
+
+    width: 1px !important;
+    height: 1px !important;
+
+    left: -9999px !important;
+    top: 0 !important;
+
+    overflow: hidden !important;
+
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+
+/* =========================================================
+   GOOGLE TOP BAR
+   ========================================================= */
+
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame,
+iframe.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-ORHb {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+
+/* Google page shift remove */
+
+html {
+    margin-top: 0 !important;
+}
+
+body {
+    top: 0 !important;
+}
+
+
+/* =========================================================
+   GOOGLE HOVER TOOLTIP
+   ========================================================= */
+
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.VIpgJd-yAWNEb-L7lbkb {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+
+/* =========================================================
+   GOOGLE BLUE HIGHLIGHT
+   ========================================================= */
+
+.goog-text-highlight,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+
+    border: 0 !important;
+
+    box-shadow: none !important;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (min-width: 1200px) {
+
+    .site-header #mainMenu {
+        flex-wrap: wrap;
+        row-gap: 10px;
+    }
+}
+
+
+@media (max-width: 1199px) {
+
+    .bd-language {
+        width: 100%;
+    }
+
+    .bd-language .bd-language-toggle {
+        width: 100%;
+    }
+
+    .bd-language .bd-language-menu {
+        width: 100%;
+        min-width: 220px;
+    }
+}
+
+
+@media (max-width: 575px) {
+
+    .bd-language .bd-language-toggle {
+        min-height: 44px;
+        padding: 9px 14px;
+    }
+
+    .bd-language .bd-language-menu {
+        max-height: 320px;
+    }
+
+    .bd-language .bd-language-option {
+        min-height: 44px;
+    }
+}
