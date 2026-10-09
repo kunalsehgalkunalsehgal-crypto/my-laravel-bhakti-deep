@@ -24,6 +24,7 @@ class AdminDeityThemeSettingsTest extends TestCase
             'title' => 'Durga Mantra',
             'slug' => 'durga-mantra',
             'category' => 'mantra',
+            'audio_file' => 'audio/durga-mantra.mp3',
             'status' => 'active',
         ]);
         $ambient = Audio::create([
@@ -41,7 +42,7 @@ class AdminDeityThemeSettingsTest extends TestCase
             // ->assertSee('Mantra/Music')
             ->assertSee('Mantra Audio')
             ->assertSee('Ambient Sound')
-            ->assertSee('Durga Mantra')
+            ->assertDontSee('Durga Mantra')
             ->assertSee('Temple Bells')
             ->assertSee('Golden Sparkles')
             ->assertSee('Intense');
@@ -57,7 +58,7 @@ class AdminDeityThemeSettingsTest extends TestCase
                 'primary_color' => '#b42318',
                 'secondary_color' => '#f6c453',
                 'glow_color' => '#ffd166',
-                'mantra_audio_id' => $mantra->id,
+                'mantra_audio_id' => null,
                 'ambient_audio_id' => $ambient->id,
                 'particle_style' => 'golden_sparkles',
                 'flame_style' => 'intense',
@@ -70,12 +71,17 @@ class AdminDeityThemeSettingsTest extends TestCase
         $this->assertSame('#b42318', $deity->primary_color);
         $this->assertSame('#f6c453', $deity->secondary_color);
         $this->assertSame('#ffd166', $deity->glow_color);
-        $this->assertSame($mantra->id, $deity->mantra_audio_id);
+        $this->assertNull($deity->mantra_audio_id);
         $this->assertSame($ambient->id, $deity->ambient_audio_id);
         $this->assertSame('golden_sparkles', $deity->particle_style);
         $this->assertSame('intense', $deity->flame_style);
         Storage::disk('public')->assertExists($deity->featured_image);
         Storage::disk('public')->assertExists($deity->temple_background_image);
+
+        $mantra->update(['deity_id' => $deity->id]);
+        $this->get(route('admin.deities.edit', $deity))
+            ->assertOk()
+            ->assertSee('Durga Mantra');
 
         $oldBackground = $deity->temple_background_image;
 
@@ -97,6 +103,8 @@ class AdminDeityThemeSettingsTest extends TestCase
             ->assertRedirect(route('admin.deities.index'));
 
         $deity->refresh();
+
+        $this->assertSame($mantra->id, $deity->mantra_audio_id);
 
         $this->assertSame($oldBackground, $deity->temple_background_image);
         $this->assertSame('#7c2d12', $deity->primary_color);
@@ -144,6 +152,48 @@ class AdminDeityThemeSettingsTest extends TestCase
             'mantra_audio_id' => null,
             'ambient_audio_id' => null,
         ]);
+    }
+
+    public function test_deity_rejects_mantra_from_another_deity_or_without_active_mantra_audio(): void
+    {
+        $this->actingAs($this->admin(), 'admin');
+        $deity = Deity::create(['name' => 'Shiv', 'slug' => 'shiv', 'status' => 'active']);
+        $otherDeity = Deity::create(['name' => 'Ganesh', 'slug' => 'ganesh', 'status' => 'active']);
+
+        foreach ([
+            ['deity_id' => $otherDeity->id],
+            ['deity_id' => null],
+            ['category' => 'aarti'],
+            ['status' => 'inactive'],
+            ['audio_file' => null],
+            ['audio_file' => ''],
+        ] as $index => $changes) {
+            $audio = Audio::create($changes + [
+                'deity_id' => $deity->id,
+                'title' => 'Invalid Mantra '.$index,
+                'slug' => 'invalid-mantra-'.$index,
+                'category' => 'mantra',
+                'audio_file' => 'audio/invalid.mp3',
+                'status' => 'active',
+            ]);
+
+            $this->get(route('admin.deities.edit', $deity))
+                ->assertOk()->assertViewHas('mantraAudioOptions', []);
+            $this->put(route('admin.deities.update', $deity), [
+                'name' => $deity->name,
+                'slug' => $deity->slug,
+                'status' => 'active',
+                'mantra_audio_id' => $audio->id,
+            ])->assertSessionHasErrors('mantra_audio_id');
+        }
+
+        $this->post(route('admin.deities.store'), [
+            'name' => 'Lakshmi',
+            'slug' => 'lakshmi',
+            'status' => 'active',
+            'mantra_audio_id' => $audio->id,
+        ])->assertSessionHasErrors('mantra_audio_id');
+        $this->assertNull($deity->fresh()->mantra_audio_id);
     }
 
     private function admin(): Admin

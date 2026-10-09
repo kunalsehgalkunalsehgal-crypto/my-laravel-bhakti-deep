@@ -196,7 +196,7 @@ if ($deity?->featured_image) {
                             </div>
                             <p class="diya-audio-note mt-3 d-none" data-autoplay-note>Autoplay was blocked. Tap Play Mantra to begin.</p>
                         @else
-                            <p class="mt-3">No active mantra audio has been uploaded for {{ $deity?->name ?? ($meta['deity_name'] ?? 'this deity') }} yet.</p>
+                            <p class="mt-3">Mantra audio not available</p>
                         @endif
 
                         @if($ambientAudio?->fileUrl())

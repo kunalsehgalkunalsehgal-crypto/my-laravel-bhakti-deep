@@ -51,6 +51,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Admin\Audio;
 use App\Models\Admin\Deity;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminDeityController extends BaseAdminResourceController
 {
@@ -289,12 +292,29 @@ class AdminDeityController extends BaseAdminResourceController
     ];
 
 
+    protected function validated(Request $request, ?Model $record = null): array
+    {
+        $this->fields['mantra_audio_id']['rules'] = [
+            'nullable',
+            Rule::exists('audio_library', 'id')
+                ->where('deity_id', $record?->id ?? 0)
+                ->where('category', 'mantra')
+                ->where('status', 'active')
+                ->whereNot('audio_file', '')
+                ->whereNull('deleted_at'),
+        ];
+
+        return parent::validated($request, $record);
+    }
+
     protected function viewData(array $data = []): array
     {
         return parent::viewData($data + [
 
             'mantraAudioOptions' => Audio::active()
                 ->where('category', 'mantra')
+                ->where('deity_id', ($data['record'] ?? null)?->id ?? 0)
+                ->where('audio_file', '!=', '')
                 ->orderBy('title')
                 ->pluck('title', 'id')
                 ->all(),

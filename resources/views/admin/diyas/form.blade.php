@@ -5,8 +5,6 @@
 @section('content')
     @php
         $selectedMode = old('deity_selection_mode', $record->deity_selection_mode ?: 'user_select');
-        $selectedMantraDeityId = old('mantra_deity_id', $record->mantraAudio?->deity_id ?: $record->fixed_deity_id);
-        $selectedMantraAudioId = old('mantra_audio_id', $record->mantra_audio_id);
     @endphp
 
     <h1>{{ $mode === 'create' ? 'Add New Diya' : 'Edit Diya' }}</h1>
@@ -69,25 +67,6 @@
                 @error('fixed_deity_id') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
                 <p style="color:#667085;font-size:12px;margin:6px 0 0">Required only for fixed deity diyas.</p>
             </div>
-            <div>
-                <label>Mantra Audio Deity *</label>
-                <select name="mantra_deity_id" id="mantraDeitySelect" required>
-                    <option value="">Select deity first</option>
-                    @foreach($activeDeities as $deity)
-                        <option value="{{ $deity->id }}" @selected((string) $selectedMantraDeityId === (string) $deity->id)>{{ $deity->name }}</option>
-                    @endforeach
-                </select>
-                @error('mantra_deity_id') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
-                <p style="color:#667085;font-size:12px;margin:6px 0 0">This deity filters the mantra audio list.</p>
-            </div>
-            <div>
-                <label>Mantra Audio *</label>
-                <select name="mantra_audio_id" id="mantraAudioSelect" required data-selected="{{ $selectedMantraAudioId }}">
-                    <option value="">Select deity to load mantra audio</option>
-                </select>
-                @error('mantra_audio_id') <span style="color:#b42318;font-size:12px;">{{ $message }}</span> @enderror
-                <p style="color:#667085;font-size:12px;margin:6px 0 0">Only active mantra audios from the selected deity are shown.</p>
-            </div>
             <div class="full">
                 <label>Short Description</label>
                 <textarea name="short_description">{{ old('short_description', $record->short_description) }}</textarea>
@@ -127,10 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const slugInput = document.getElementById('slugInput');
     const deityMode = document.getElementById('deityMode');
     const fixedDeityField = document.getElementById('fixedDeityField');
-    const fixedDeitySelect = document.getElementById('fixedDeitySelect');
-    const mantraDeitySelect = document.getElementById('mantraDeitySelect');
-    const mantraAudioSelect = document.getElementById('mantraAudioSelect');
-    const mantraAudioUrl = @json(route('admin.diyas.mantra-audios'));
 
     nameInput.addEventListener('input', function() {
         if (slugInput.dataset.edited === '1') {
@@ -148,75 +123,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function syncFixedDeityField() {
         const isFixed = deityMode.value === 'fixed';
         fixedDeityField.style.display = isFixed ? 'block' : 'none';
-
-        if (isFixed && fixedDeitySelect.value) {
-            mantraDeitySelect.value = fixedDeitySelect.value;
-            loadMantraAudios();
-        }
-    }
-
-    async function loadMantraAudios() {
-        const deityId = mantraDeitySelect.value;
-        const selectedAudioId = mantraAudioSelect.dataset.selected || '';
-
-        mantraAudioSelect.innerHTML = '<option value="">Select mantra audio</option>';
-
-        if (!deityId) {
-            mantraAudioSelect.innerHTML = '<option value="">Select deity to load mantra audio</option>';
-            return;
-        }
-
-        mantraAudioSelect.disabled = true;
-        mantraAudioSelect.innerHTML = '<option value="">Loading mantra audio...</option>';
-
-        try {
-            const url = new URL(mantraAudioUrl, window.location.origin);
-            url.searchParams.set('deity_id', deityId);
-
-            const response = await fetch(url.toString(), {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            const audios = await response.json();
-            mantraAudioSelect.innerHTML = '<option value="">Select mantra audio</option>';
-
-            if (!audios.length) {
-                mantraAudioSelect.innerHTML = '<option value="">No active mantra audio found</option>';
-                return;
-            }
-
-            audios.forEach(function (audio) {
-                const option = document.createElement('option');
-                option.value = audio.id;
-                option.textContent = audio.title;
-                option.selected = String(audio.id) === String(selectedAudioId);
-                mantraAudioSelect.appendChild(option);
-            });
-        } catch (error) {
-            mantraAudioSelect.innerHTML = '<option value="">Could not load mantra audio</option>';
-        } finally {
-            mantraAudioSelect.disabled = false;
-        }
     }
 
     deityMode.addEventListener('change', syncFixedDeityField);
-    fixedDeitySelect.addEventListener('change', function () {
-        if (deityMode.value === 'fixed') {
-            mantraDeitySelect.value = this.value;
-            mantraAudioSelect.dataset.selected = '';
-            loadMantraAudios();
-        }
-    });
-    mantraDeitySelect.addEventListener('change', function () {
-        mantraAudioSelect.dataset.selected = '';
-        loadMantraAudios();
-    });
 
     syncFixedDeityField();
-    loadMantraAudios();
 });
 </script>
 @endpush

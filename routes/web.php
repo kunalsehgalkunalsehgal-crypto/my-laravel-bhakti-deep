@@ -861,9 +861,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/diyas/{diya}/toggle-status', [AdminDiyaController::class, 'toggleStatus'])
             ->middleware('admin.permission:manage-diyas')
             ->name('diyas.toggle-status');
-        Route::get('/diyas/mantra-audios', [AdminDiyaController::class, 'mantraAudios'])
-            ->middleware('admin.permission:manage-diyas')
-            ->name('diyas.mantra-audios');
         Route::resource('/diyas', AdminDiyaController::class)
             ->middleware('admin.permission:manage-diyas');
 

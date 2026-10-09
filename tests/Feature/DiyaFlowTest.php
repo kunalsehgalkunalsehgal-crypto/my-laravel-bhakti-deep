@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Admin\Admin;
+use App\Models\Admin\AdminRole;
 use App\Models\Admin\Audio;
 use App\Models\Admin\Deity;
 use App\Models\Admin\Diya;
@@ -547,7 +549,6 @@ class DiyaFlowTest extends TestCase
             'seva_amount' => 108,
             'duration' => '1 day',
             'deity_selection_mode' => Diya::MODE_USER_SELECT,
-            'mantra_audio_id' => $lakshmiMantra->id,
             'status' => 'active',
         ]);
         $fixedDiya = Diya::create([
@@ -557,9 +558,11 @@ class DiyaFlowTest extends TestCase
             'duration' => '2 hours',
             'deity_selection_mode' => Diya::MODE_FIXED,
             'fixed_deity_id' => $shiv->id,
-            'mantra_audio_id' => $lakshmiMantra->id,
             'status' => 'active',
         ]);
+
+        $selectDiya->forceFill(['mantra_audio_id' => $lakshmiMantra->id])->save();
+        $fixedDiya->forceFill(['mantra_audio_id' => $lakshmiMantra->id])->save();
 
         $ganeshSession = $this->paidDiyaSession($user, $selectDiya, $ganesh, 51);
         $shivSession = $this->paidDiyaSession($user, $selectDiya, $shiv, 101);
@@ -654,6 +657,143 @@ class DiyaFlowTest extends TestCase
         $this->assertDatabaseCount('diya_sessions', 0);
         $this->assertDatabaseCount('donations', 0);
         $this->assertDatabaseCount('payment_attempts', 0);
+    }
+
+    public function test_admin_saves_diyas_without_mantra_fields(): void
+    {
+        [$diya, $deity] = $this->userSelectDiya();
+        $role = AdminRole::create(['name' => 'Super Admin', 'slug' => 'super-admin', 'status' => 'active']);
+        $admin = Admin::create(['name' => 'Admin', 'email' => 'diya-admin@example.test', 'password' => 'password', 'role_id' => $role->id, 'status' => 'active']);
+        $this->actingAs($admin, 'admin');
+
+        foreach (['index', 'create', 'edit', 'show'] as $page) {
+            $this->get(route('admin.diyas.'.$page, $diya))
+                ->assertOk()
+                ->assertDontSee('Mantra Audio')
+                ->assertDontSee('mantra_audio_id')
+                ->assertDontSee('mantra_deity_id')
+                ->assertDontSee('loadMantraAudios');
+        }
+
+        foreach ([Diya::MODE_FIXED, Diya::MODE_USER_SELECT] as $mode) {
+            $data = [
+                'name' => 'Admin Diya '.$mode,
+                'seva_amount' => 51,
+                'deity_selection_mode' => $mode,
+                'fixed_deity_id' => $deity->id,
+                'status' => 'active',
+            ];
+            $this->post(route('admin.diyas.store'), $data)
+                ->assertSessionHasNoErrors()->assertRedirect(route('admin.diyas.index'));
+            $savedDiya = Diya::where('name', $data['name'])->firstOrFail();
+            $this->assertSame($mode === Diya::MODE_FIXED ? $deity->id : null, $savedDiya->fixed_deity_id);
+            $this->assertNull($savedDiya->mantra_audio_id);
+            $this->put(route('admin.diyas.update', $savedDiya), $data + [
+                'mantra_deity_id' => 999,
+                'mantra_audio_id' => 999,
+            ])->assertSessionHasNoErrors()->assertRedirect(route('admin.diyas.index'));
+            $this->assertNull($savedDiya->fresh()->mantra_audio_id);
+        }
+
+        $this->post(route('admin.diyas.store'), [
+            'name' => 'Missing Fixed Deity',
+            'seva_amount' => 51,
+            'deity_selection_mode' => Diya::MODE_FIXED,
+            'status' => 'active',
+        ])->assertSessionHasErrors('fixed_deity_id');
+    }
+
+    public function test_both_diya_modes_use_the_final_deitys_assigned_mantra(): void
+    {
+        [$diya, $lakshmi] = $this->userSelectDiya();
+        $ganesh = Deity::create(['name' => 'Ganesh', 'slug' => 'ganesh', 'status' => 'active']);
+        $shiv = Deity::create(['name' => 'Shiv', 'slug' => 'shiv', 'status' => 'active']);
+        $deities = [$ganesh, $shiv, $lakshmi];
+        $this->actingAs(User::factory()->create());
+
+        foreach ($deities as $deity) {
+            $mantra = Audio::create([
+                'deity_id' => $deity->id,
+                'title' => $deity->name.' Mantra',
+                'slug' => $deity->slug.'-mantra',
+                'category' => 'mantra',
+                'audio_file' => 'audio/'.$deity->slug.'.mp3',
+                'status' => 'active',
+            ]);
+            $deity->update(['mantra_audio_id' => $mantra->id]);
+        }
+
+        foreach ([Diya::MODE_FIXED, Diya::MODE_USER_SELECT] as $mode) {
+            foreach ($deities as $index => $deity) {
+                $otherDeity = $deities[($index + 1) % 3];
+                $diya->forceFill([
+                    'deity_selection_mode' => $mode,
+                    'fixed_deity_id' => $mode === Diya::MODE_FIXED ? $deity->id : null,
+                    'mantra_audio_id' => $otherDeity->mantra_audio_id,
+                ])->save();
+                $response = $this->postJson(route('diya.store'), $this->payload([
+                    'diya_id' => $diya->id,
+                    'deity_id' => $mode === Diya::MODE_FIXED ? $otherDeity->id : $deity->id,
+                ]))->assertOk();
+                $session = DiyaSession::findOrFail($response->json('session_id'));
+                $this->assertSame($deity->id, $session->deity_id);
+                $this->assertSame($deity->mantra_audio_id, json_decode($session->admin_note, true)['mantra_audio_id']);
+                $this->postJson(route('payments.razorpay.verify'), $this->successPayload($session->latestPaymentAttempt))->assertOk();
+                $this->get(route('diya.session', $session))
+                    ->assertOk()
+                    ->assertSee('src="'.$deity->mantraAudio->fileUrl().'"', false)
+                    ->assertDontSee($otherDeity->mantraAudio->fileUrl(), false)
+                    ->assertDontSee('Mantra audio not available');
+            }
+        }
+    }
+
+    public function test_both_diya_modes_do_not_play_invalid_or_fallback_mantras(): void
+    {
+        [$diya, $deity] = $this->userSelectDiya();
+        $otherDeity = Deity::create(['name' => 'Ganesh', 'slug' => 'ganesh', 'status' => 'active']);
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $audioData = ['deity_id' => $deity->id, 'category' => 'mantra', 'audio_file' => 'audio/mantra.mp3', 'status' => 'active'];
+        Audio::create(['title' => 'Unselected Mantra', 'slug' => 'unselected-mantra'] + $audioData);
+        $ambient = Audio::create(['title' => 'Temple Bells', 'slug' => 'bells', 'category' => 'temple_ambience', 'audio_file' => 'audio/bells.mp3'] + $audioData);
+        $invalidAudios = [null];
+
+        foreach ([
+            ['deity_id' => $otherDeity->id],
+            ['deity_id' => null],
+            ['category' => 'aarti'],
+            ['status' => 'inactive'],
+            ['audio_file' => null],
+            ['audio_file' => ''],
+            [],
+        ] as $index => $changes) {
+            $audio = Audio::create($changes + ['title' => 'Invalid Mantra '.$index, 'slug' => 'invalid-mantra-'.$index] + $audioData);
+            if ($changes === []) {
+                $audio->delete();
+            }
+            $invalidAudios[] = $audio;
+        }
+
+        foreach ([Diya::MODE_FIXED, Diya::MODE_USER_SELECT] as $mode) {
+            $diya->update(['deity_selection_mode' => $mode, 'fixed_deity_id' => $mode === Diya::MODE_FIXED ? $deity->id : null]);
+            foreach ($invalidAudios as $audio) {
+                $deity->update(['mantra_audio_id' => $audio?->id]);
+                $response = $this->postJson(route('diya.store'), $this->payload([
+                    'diya_id' => $diya->id,
+                    'deity_id' => $deity->id,
+                ]))->assertOk();
+                $session = DiyaSession::findOrFail($response->json('session_id'));
+                $this->assertNull(json_decode($session->admin_note, true)['mantra_audio_id']);
+                $session->update(['payment_status' => 'paid', 'status' => DiyaSession::STATUS_ACTIVE, 'start_at' => now(), 'end_at' => now()->addDay()]);
+                $this->get(route('diya.session', $session))
+                    ->assertOk()
+                    ->assertSee('Mantra audio not available')
+                    ->assertDontSee('<audio id="diyaMantraAudio"', false)
+                    ->assertDontSee('Unselected Mantra')
+                    ->assertSee('src="'.$ambient->fileUrl().'"', false);
+            }
+        }
     }
 
     private function userSelectDiya(): array

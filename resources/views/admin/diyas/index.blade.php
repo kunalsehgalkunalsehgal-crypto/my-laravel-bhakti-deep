@@ -34,7 +34,6 @@
                     <th>Category</th>
                     <th>Deity Mode</th>
                     <th>Fixed Deity</th>
-                    <th>Mantra Audio</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -50,7 +49,6 @@
                         <td>{{ $diya->category ?: '-' }}</td>
                         <td>{{ $diya->isFixedDeity() ? 'Fixed Deity' : 'User Can Select Deity' }}</td>
                         <td>{{ $diya->fixedDeity?->name ?: '-' }}</td>
-                        <td>{{ $diya->mantraAudio?->title ?: '-' }}</td>
                         <td><span class="badge {{ $diya->status }}">{{ ucfirst($diya->status) }}</span></td>
                         <td>
                             <div class="actions">
@@ -68,7 +66,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8">No diyas found.</td></tr>
+                    <tr><td colspan="7">No diyas found.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -134,7 +134,7 @@ class DiyaController extends Controller
         $amount = $validated['selected_amount'] === 'custom'
             ? (float) $validated['custom_amount']
             : (float) $validated['selected_amount'];
-        $mantraAudio = $this->deityAudio($deity, 'mantraAudio', ['mantra', 'aarti']);
+        $mantraAudio = $this->deityAudio($deity, 'mantraAudio', ['mantra']);
         $ambientAudio = $this->deityAudio($deity, 'ambientAudio', ['temple_ambience', 'hawan_ambience']);
 
         if (!str_starts_with((string) config('services.razorpay.key_id'), 'rzp_test_')) {
@@ -269,7 +269,7 @@ class DiyaController extends Controller
 
         abort_unless(app(PanditBookingService::class)->canAccessPrivateSession($session, $request), 403);
 
-        $mantraAudio = $this->deityAudio($session->deity, 'mantraAudio', ['mantra', 'aarti']);
+        $mantraAudio = $this->deityAudio($session->deity, 'mantraAudio', ['mantra']);
         $ambientAudio = $this->deityAudio($session->deity, 'ambientAudio', ['temple_ambience', 'hawan_ambience']);
 
         return view('pages.diya-session', compact('session', 'mantraAudio', 'ambientAudio'));
@@ -279,8 +279,13 @@ class DiyaController extends Controller
     {
         $audio = $deity?->{$relation};
 
-        if ($audio?->audio_file && $audio->status === 'active' && in_array($audio->category, $categories, true)) {
+        if ($audio?->audio_file && $audio->status === 'active' && in_array($audio->category, $categories, true)
+            && ($relation !== 'mantraAudio' || (int) $audio->deity_id === (int) $deity->id)) {
             return $audio;
+        }
+
+        if ($relation === 'mantraAudio') {
+            return null;
         }
 
         return $deity ? Audio::active()

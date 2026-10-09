@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminDiyaRequest;
 use App\Models\Admin\AdminActivityLog;
-use App\Models\Admin\Audio;
 use App\Models\Admin\Deity;
 use App\Models\Admin\Diya;
 use Illuminate\Http\Request;
@@ -17,7 +16,7 @@ class AdminDiyaController extends Controller
 {
     public function index(Request $request)
     {
-        $records = Diya::with(['fixedDeity', 'mantraAudio'])
+        $records = Diya::with('fixedDeity')
             ->when($request->filled('search'), function ($query) use ($request) {
                 $query->where(function ($builder) use ($request) {
                     $builder->where('name', 'like', '%'.$request->search.'%')
@@ -53,40 +52,18 @@ class AdminDiyaController extends Controller
 
     public function show(Diya $diya)
     {
-        $diya->load(['fixedDeity', 'mantraAudio.deity']);
+        $diya->load('fixedDeity');
 
         return view('admin.diyas.show', compact('diya'));
     }
 
     public function edit(Diya $diya)
     {
-        $diya->load('mantraAudio');
-
         return view('admin.diyas.form', [
             'record' => $diya,
             'mode' => 'edit',
             'activeDeities' => $this->activeDeities(),
         ]);
-    }
-
-    public function mantraAudios(Request $request)
-    {
-        $request->validate([
-            'deity_id' => [
-                'required',
-                'integer',
-                'exists:deities,id',
-            ],
-        ]);
-
-        $audios = Audio::active()
-            ->where('category', 'mantra')
-            ->where('deity_id', $request->integer('deity_id'))
-            ->whereNotNull('audio_file')
-            ->orderBy('title')
-            ->get(['id', 'title']);
-
-        return response()->json($audios);
     }
 
     public function update(AdminDiyaRequest $request, Diya $diya)
@@ -116,7 +93,6 @@ class AdminDiyaController extends Controller
     private function data(AdminDiyaRequest $request, ?Diya $diya = null): array
     {
         $data = $request->validated();
-        unset($data['mantra_deity_id']);
 
         $data['slug'] = Str::slug($data['slug'] ?: $data['name']);
 

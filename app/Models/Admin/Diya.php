@@ -23,7 +23,6 @@ class Diya extends Model
         'category',
         'deity_selection_mode',
         'fixed_deity_id',
-        'mantra_audio_id',
         'mantra_ambience',
         'status',
     ];
@@ -38,11 +37,6 @@ class Diya extends Model
     public function fixedDeity()
     {
         return $this->belongsTo(Deity::class, 'fixed_deity_id');
-    }
-
-    public function mantraAudio()
-    {
-        return $this->belongsTo(Audio::class, 'mantra_audio_id');
     }
 
     public function scopeActive($query)
@@ -102,7 +96,6 @@ class Diya extends Model
             'deity_selection_mode' => $this->deity_selection_mode,
             'fixed_deity_id' => $this->fixed_deity_id,
             'fixed_deity_name' => $this->fixedDeity?->name,
-            'mantra_audio_id' => $this->mantra_audio_id,
             'mantra_ambience' => $this->mantra_ambience,
         ];
     }

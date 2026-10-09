@@ -24,8 +24,6 @@
                 <tr><th>Type / Category</th><td>{{ $diya->category ?: '-' }}</td></tr>
                 <tr><th>Deity Selection Mode</th><td>{{ $diya->isFixedDeity() ? 'Fixed Deity' : 'User Can Select Deity' }}</td></tr>
                 <tr><th>Fixed Deity</th><td>{{ $diya->fixedDeity?->name ?: '-' }}</td></tr>
-                <tr><th>Mantra Audio Deity</th><td>{{ $diya->mantraAudio?->deity?->name ?: '-' }}</td></tr>
-                <tr><th>Mantra Audio</th><td>{{ $diya->mantraAudio?->title ?: '-' }}</td></tr>
                 <tr><th>Mantra / Ambience</th><td>{{ $diya->mantra_ambience ?: '-' }}</td></tr>
                 <tr><th>Status</th><td><span class="badge {{ $diya->status }}">{{ ucfirst($diya->status) }}</span></td></tr>
             </tbody>
