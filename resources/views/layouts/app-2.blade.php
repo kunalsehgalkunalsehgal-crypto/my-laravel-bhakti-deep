@@ -16,7 +16,11 @@
     <link href="{{ asset('css/home.css') }}" rel="stylesheet">
     <link href="{{ asset('css/pages.css') }}" rel="stylesheet">
     @stack('styles')
-    <link rel="stylesheet" href="{{ asset('css/bd-language.css') }}?v=reset7">
+    <link rel="stylesheet" href="{{ asset('css/bd-language.css') }}?v=1">
+    {{-- <script src="{{ asset('js/bd-language.js') }}?v=1"></script>
+    <script
+    src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit">
+</script> --}}
 </head>
 <body>
 @include('partials.header')
@@ -29,8 +33,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @vite(['resources/js/app.js'])
     <script src="{{ asset('js/bhaktideep.js') }}"></script>
+    <script src="{{ asset('js/bd-language.js') }}?v=1"></script>
+    <script
+    src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit">
+</script>
     @stack('scripts')
-    {{-- One loader: it starts Google only for non-English languages. --}}
-    <script src="{{ asset('js/bd-language.js') }}?v=reset7" defer></script>
 </body>
 </html>

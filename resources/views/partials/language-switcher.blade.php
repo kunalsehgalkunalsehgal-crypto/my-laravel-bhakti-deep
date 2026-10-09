@@ -73,5 +73,5 @@
         <li><button type="button" class="dropdown-item bd-language-option" data-bd-lang="ne"><span class="bd-language-name">🇳🇵 नेपाली</span><span class="bd-language-code">NE</span></button></li>
     </ul>
 
-    {{-- <div id="bd-google-translate" class="bd-google-translate" aria-hidden="true"></div> --}}
+    <div id="bd-google-translate" class="bd-google-translate" aria-hidden="true"></div>
 </div>
